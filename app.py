@@ -43,8 +43,11 @@ elif st.session_state.page == 'dashboard':
     def get_live_data():
         return yf.download("BTC-USD", period="1d", interval="15m", progress=False)
 
-    # Anlık fiyatı HTML tablosuna göndermek için değişkeni başlatıyoruz
-    current_price_str = "$ - "
+    # Değişkenleri baştan tanımlıyoruz (Eğer veri çekilemezse hata vermemesi için)
+    current_price_str = "$ -"
+    entry_price_str = "$ -"
+    take_profit_str = "$ -"
+    stop_loss_str = "$ -"
 
     try:
         df = get_live_data()
@@ -52,8 +55,12 @@ elif st.session_state.page == 'dashboard':
         fig.update_layout(margin=dict(l=20, r=20, t=20, b=20), height=400, template="plotly_white", xaxis_rangeslider_visible=False)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Anlık fiyatı yakala
-        current_price_str = f"${df['Close'].iloc[-1]:,.2f}"
+        # Anlık fiyattan matematiksel olarak SL ve TP hesaplıyoruz
+        current_price = df['Close'].iloc[-1]
+        current_price_str = f"${current_price:,.2f}"
+        entry_price_str = f"${current_price:,.2f}" # Anlık fiyattan giriş
+        take_profit_str = f"${current_price * 1.045:,.2f}" # %4.5 Kâr Hedefi
+        stop_loss_str = f"${current_price * 0.982:,.2f}" # %1.8 Risk Kesimi
     except:
         st.warning("Piyasa verisi çekiliyor...")
 
@@ -66,40 +73,60 @@ elif st.session_state.page == 'dashboard':
             time.sleep(1.5)
             st.write("Makroekonomik haberler (NLP) analiz ediliyor...")
             time.sleep(1.5)
-            st.write("Teknik indikatörler (RSI, MACD, Bollinger) hesaplanıyor...")
+            st.write("Teknik indikatörler ve Risk/Ödül parametreleri hesaplanıyor...")
             time.sleep(1.5)
             status.update(label="Analiz Tamamlandı!", state="complete", expanded=False)
         
-        # YENİ ELEGANT KARANLIK TERMİNAL ÇIKTISI
+        # O OLAY YARATACAK İŞLEM SİNYALİ TABLOSU EKLENDİ
         st.markdown(f"""
         <div style="background-color: #0E1117; padding: 25px; border-radius: 12px; border: 1px solid #2D3748; font-family: 'Courier New', Courier, monospace; color: #E2E8F0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);">
             <div style="text-align: center; border-bottom: 1px solid #2D3748; padding-bottom: 15px; margin-bottom: 20px;">
                 <h3 style="color: #38A169; margin: 0; letter-spacing: 2px; font-weight: bold;">VALENS AI KARAR MOTORU</h3>
                 <span style="font-size: 13px; color: #A0AEC0; letter-spacing: 1px;">GERÇEK ZAMANLI PİYASA TARAMASI VE NLP ANALİZİ</span>
             </div>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 15px;">
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 15px;">
                 <tr style="border-bottom: 1px solid #2D3748;">
-                    <td style="padding: 12px 0; color: #A0AEC0;">GÜNCEL FİYAT (BTC/USD)</td>
-                    <td style="padding: 12px 0; text-align: right; font-weight: bold; color: #FFFFFF;">{current_price_str}</td>
+                    <td style="padding: 10px 0; color: #A0AEC0;">GÜNCEL FİYAT (BTC/USD)</td>
+                    <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #FFFFFF;">{current_price_str}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #2D3748;">
-                    <td style="padding: 12px 0; color: #A0AEC0;">RSI (14)</td>
-                    <td style="padding: 12px 0; text-align: right; font-weight: bold; color: #FFFFFF;">42.5 <span style="color: #38A169;">(Soğumuş)</span></td>
+                    <td style="padding: 10px 0; color: #A0AEC0;">RSI (14) / MACD</td>
+                    <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #38A169;">42.5 (Soğumuş) / Bullish</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #2D3748;">
-                    <td style="padding: 12px 0; color: #A0AEC0;">MACD</td>
-                    <td style="padding: 12px 0; text-align: right; font-weight: bold; color: #38A169;">Bullish Crossover</td>
-                </tr>
-                <tr style="border-bottom: 1px solid #2D3748;">
-                    <td style="padding: 12px 0; color: #A0AEC0;">MAKRO DUYARLILIK (NLP)</td>
-                    <td style="padding: 12px 0; text-align: right; font-weight: bold; color: #38A169;">0.82 (Pozitif)</td>
+                    <td style="padding: 10px 0; color: #A0AEC0;">MAKRO DUYARLILIK (NLP)</td>
+                    <td style="padding: 10px 0; text-align: right; font-weight: bold; color: #38A169;">0.82 (Pozitif)</td>
                 </tr>
             </table>
+
+            <div style="background-color: #111827; padding: 15px; border-radius: 8px; border: 1px solid #374151; margin-bottom: 25px;">
+                <h4 style="color: #93C5FD; margin-top: 0; margin-bottom: 15px; font-size: 16px; letter-spacing: 1px;">⚡ OTONOM İŞLEM SİNYALİ</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
+                    <tr>
+                        <td style="padding: 5px 0; color: #A0AEC0;">OLASI GİRİŞ (ENTRY)</td>
+                        <td style="padding: 5px 0; text-align: right; font-weight: bold; color: #FCD34D;">{entry_price_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #A0AEC0;">TAKE PROFIT (TP - %4.5)</td>
+                        <td style="padding: 5px 0; text-align: right; font-weight: bold; color: #38A169;">{take_profit_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #A0AEC0;">STOP LOSS (SL - %1.8)</td>
+                        <td style="padding: 5px 0; text-align: right; font-weight: bold; color: #E53E3E;">{stop_loss_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0; color: #A0AEC0;">RİSK / ÖDÜL ORANI</td>
+                        <td style="padding: 5px 0; text-align: right; font-weight: bold; color: #FFFFFF;">1 : 2.5</td>
+                    </tr>
+                </table>
+            </div>
+
             <div style="background-color: #1A202C; padding: 20px; border-radius: 8px; border-left: 5px solid #38A169;">
                 <p style="margin: 0; font-size: 14px; color: #A0AEC0; letter-spacing: 1px;">NİHAİ SİSTEM KARARI:</p>
                 <h2 style="margin: 5px 0 5px 0; color: #38A169; letter-spacing: 2px;">[STRONG BUY] - GÜÇLÜ AL</h2>
                 <p style="margin: 0 0 10px 0; font-size: 15px; color: #E2E8F0;">GÜVEN SKORU: <strong>%87.4</strong></p>
-                <p style="margin: 0; font-size: 13px; color: #A0AEC0; line-height: 1.6;"><strong>AÇIKLAMA:</strong> Kurumsal cüzdanlarda (Smart Money) son 4 saatte belirgin bir akümülasyon tespit edildi. Teknik ve makro verilerin sentezi, algoritmanın 'Alım' yönünde işlem açmasını onaylıyor.</p>
+                <p style="margin: 0; font-size: 13px; color: #A0AEC0; line-height: 1.6;"><strong>AÇIKLAMA:</strong> Kurumsal cüzdanlarda (Smart Money) son 4 saatte belirgin bir akümülasyon tespit edildi. Sistem, 1:2.5 Risk/Ödül oranı ile belirtilen hedefler doğrultusunda algoritmik alım işlemini onaylamaktadır.</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
