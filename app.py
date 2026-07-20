@@ -28,14 +28,19 @@ st.set_page_config(
 # INSTRUMENT & TIMEFRAME UNIVERSE
 # ==============================================================================
 INSTRUMENTS = {
+    "XAUUSD": {"label": "Gold Spot (Fut.)", "yf": "GC=F",      "tv": "TVC:GOLD",         "fmt": "{:,.2f}"},
     "SPX500": {"label": "S&P 500 Index",   "yf": "^GSPC",     "tv": "SP:SPX",           "fmt": "{:,.2f}"},
     "NDX100": {"label": "Nasdaq 100",       "yf": "^NDX",      "tv": "NASDAQ:NDX",       "fmt": "{:,.2f}"},
     "BTCUSD": {"label": "Bitcoin / USD",    "yf": "BTC-USD",   "tv": "COINBASE:BTCUSD",  "fmt": "{:,.2f}"},
     "ETHUSD": {"label": "Ethereum / USD",   "yf": "ETH-USD",   "tv": "COINBASE:ETHUSD",  "fmt": "{:,.2f}"},
-    "XAUUSD": {"label": "Gold Spot (Fut.)", "yf": "GC=F",      "tv": "TVC:GOLD",         "fmt": "{:,.2f}"},
     "AAPL":   {"label": "Apple Inc.",       "yf": "AAPL",      "tv": "NASDAQ:AAPL",      "fmt": "{:,.2f}"},
     "EURUSD": {"label": "EUR / USD",        "yf": "EURUSD=X",  "tv": "FX:EURUSD",        "fmt": "{:,.4f}"},
 }
+# NOTE on SPX: yfinance requires the caret-prefixed index ticker "^GSPC" — plain
+# "SPX" or ".INX" are not valid Yahoo symbols and will silently return empty
+# frames (or raise, depending on yfinance version). "^GSPC" is correct and is
+# also given extra retry protection in fetch_history()/fetch_live_price() below
+# so a single transient Yahoo timeout never surfaces as a page error.
 
 TIMEFRAMES = {
     "1M":  {"interval": "1m",  "period": "1d",  "tv": "1",   "resample": None},
@@ -51,7 +56,7 @@ TIMEFRAMES = {
 # ==============================================================================
 defaults = {
     "lang": "EN",
-    "symbol_key": "SPX500",
+    "symbol_key": "XAUUSD",
     "timeframe": "1D",
     "bot_active": True,
     "tp_pct": 2.5,
@@ -73,8 +78,8 @@ translations = {
         "auto_refresh": "Auto-refresh (30s)",
         "warn_info": "⚠️ This terminal is for informational purposes only; it is not investment advice.",
         "err_data": "Live market data cannot be synchronized at the moment. Please try again shortly.",
-        "quant_engine": "AI Quant Engine", "live_news": "Live News Feed", "ai_signal": "AI Signal",
-        "active_signal": "ACTIVE SIGNAL", "confidence": "CONFIDENCE",
+        "quant_engine": "Live AI Quant Engine", "live_news": "Live News Feed", "ai_signal": "AI Signal",
+        "active_signal": "ACTIVE SIGNAL", "confidence": "CONFIDENCE", "synced_to": "Synced to chart —",
         "entry": "ENTRY", "stop_loss": "STOP LOSS", "target": "TARGET",
         "overbought": "OVERBOUGHT", "oversold": "OVERSOLD", "neutral": "NEUTRAL",
         "bull_cross": "Bullish Crossover", "bear_cross": "Bearish Crossover", "converge": "Convergence",
@@ -94,8 +99,8 @@ translations = {
         "auto_refresh": "Otomatik yenile (30sn)",
         "warn_info": "⚠️ Bu terminal yalnızca bilgilendirme amaçlıdır; yatırım tavsiyesi değildir.",
         "err_data": "Canlı piyasa verisi şu anda senkronize edilemiyor. Lütfen kısa süre sonra tekrar deneyin.",
-        "quant_engine": "AI Quant Motoru", "live_news": "Canlı Haber Akışı", "ai_signal": "AI Sinyali",
-        "active_signal": "AKTİF SİNYAL", "confidence": "GÜVEN SKORU",
+        "quant_engine": "Canlı AI Quant Motoru", "live_news": "Canlı Haber Akışı", "ai_signal": "AI Sinyali",
+        "active_signal": "AKTİF SİNYAL", "confidence": "GÜVEN SKORU", "synced_to": "Grafikle senkronize —",
         "entry": "GİRİŞ", "stop_loss": "ZARAR DURDUR", "target": "HEDEF",
         "overbought": "AŞIRI ALIM", "oversold": "AŞIRI SATIM", "neutral": "NÖTR",
         "bull_cross": "Boğa Kesişimi", "bear_cross": "Ayı Kesişimi", "converge": "Yakınsama",
@@ -125,6 +130,7 @@ def load_theme():
         --navy-panel-2: #0e1a2c;
         --gold: #D4AF37;
         --gold-bright: #F0D77B;
+        --white: #FFFFFF;
         --ivory: #ECEAE3;
         --muted: #8B93A7;
         --success: #3FAE6A;
@@ -146,7 +152,7 @@ def load_theme():
 
     h1, h2, h3, h4 {
         font-family: 'Playfair Display', Georgia, serif !important;
-        color: var(--ivory) !important;
+        color: var(--white) !important;
         letter-spacing: 0.3px;
     }
 
@@ -181,12 +187,12 @@ def load_theme():
     }
     .navbar-brand { display: flex; align-items: center; gap: 12px; }
     .navbar-crest { font-size: 26px; color: var(--gold); }
-    .navbar-title { font-family: 'Playfair Display', serif; font-size: 21px; color: var(--ivory); line-height: 1.1; }
+    .navbar-title { font-family: 'Playfair Display', serif; font-size: 21px; color: var(--white); line-height: 1.1; }
     .navbar-sub { font-size: 11px; color: var(--gold); letter-spacing: 2px; }
     .navbar-tabs { display: flex; gap: 30px; }
     .navbar-tab { color: var(--muted); font-size: 15px; padding-bottom: 4px; }
-    .navbar-tab.active { color: var(--ivory); border-bottom: 2px solid var(--gold); font-weight: 600; }
-    .navbar-clock { text-align: right; color: var(--ivory); font-family: 'IBM Plex Mono', monospace; font-size: 15px; }
+    .navbar-tab.active { color: var(--white); border-bottom: 2px solid var(--gold); font-weight: 600; }
+    .navbar-clock { text-align: right; color: var(--white); font-family: 'IBM Plex Mono', monospace; font-size: 15px; }
     .navbar-date { color: var(--muted); font-size: 12px; }
 
     /* ---------- Generic Card ---------- */
@@ -201,15 +207,27 @@ def load_theme():
     }
 
     /* ---------- Price header ---------- */
-    .price-value { font-family: 'IBM Plex Mono', monospace; font-size: 34px; color: var(--ivory); font-weight: 600; }
+    .price-value { font-family: 'IBM Plex Mono', monospace; font-size: 34px; color: var(--white); font-weight: 600; }
     .price-change-up { color: var(--success); font-size: 16px; font-family: 'IBM Plex Mono', monospace; }
     .price-change-down { color: var(--danger); font-size: 16px; font-family: 'IBM Plex Mono', monospace; }
     .price-label { color: var(--muted); font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; }
 
+    /* ---------- Sync badge ---------- */
+    .sync-badge {
+        display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+        color: var(--gold-bright); letter-spacing: 0.5px; margin-bottom: 10px;
+        font-family: 'IBM Plex Mono', monospace;
+    }
+    .sync-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+        box-shadow: 0 0 6px var(--success); animation: pulse-dot 1.8s infinite;
+    }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
     /* ---------- Indicator rows ---------- */
     .ind-row { margin-bottom: 14px; }
     .ind-row-top { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 5px; }
-    .ind-name { color: var(--ivory); font-weight: 600; }
+    .ind-name { color: var(--white); font-weight: 600; }
     .ind-desc { color: var(--muted); }
     .ind-pct { color: var(--gold); font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
     .ind-bar-bg { background: rgba(212,175,55,0.12); border-radius: 4px; height: 6px; overflow: hidden; }
@@ -222,30 +240,36 @@ def load_theme():
     }
     .news-item:last-child { border-bottom: none; }
     .news-src { color: var(--gold); font-weight: 700; width: 90px; flex-shrink: 0; }
-    .news-title { color: var(--ivory); flex-grow: 1; padding: 0 10px; }
-    .news-title a { color: var(--ivory); text-decoration: none; }
+    .news-title { color: var(--white); flex-grow: 1; padding: 0 10px; }
+    .news-title a { color: var(--white); text-decoration: none; }
     .news-title a:hover { color: var(--gold); }
     .news-time { color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; flex-shrink: 0; }
 
-    /* ---------- AI Signal Card ---------- */
+    /* ---------- AI Signal Card (the centerpiece) ---------- */
     .signal-card {
-        border-radius: 12px; overflow: hidden; border: 1px solid var(--gold);
-        box-shadow: 0 0 30px rgba(212,175,55,0.25);
+        border-radius: 14px; overflow: hidden; border: 1px solid var(--gold);
+        box-shadow: 0 0 45px rgba(212,175,55,0.30), 0 0 90px rgba(212,175,55,0.12);
+        animation: signal-glow 3.2s ease-in-out infinite;
+    }
+    @keyframes signal-glow {
+        0%, 100% { box-shadow: 0 0 45px rgba(212,175,55,0.30), 0 0 90px rgba(212,175,55,0.12); }
+        50% { box-shadow: 0 0 60px rgba(212,175,55,0.45), 0 0 120px rgba(212,175,55,0.20); }
     }
     .signal-header {
         background: linear-gradient(90deg, #7a5f1c, var(--gold), #7a5f1c);
-        color: var(--navy); text-align: center; padding: 8px; font-weight: 700;
-        letter-spacing: 2px; font-size: 12px;
+        color: var(--navy); text-align: center; padding: 10px; font-weight: 700;
+        letter-spacing: 3px; font-size: 12.5px;
     }
-    .signal-body { background: var(--navy-panel); padding: 22px; text-align: center; }
-    .signal-decision-buy { color: var(--success); font-size: 30px; font-weight: 700; font-family: 'Playfair Display', serif; }
-    .signal-decision-sell { color: var(--danger); font-size: 30px; font-weight: 700; font-family: 'Playfair Display', serif; }
-    .signal-decision-neutral { color: var(--gold); font-size: 30px; font-weight: 700; font-family: 'Playfair Display', serif; }
-    .signal-confidence { color: var(--muted); font-size: 14px; margin-top: 4px; }
-    .signal-levels { display: flex; justify-content: space-between; margin-top: 20px; }
+    .signal-body { background: radial-gradient(ellipse at center, #12213a 0%, var(--navy-panel) 75%); padding: 30px 24px; text-align: center; }
+    .signal-decision-buy { color: var(--success); font-size: 40px; font-weight: 700; font-family: 'Playfair Display', serif; letter-spacing: 0.5px; text-shadow: 0 0 24px rgba(63,174,106,0.45); }
+    .signal-decision-sell { color: var(--danger); font-size: 40px; font-weight: 700; font-family: 'Playfair Display', serif; letter-spacing: 0.5px; text-shadow: 0 0 24px rgba(192,69,59,0.45); }
+    .signal-decision-neutral { color: var(--gold); font-size: 40px; font-weight: 700; font-family: 'Playfair Display', serif; letter-spacing: 0.5px; text-shadow: 0 0 24px rgba(212,175,55,0.45); }
+    .signal-asset { color: var(--muted); font-size: 13px; letter-spacing: 1.5px; margin-top: 2px; text-transform: uppercase; }
+    .signal-confidence { color: var(--gold-bright); font-size: 15px; margin-top: 10px; font-weight: 600; letter-spacing: 0.5px; }
+    .signal-levels { display: flex; justify-content: space-between; margin-top: 24px; border-top: 1px solid var(--border-gold); padding-top: 18px; }
     .signal-level { text-align: center; flex: 1; }
     .signal-level-label { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
-    .signal-level-value { color: var(--ivory); font-family: 'IBM Plex Mono', monospace; font-size: 15px; margin-top: 2px; }
+    .signal-level-value { color: var(--white); font-family: 'IBM Plex Mono', monospace; font-size: 16px; margin-top: 3px; font-weight: 600; }
 
     .gold-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 12px 0; }
     </style>
@@ -257,38 +281,54 @@ def load_theme():
 # ==============================================================================
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_history(yf_symbol: str, period: str, interval: str) -> pd.DataFrame:
-    try:
-        df = yf.Ticker(yf_symbol).history(period=period, interval=interval, auto_adjust=True)
-        if df is None or df.empty:
-            return pd.DataFrame()
-        df = df.dropna(subset=["Close"])
-        return df
-    except Exception:
-        return pd.DataFrame()
+    last_err = None
+    for attempt in range(2):
+        try:
+            df = yf.Ticker(yf_symbol).history(period=period, interval=interval, auto_adjust=True)
+            if df is None or df.empty:
+                last_err = "empty"
+                time.sleep(0.6)
+                continue
+            df = df.dropna(subset=["Close"])
+            if df.empty:
+                last_err = "empty"
+                time.sleep(0.6)
+                continue
+            return df
+        except Exception as e:
+            last_err = e
+            time.sleep(0.6)
+            continue
+    return pd.DataFrame()
 
 
 @st.cache_data(ttl=45, show_spinner=False)
 def fetch_live_price(yf_symbol: str) -> dict:
     """Returns dict(price, prev_close, change, change_pct) from live/fast data, with robust fallbacks."""
-    try:
-        tk = yf.Ticker(yf_symbol)
+    for attempt in range(2):
         try:
-            fi = tk.fast_info
-            price = float(fi.last_price)
-            prev = float(fi.previous_close)
+            tk = yf.Ticker(yf_symbol)
+            try:
+                fi = tk.fast_info
+                price = float(fi.last_price)
+                prev = float(fi.previous_close)
+            except Exception:
+                hist = tk.history(period="5d", interval="1d", auto_adjust=True)
+                if hist.empty or len(hist) < 2:
+                    time.sleep(0.6)
+                    continue
+                price = float(hist["Close"].iloc[-1])
+                prev = float(hist["Close"].iloc[-2])
+            if not prev:
+                time.sleep(0.6)
+                continue
+            change = price - prev
+            change_pct = (change / prev) * 100
+            return {"price": price, "prev_close": prev, "change": change, "change_pct": change_pct}
         except Exception:
-            hist = tk.history(period="5d", interval="1d", auto_adjust=True)
-            if hist.empty or len(hist) < 2:
-                return {}
-            price = float(hist["Close"].iloc[-1])
-            prev = float(hist["Close"].iloc[-2])
-        if not prev:
-            return {}
-        change = price - prev
-        change_pct = (change / prev) * 100
-        return {"price": price, "prev_close": prev, "change": change, "change_pct": change_pct}
-    except Exception:
-        return {}
+            time.sleep(0.6)
+            continue
+    return {}
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -612,7 +652,7 @@ col_left, col_right = st.columns([2.3, 1])
 with col_left:
     head_l, head_r = st.columns([2, 3])
     with head_l:
-        st.markdown(f"### {st.session_state.symbol_key}")
+        st.markdown(f"### {inst['label']} <span style='color:var(--muted); font-size:15px;'>· {st.session_state.symbol_key}</span>", unsafe_allow_html=True)
     with head_r:
         st.session_state.timeframe = st.radio(
             "tf", options=list(TIMEFRAMES.keys()), index=list(TIMEFRAMES.keys()).index(st.session_state.timeframe),
@@ -647,7 +687,7 @@ with col_right:
         price_str = inst["fmt"].format(live["price"])
         st.markdown(f"""
         <div class="v-card">
-            <div class="price-label">{st.session_state.symbol_key} — {t['as_of']} {now_est.strftime('%H:%M:%S')} EST</div>
+            <div class="price-label">{inst['label']} ({st.session_state.symbol_key}) — {t['as_of']} {now_est.strftime('%H:%M:%S')} EST</div>
             <div class="price-value">{price_str}</div>
             <div class="{cls}">{arrow} {change:+,.2f} ({change_pct:+.2f}%)</div>
         </div>
@@ -662,6 +702,11 @@ with col_right:
     else:
         ind = compute_indicators(raw_df)
         sig = generate_signal(raw_df, ind, st.session_state.sl_pct, st.session_state.tp_pct)
+
+        # ---- Sync badge (proves chart + engine are reading the same instrument)
+        st.markdown(f"""
+        <div class="sync-badge"><span class="sync-dot"></span> {t['synced_to']} {inst['label']} ({inst['yf']})</div>
+        """, unsafe_allow_html=True)
 
         # ---- Quant Engine card
         st.markdown(f'<div class="v-card"><div class="v-card-title">⚙️ {t["quant_engine"]}</div>', unsafe_allow_html=True)
@@ -682,7 +727,8 @@ with col_right:
         <div class="signal-card">
             <div class="signal-header">{t['active_signal']}</div>
             <div class="signal-body">
-                <div class="{deco_cls}">{emoji} {decision} ({st.session_state.symbol_key})</div>
+                <div class="{deco_cls}">{emoji} {decision}</div>
+                <div class="signal-asset">{inst['label']} · {st.session_state.symbol_key}</div>
                 <div class="signal-confidence">{sig['confidence']:.0f}% {t['confidence']}</div>
                 <div class="signal-levels">
                     <div class="signal-level">
@@ -703,12 +749,17 @@ with col_right:
         """, unsafe_allow_html=True)
 
         spark_cols = st.columns(3)
+        macd_color = "#3FAE6A" if float(ind["hist"].iloc[-1]) >= 0 else "#C0453B"
+        rsi_color = "#C0453B" if sig["rsi_val"] > 70 else "#3FAE6A" if sig["rsi_val"] < 30 else "#D4AF37"
         with spark_cols[0]:
+            st.markdown('<div class="price-label">PRICE (30)</div>', unsafe_allow_html=True)
             mini_spark(raw_df["Close"], "#D4AF37")
         with spark_cols[1]:
-            mini_spark(raw_df["Close"], "#C0453B")
+            st.markdown('<div class="price-label">RSI (30)</div>', unsafe_allow_html=True)
+            mini_spark(ind["rsi"], rsi_color)
         with spark_cols[2]:
-            mini_spark(raw_df["Close"], "#3FAE6A")
+            st.markdown('<div class="price-label">MACD HIST (30)</div>', unsafe_allow_html=True)
+            mini_spark(ind["hist"], macd_color)
 
 # ==============================================================================
 # AUTO-REFRESH
