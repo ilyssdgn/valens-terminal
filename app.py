@@ -1,3 +1,25 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+st.set_page_config(
+    page_title="Valens Wealth | Quant Terminal",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
+
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+.block-container {padding:0 !important; margin:0 !important; max-width:100% !important;}
+[data-testid="stAppViewContainer"] {padding:0 !important;}
+[data-testid="stHeader"] {display:none !important;}
+</style>
+""", unsafe_allow_html=True)
+
+TERMINAL_HTML = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,642 +31,572 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
   --navy:#050b14;--navy-panel:#0b1523;--navy-panel-2:#0e1a2c;
-  --gold:#D4AF37;--gold-bright:#F0D77B;--gold-dim:rgba(212,175,55,0.15);
-  --white:#FFFFFF;--ivory:#ECEAE3;--muted:#8B93A7;
-  --success:#3FAE6A;--danger:#C0453B;--border-gold:rgba(212,175,55,0.22);
+  --gold:#D4AF37;--gold-bright:#f0c93a;--gold-dim:#8a6f1e;
+  --green:#00c896;--red:#ff4d6d;--blue:#4da6ff;
+  --text-primary:#e8e0cc;--text-secondary:#8a9bb5;--text-muted:#4a5a72;
+  --border-gold:rgba(212,175,55,0.25);--border-panel:rgba(255,255,255,0.06);
 }
-html,body{height:100%;background:radial-gradient(ellipse at top,#0c1a30 0%,var(--navy) 65%);color:var(--white);font-family:'Inter',sans-serif;overflow:hidden;}
+html,body{width:100%;height:100%;background:var(--navy);color:var(--text-primary);font-family:'Inter',sans-serif;overflow:hidden;}
+.terminal-root{display:flex;flex-direction:column;height:100vh;width:100%;}
 
-/* ===== NAVBAR ===== */
+/* NAVBAR */
 .navbar{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#0a1526 0%,#060d18 100%);border-bottom:1px solid var(--border-gold);padding:0 20px;height:54px;flex-shrink:0;}
-.navbar-brand{display:flex;align-items:center;gap:10px;}
-.navbar-logo{height:38px;width:auto;filter:drop-shadow(0 0 8px rgba(212,175,55,0.35));}
-.navbar-name{font-family:'Playfair Display',serif;font-size:18px;color:var(--white);line-height:1.1;}
-.navbar-name span{color:var(--gold);}
-.navbar-sub{font-size:9px;color:var(--gold);letter-spacing:2.5px;}
-.navbar-tabs{display:flex;}
-.navbar-tab{color:var(--muted);font-size:12.5px;padding:0 16px;height:54px;display:flex;align-items:center;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
-.navbar-tab:hover{color:var(--white);background:rgba(212,175,55,0.04);}
-.navbar-tab.active{color:var(--white);border-bottom:2px solid var(--gold);font-weight:600;}
-.navbar-right{display:flex;align-items:center;gap:14px;}
-.navbar-clock{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--white);}
-.navbar-date{color:var(--muted);font-size:9.5px;}
-.live-badge{display:flex;align-items:center;gap:5px;background:rgba(63,174,106,0.12);border:1px solid rgba(63,174,106,0.3);border-radius:4px;padding:3px 8px;font-size:10px;color:var(--success);font-family:'IBM Plex Mono',monospace;}
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse-dot 1.6s infinite;}
-@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:0.25;}}
+.navbar-left{display:flex;align-items:center;gap:14px;}
+.logo-img{height:32px;width:auto;filter:drop-shadow(0 0 8px rgba(212,175,55,0.6));}
+.brand-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;}
+.navbar-center{display:flex;gap:4px;}
+.nav-tab{padding:6px 16px;border:none;background:transparent;color:var(--text-secondary);font-size:12px;font-weight:500;letter-spacing:0.8px;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all 0.2s;}
+.nav-tab:hover,.nav-tab.active{background:rgba(212,175,55,0.12);color:var(--gold);}
+.navbar-right{display:flex;align-items:center;gap:12px;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite;}
+.status-text{font-size:11px;color:var(--text-secondary);letter-spacing:0.5px;}
+.time-display{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);letter-spacing:1px;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
 
-/* ===== LAYOUT ===== */
-.terminal{display:flex;height:calc(100vh - 54px);overflow:hidden;}
-
-/* ===== CHART AREA ===== */
-.chart-area{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border-gold);}
-.chart-header{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid var(--border-gold);background:rgba(11,21,35,0.7);flex-shrink:0;gap:10px;}
-.chart-sym-block{display:flex;align-items:center;gap:10px;}
-.chart-symbol{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--white);}
-.chart-pair{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);background:rgba(212,175,55,0.1);border:1px solid var(--border-gold);border-radius:4px;padding:2px 7px;}
-.tf-tabs{display:flex;gap:2px;}
-.tf-tab{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:3px 9px;border-radius:4px;cursor:pointer;color:var(--muted);border:1px solid transparent;transition:all .15s;}
-.tf-tab:hover{color:var(--white);}
-.tf-tab.active{color:var(--gold);border-color:var(--border-gold);background:rgba(212,175,55,0.08);}
-.inst-btns{display:flex;gap:4px;flex-wrap:wrap;}
-.inst-btn{background:rgba(212,175,55,0.06);border:1px solid var(--border-gold);border-radius:4px;color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;font-family:'IBM Plex Mono',monospace;transition:all .15s;}
-.inst-btn:hover,.inst-btn.active{color:var(--gold);background:rgba(212,175,55,0.12);border-color:var(--gold);}
-
-/* Price strip */
-.price-strip{display:flex;align-items:center;gap:18px;padding:5px 14px;background:rgba(5,11,20,0.85);border-bottom:1px solid var(--border-gold);flex-shrink:0;}
-.price-main{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;color:var(--white);}
-.price-up{color:var(--success);font-size:11.5px;font-family:'IBM Plex Mono',monospace;}
-.price-down{color:var(--danger);font-size:11.5px;font-family:'IBM Plex Mono',monospace;}
-.price-meta{color:var(--muted);font-size:9.5px;letter-spacing:1px;}
-.sr-badges{display:flex;gap:6px;margin-left:auto;}
-.sr-badge{font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:2px 7px;border-radius:3px;font-weight:600;}
-.sr-res{background:rgba(192,69,59,0.15);border:1px solid rgba(192,69,59,0.35);color:#e07070;}
-.sr-sup{background:rgba(63,174,106,0.15);border:1px solid rgba(63,174,106,0.35);color:#70c890;}
-
-.chart-frame{flex:1;position:relative;overflow:hidden;}
-.chart-frame iframe{width:100%;height:100%;border:none;}
-/* S/R overlay lines drawn over the chart */
-.sr-overlay{position:absolute;inset:0;pointer-events:none;z-index:5;}
-.sr-line{position:absolute;left:0;right:0;height:0;border-top:1px dashed;display:flex;align-items:center;}
-.sr-line.res{border-color:rgba(192,69,59,0.55);}
-.sr-line.sup{border-color:rgba(63,174,106,0.55);}
-.sr-line-tag{position:absolute;right:8px;transform:translateY(-50%);font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;letter-spacing:0.3px;}
-.sr-line.res .sr-line-tag{background:rgba(192,69,59,0.9);color:#fff;}
-.sr-line.sup .sr-line-tag{background:rgba(63,174,106,0.9);color:#04140b;}
-
-/* News ticker */
-.news-ticker-bar{background:linear-gradient(90deg,#0a1526,#060d18);border-top:1px solid var(--border-gold);height:30px;display:flex;align-items:center;overflow:hidden;flex-shrink:0;}
-.news-ticker-label{background:var(--gold);color:var(--navy);font-size:9.5px;font-weight:700;letter-spacing:1.5px;padding:0 10px;height:100%;display:flex;align-items:center;flex-shrink:0;white-space:nowrap;}
-.news-ticker-track{overflow:hidden;flex:1;height:100%;display:flex;align-items:center;}
-.news-ticker-inner{display:flex;white-space:nowrap;animation:ticker-scroll 80s linear infinite;}
+/* NEWS TICKER */
+.ticker-bar{background:#060d18;border-bottom:1px solid var(--border-panel);height:28px;overflow:hidden;display:flex;align-items:center;flex-shrink:0;}
+.ticker-label{background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:0 10px;height:100%;display:flex;align-items:center;letter-spacing:1px;flex-shrink:0;}
+.ticker-track{display:flex;animation:ticker-scroll 90s linear infinite;white-space:nowrap;}
+.ticker-track:hover{animation-play-state:paused;}
+.ticker-item{font-size:11px;color:var(--text-secondary);padding:0 30px;letter-spacing:0.3px;}
+.ticker-item span{color:var(--gold);font-weight:600;}
 @keyframes ticker-scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
-.news-ticker-item{display:inline-flex;align-items:center;gap:7px;padding:0 20px;font-size:10.5px;}
-.news-src{color:var(--gold);font-weight:700;font-size:9.5px;}
-.news-text{color:var(--ivory);}
-.news-time{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;}
-.news-sep{color:var(--border-gold);}
 
-/* ===== RIGHT PANEL ===== */
-.right-panel{width:310px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#0a1220 0%,#050b14 100%);}
-.panel-scroll{overflow-y:auto;flex:1;}
-.panel-scroll::-webkit-scrollbar{width:3px;}
-.panel-scroll::-webkit-scrollbar-thumb{background:var(--border-gold);}
+/* PRICE STRIP */
+.price-strip{display:flex;align-items:center;gap:0;background:#080f1e;border-bottom:1px solid var(--border-panel);height:42px;padding:0 16px;flex-shrink:0;overflow-x:auto;}
+.price-strip::-webkit-scrollbar{display:none;}
+.instrument-btn{display:flex;align-items:center;gap:10px;padding:0 16px;height:100%;border:none;background:transparent;cursor:pointer;border-right:1px solid var(--border-panel);transition:all 0.2s;min-width:160px;}
+.instrument-btn:hover,.instrument-btn.active{background:rgba(212,175,55,0.08);}
+.instrument-btn.active{border-bottom:2px solid var(--gold);}
+.inst-name{font-size:11px;font-weight:600;color:var(--text-secondary);letter-spacing:0.5px;}
+.instrument-btn.active .inst-name{color:var(--gold);}
+.inst-price{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text-primary);}
+.inst-change{font-size:10px;font-weight:500;}
+.inst-change.up{color:var(--green);}
+.inst-change.dn{color:var(--red);}
+.sr-badges{display:flex;gap:4px;margin-left:auto;}
+.sr-badge{font-size:9px;padding:2px 5px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.sr-badge.r{background:rgba(255,77,109,0.15);color:var(--red);border:1px solid rgba(255,77,109,0.3);}
+.sr-badge.s{background:rgba(0,200,150,0.15);color:var(--green);border:1px solid rgba(0,200,150,0.3);}
 
-/* Quant Engine */
-.panel-section{padding:10px 12px;border-bottom:1px solid var(--border-gold);}
-.panel-title{font-family:'Playfair Display',serif;font-size:12.5px;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
-.ind-row{margin-bottom:7px;}
-.ind-top{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;}
-.ind-name{color:var(--white);font-weight:600;}
-.ind-desc{color:var(--muted);}
-.ind-pct{color:var(--gold);font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;}
-.ind-bar-bg{background:rgba(212,175,55,0.1);border-radius:3px;height:3.5px;overflow:hidden;}
-.ind-bar-fill{background:linear-gradient(90deg,var(--gold),var(--gold-bright));height:100%;border-radius:3px;transition:width 1.2s ease;}
+/* MAIN LAYOUT */
+.main-body{display:flex;flex:1;overflow:hidden;}
+.left-panel{width:260px;flex-shrink:0;background:var(--navy-panel);border-right:1px solid var(--border-panel);display:flex;flex-direction:column;overflow-y:auto;}
+.center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.right-panel{width:280px;flex-shrink:0;background:var(--navy-panel);border-left:1px solid var(--border-panel);display:flex;flex-direction:column;overflow-y:auto;}
 
-/* Key Events */
-.events-section{padding:10px 12px;border-bottom:1px solid var(--border-gold);}
-.event-card{background:rgba(212,175,55,0.05);border:1px solid var(--border-gold);border-radius:7px;padding:8px 10px;margin-bottom:7px;}
-.event-card:last-child{margin-bottom:0;}
-.event-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-.event-name{color:var(--gold);font-weight:700;font-size:10.5px;letter-spacing:0.3px;}
-.event-date{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;}
-.event-impact{font-size:9px;font-weight:700;letter-spacing:0.5px;padding:1px 5px;border-radius:3px;}
-.event-impact.bull{background:rgba(63,174,106,0.2);color:var(--success);border:1px solid rgba(63,174,106,0.3);}
-.event-desc{color:var(--ivory);font-size:10px;line-height:1.45;margin-bottom:6px;}
-.event-scenarios{display:flex;flex-direction:column;gap:3px;}
-.scenario{display:flex;gap:6px;font-size:9.5px;line-height:1.4;padding:3px 6px;border-radius:4px;}
-.scenario.bull-s{background:rgba(63,174,106,0.08);border-left:2px solid var(--success);}
-.scenario.bear-s{background:rgba(192,69,59,0.08);border-left:2px solid var(--danger);}
-.scenario-icon{flex-shrink:0;font-weight:700;}
-.scenario.bull-s .scenario-icon{color:var(--success);}
-.scenario.bear-s .scenario-icon{color:var(--danger);}
-.scenario-text{color:var(--ivory);}
+/* PANEL HEADERS */
+.panel-header{padding:10px 14px;border-bottom:1px solid var(--border-panel);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.panel-title{font-size:10px;font-weight:600;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;}
+.panel-badge{font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid var(--border-gold);}
 
-/* Smart Money Flow */
-.smf-section{padding:10px 12px;border-bottom:1px solid var(--border-gold);}
-.smf-scroll{max-height:120px;overflow:hidden;position:relative;}
-.smf-inner{display:flex;flex-direction:column;gap:4px;animation:smf-scroll 20s linear infinite;}
-@keyframes smf-scroll{0%{transform:translateY(0);}100%{transform:translateY(-50%);}}
-.smf-item{background:rgba(212,175,55,0.04);border:1px solid rgba(212,175,55,0.1);border-radius:5px;padding:5px 8px;}
-.smf-header{display:flex;justify-content:space-between;margin-bottom:2px;}
-.smf-actor{color:var(--gold);font-weight:700;font-size:9.5px;letter-spacing:0.3px;}
-.smf-time{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;}
-.smf-action{color:var(--ivory);font-size:10px;line-height:1.35;}
-.smf-action .buy{color:var(--success);font-weight:700;}
-.smf-action .sell{color:var(--danger);font-weight:700;}
-.smf-conclusion{margin-top:3px;padding:3px 6px;background:rgba(212,175,55,0.07);border-radius:3px;font-size:9.5px;color:var(--gold-bright);line-height:1.35;}
+/* SMART MONEY FLOW */
+.smf-feed{padding:8px;}
+.smf-item{background:var(--navy-panel-2);border:1px solid var(--border-panel);border-radius:6px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--gold);}
+.smf-item.buy-flow{border-left-color:var(--green);}
+.smf-item.sell-flow{border-left-color:var(--red);}
+.smf-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.smf-actor{font-size:11px;font-weight:600;color:var(--text-primary);}
+.smf-time{font-size:9px;color:var(--text-muted);}
+.smf-action{font-size:12px;font-weight:700;margin-bottom:4px;}
+.smf-action.buy{color:var(--green);}
+.smf-action.sell{color:var(--red);}
+.smf-detail{font-size:10px;color:var(--text-secondary);line-height:1.5;}
+.smf-analysis{font-size:10px;color:var(--text-muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border-panel);font-style:italic;}
 
-/* AI Signal */
-.signal-section{padding:10px 12px;}
-.signal-card{border-radius:9px;overflow:hidden;border:1px solid var(--gold);box-shadow:0 0 28px rgba(212,175,55,0.22),0 0 55px rgba(212,175,55,0.08);animation:signal-glow 3s ease-in-out infinite;}
-@keyframes signal-glow{0%,100%{box-shadow:0 0 28px rgba(212,175,55,0.22),0 0 55px rgba(212,175,55,0.08);}50%{box-shadow:0 0 42px rgba(212,175,55,0.38),0 0 80px rgba(212,175,55,0.15);}}
-.signal-header-bar{background:linear-gradient(90deg,#7a5f1c,var(--gold),#7a5f1c);color:var(--navy);text-align:center;padding:6px;font-weight:700;letter-spacing:3px;font-size:9.5px;}
-.signal-body{background:radial-gradient(ellipse at center,#12213a 0%,var(--navy-panel) 75%);padding:12px 14px;text-align:center;}
-.signal-decision-buy{color:var(--success);font-size:24px;font-weight:700;font-family:'Playfair Display',serif;text-shadow:0 0 18px rgba(63,174,106,0.5);}
-.signal-decision-sell{color:var(--danger);font-size:24px;font-weight:700;font-family:'Playfair Display',serif;text-shadow:0 0 18px rgba(192,69,59,0.5);}
-.signal-decision-neutral{color:var(--gold);font-size:24px;font-weight:700;font-family:'Playfair Display',serif;}
-.signal-asset{color:var(--muted);font-size:9.5px;letter-spacing:1.5px;margin-top:2px;}
-.signal-confidence{color:var(--gold-bright);font-size:11.5px;margin-top:5px;font-weight:600;}
-.signal-levels{display:flex;justify-content:space-between;margin-top:9px;padding-top:7px;border-top:1px solid var(--border-gold);}
-.signal-level{text-align:center;flex:1;}
-.signal-level-label{color:var(--muted);font-size:8.5px;letter-spacing:1px;}
-.signal-level-value{color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:11.5px;margin-top:2px;font-weight:600;}
+/* AI SIGNAL */
+.signal-box{margin:10px;background:var(--navy-panel-2);border:1px solid var(--border-gold);border-radius:8px;padding:14px;}
+.signal-direction{font-size:28px;font-weight:700;text-align:center;letter-spacing:2px;margin-bottom:4px;}
+.signal-direction.buy{color:var(--green);}
+.signal-direction.sell{color:var(--red);}
+.signal-direction.hold{color:var(--gold);}
+.signal-pair{font-size:11px;color:var(--text-secondary);text-align:center;margin-bottom:10px;}
+.signal-confidence{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.conf-bar{flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold-dim),var(--gold));}
+.conf-pct{font-size:11px;font-weight:600;color:var(--gold);font-family:'IBM Plex Mono',monospace;}
+.signal-levels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.level-box{background:rgba(0,0,0,0.3);border-radius:5px;padding:7px;text-align:center;}
+.level-label{font-size:9px;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:3px;}
+.level-val{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;}
+.level-val.entry{color:var(--blue);}
+.level-val.sl{color:var(--red);}
+.level-val.tp{color:var(--green);}
+.signal-rationale{font-size:10px;color:var(--text-secondary);line-height:1.6;padding-top:8px;border-top:1px solid var(--border-panel);}
 
-/* ===== PAGE VIEWS ===== */
-.page-view{display:none;flex:1;flex-direction:column;overflow:hidden;}
-.page-view.active{display:flex;}
-.page-content{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;}
-.page-content::-webkit-scrollbar{width:4px;}
-.page-content::-webkit-scrollbar-thumb{background:var(--border-gold);}
-.page-card{background:linear-gradient(155deg,var(--navy-panel-2),var(--navy-panel));border:1px solid var(--border-gold);border-radius:10px;padding:18px 20px;}
-.page-card-title{font-family:'Playfair Display',serif;color:var(--gold);font-size:16px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border-gold);}
-.page-card p,.page-card li{color:var(--ivory);font-size:13px;line-height:1.7;}
-.page-card ul{padding-left:18px;}
-.page-card li{margin-bottom:4px;}
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;}
-.stat-box{background:rgba(212,175,55,0.06);border:1px solid var(--border-gold);border-radius:7px;padding:12px;text-align:center;}
-.stat-val{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--gold);}
-.stat-lbl{color:var(--muted);font-size:10px;letter-spacing:1px;margin-top:3px;}
-.form-row{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
-.form-label{color:var(--muted);font-size:11px;letter-spacing:1px;}
-.form-input{background:rgba(212,175,55,0.06);border:1px solid var(--border-gold);border-radius:5px;color:var(--white);font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 10px;outline:none;}
-.form-input:focus{border-color:var(--gold);}
-.btn-gold{background:transparent;border:1.5px solid var(--gold);color:var(--gold);border-radius:6px;font-weight:600;letter-spacing:0.6px;padding:8px 18px;cursor:pointer;font-size:12px;transition:all .2s;}
-.btn-gold:hover{background:var(--gold);color:var(--navy);}
-.research-item{padding:10px 0;border-bottom:1px solid var(--border-gold);}
-.research-item:last-child{border-bottom:none;}
-.research-src{color:var(--gold);font-size:10px;font-weight:700;margin-bottom:3px;}
-.research-title{color:var(--white);font-size:13px;margin-bottom:3px;}
-.research-summary{color:var(--muted);font-size:11.5px;line-height:1.5;}
+/* CHART AREA */
+.chart-container{flex:1;position:relative;background:#060d18;overflow:hidden;}
+.chart-frame{width:100%;height:100%;border:none;}
+.sr-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;}
+.sr-line{position:absolute;left:0;right:0;height:1px;display:flex;align-items:center;}
+.sr-line.resistance{background:rgba(255,77,109,0.5);}
+.sr-line.support{background:rgba(0,200,150,0.5);}
+.sr-line-label{position:absolute;right:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;}
+.sr-line.resistance .sr-line-label{color:var(--red);background:rgba(255,77,109,0.15);}
+.sr-line.support .sr-line-label{color:var(--green);background:rgba(0,200,150,0.15);}
+
+/* EVENTS PANEL */
+.event-card{margin:10px;background:var(--navy-panel-2);border:1px solid var(--border-panel);border-radius:8px;overflow:hidden;}
+.event-header{padding:10px 12px;background:rgba(212,175,55,0.08);border-bottom:1px solid var(--border-panel);display:flex;align-items:center;gap:8px;}
+.event-flag{font-size:16px;}
+.event-name{font-size:11px;font-weight:600;color:var(--text-primary);}
+.event-time{font-size:10px;color:var(--text-muted);margin-left:auto;}
+.event-impact{font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(255,77,109,0.2);color:var(--red);border:1px solid rgba(255,77,109,0.3);}
+.event-body{padding:10px 12px;}
+.event-current{font-size:10px;color:var(--text-secondary);margin-bottom:8px;}
+.event-current strong{color:var(--gold);}
+.scenario{padding:7px 10px;border-radius:5px;margin-bottom:6px;}
+.scenario.bull{background:rgba(0,200,150,0.08);border-left:3px solid var(--green);}
+.scenario.bear{background:rgba(255,77,109,0.08);border-left:3px solid var(--red);}
+.scenario-title{font-size:10px;font-weight:700;margin-bottom:3px;}
+.scenario.bull .scenario-title{color:var(--green);}
+.scenario.bear .scenario-title{color:var(--red);}
+.scenario-text{font-size:10px;color:var(--text-secondary);line-height:1.5;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-gold);border-radius:2px;}
+
+/* TAB CONTENT */
+.tab-content{display:none;flex:1;overflow-y:auto;padding:16px;}
+.tab-content.active{display:block;}
+.portfolio-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+.port-card{background:var(--navy-panel-2);border:1px solid var(--border-panel);border-radius:8px;padding:14px;}
+.port-card-label{font-size:10px;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:6px;}
+.port-card-value{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;color:var(--gold);}
+.port-card-sub{font-size:11px;color:var(--green);margin-top:4px;}
+.positions-table{width:100%;border-collapse:collapse;}
+.positions-table th{font-size:10px;color:var(--text-muted);text-align:left;padding:6px 10px;border-bottom:1px solid var(--border-panel);letter-spacing:0.5px;}
+.positions-table td{font-size:11px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.03);font-family:'IBM Plex Mono',monospace;}
+.positions-table tr:hover td{background:rgba(212,175,55,0.04);}
+.research-card{background:var(--navy-panel-2);border:1px solid var(--border-panel);border-radius:8px;padding:14px;margin-bottom:12px;}
+.research-card h4{font-size:12px;color:var(--gold);margin-bottom:8px;}
+.research-card p{font-size:11px;color:var(--text-secondary);line-height:1.7;}
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-panel);}
+.settings-label{font-size:12px;color:var(--text-primary);}
+.settings-val{font-size:12px;color:var(--gold);font-family:'IBM Plex Mono',monospace;}
 </style>
 </head>
 <body>
+<div class="terminal-root">
 
-<!-- NAVBAR -->
-<div class="navbar">
-  <div class="navbar-brand">
-    <img class="navbar-logo" src="https://cdn.abacus.ai/images/0f498010-a0a5-4cf2-98cd-491f08add03c.png" alt="Valens Wealth"/>
-    <div>
-      <div class="navbar-name">Valens <span>Wealth</span></div>
-      <div class="navbar-sub">QUANT TERMINAL v2.0</div>
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-left">
+      <img src="https://cdn.abacus.ai/images/0f498010-a0a5-4cf2-98cd-491f08add03c.png" class="logo-img" alt="Valens Wealth"/>
+      <span class="brand-name">Valens Wealth</span>
+    </div>
+    <div class="navbar-center">
+      <button class="nav-tab active" onclick="switchTab('terminal',this)">Terminal</button>
+      <button class="nav-tab" onclick="switchTab('portfolio',this)">Portfolio</button>
+      <button class="nav-tab" onclick="switchTab('research',this)">Research</button>
+      <button class="nav-tab" onclick="switchTab('settings',this)">Settings</button>
+      <button class="nav-tab" onclick="switchTab('account',this)">Account</button>
+    </div>
+    <div class="navbar-right">
+      <div class="status-dot"></div>
+      <span class="status-text">LIVE</span>
+      <span class="time-display" id="clock">--:--:--</span>
+    </div>
+  </nav>
+
+  <!-- NEWS TICKER -->
+  <div class="ticker-bar">
+    <div class="ticker-label">LIVE</div>
+    <div style="overflow:hidden;flex:1;">
+      <div class="ticker-track" id="tickerTrack">
+        <span class="ticker-item">XAU/USD <span>4,053.98</span> ▼ -1.83%</span>
+        <span class="ticker-item">ECB Faiz Kararı: <span>%2.40 sabit</span> — Lagarde: "Enflasyon hedefte"</span>
+        <span class="ticker-item">TCMB Faiz: <span>%37.00</span> — Beklenti dahilinde, TL stabil</span>
+        <span class="ticker-item">US İşsizlik Başvuruları: <span>187K</span> — Beklentinin altında, USD güçlendi</span>
+        <span class="ticker-item">BTC/USD <span>118,240</span> ▲ +2.14%</span>
+        <span class="ticker-item">EUR/USD <span>1.0842</span> ▼ -0.31% — ECB sonrası baskı</span>
+        <span class="ticker-item">Hedge Fund Akışı: <span>Citadel</span> XAU'da 4,200 lot LONG pozisyon açtı</span>
+        <span class="ticker-item">SPX500 <span>5,892</span> ▲ +0.47% — Tech sektörü liderliğinde</span>
+        <span class="ticker-item">Altın: Merkez bankaları Q2'de <span>290 ton</span> net alım yaptı</span>
+        <span class="ticker-item">Fed: Temmuz toplantısında faiz <span>sabit</span> beklentisi %94</span>
+        <span class="ticker-item">XAU/USD <span>4,053.98</span> ▼ -1.83%</span>
+        <span class="ticker-item">ECB Faiz Kararı: <span>%2.40 sabit</span> — Lagarde: "Enflasyon hedefte"</span>
+        <span class="ticker-item">TCMB Faiz: <span>%37.00</span> — Beklenti dahilinde, TL stabil</span>
+        <span class="ticker-item">US İşsizlik Başvuruları: <span>187K</span> — Beklentinin altında, USD güçlendi</span>
+        <span class="ticker-item">BTC/USD <span>118,240</span> ▲ +2.14%</span>
+        <span class="ticker-item">EUR/USD <span>1.0842</span> ▼ -0.31% — ECB sonrası baskı</span>
+        <span class="ticker-item">Hedge Fund Akışı: <span>Citadel</span> XAU'da 4,200 lot LONG pozisyon açtı</span>
+        <span class="ticker-item">SPX500 <span>5,892</span> ▲ +0.47% — Tech sektörü liderliğinde</span>
+        <span class="ticker-item">Altın: Merkez bankaları Q2'de <span>290 ton</span> net alım yaptı</span>
+        <span class="ticker-item">Fed: Temmuz toplantısında faiz <span>sabit</span> beklentisi %94</span>
+      </div>
     </div>
   </div>
-  <div class="navbar-tabs">
-    <div class="navbar-tab" onclick="showPage('portfolio')">Portfolio</div>
-    <div class="navbar-tab active" id="tab-signals" onclick="showPage('signals')">Signals</div>
-    <div class="navbar-tab" onclick="showPage('research')">Research</div>
-    <div class="navbar-tab" onclick="showPage('settings')">Settings</div>
-    <div class="navbar-tab" onclick="showPage('account')">Account</div>
+
+  <!-- PRICE STRIP -->
+  <div class="price-strip">
+    <button class="instrument-btn active" id="btn-XAU" onclick="switchInstrument('XAU',this)">
+      <div>
+        <div class="inst-name">XAU/USD · OZ</div>
+        <div class="inst-price" id="price-XAU">4,053.98</div>
+        <div class="inst-change dn" id="chg-XAU">▼ -75.37 (-1.83%)</div>
+      </div>
+      <div class="sr-badges">
+        <span class="sr-badge r">R 4,085</span>
+        <span class="sr-badge s">S 4,040</span>
+      </div>
+    </button>
+    <button class="instrument-btn" id="btn-BTC" onclick="switchInstrument('BTC',this)">
+      <div>
+        <div class="inst-name">BTC/USD</div>
+        <div class="inst-price" id="price-BTC">118,240</div>
+        <div class="inst-change up" id="chg-BTC">▲ +2,480 (+2.14%)</div>
+      </div>
+      <div class="sr-badges">
+        <span class="sr-badge r">R 120K</span>
+        <span class="sr-badge s">S 115K</span>
+      </div>
+    </button>
+    <button class="instrument-btn" id="btn-EUR" onclick="switchInstrument('EUR',this)">
+      <div>
+        <div class="inst-name">EUR/USD</div>
+        <div class="inst-price" id="price-EUR">1.0842</div>
+        <div class="inst-change dn" id="chg-EUR">▼ -0.0034 (-0.31%)</div>
+      </div>
+      <div class="sr-badges">
+        <span class="sr-badge r">R 1.092</span>
+        <span class="sr-badge s">S 1.078</span>
+      </div>
+    </button>
+    <button class="instrument-btn" id="btn-SPX" onclick="switchInstrument('SPX',this)">
+      <div>
+        <div class="inst-name">SPX500</div>
+        <div class="inst-price" id="price-SPX">5,892</div>
+        <div class="inst-change up" id="chg-SPX">▲ +27.4 (+0.47%)</div>
+      </div>
+      <div class="sr-badges">
+        <span class="sr-badge r">R 5,950</span>
+        <span class="sr-badge s">S 5,820</span>
+      </div>
+    </button>
   </div>
-  <div class="navbar-right">
-    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
-    <div class="navbar-clock">
-      <div id="clock">--:--:-- EST</div>
-      <div class="navbar-date" id="dateline">--</div>
-    </div>
-  </div>
-</div>
 
-<!-- ===== SIGNALS PAGE (default) ===== -->
-<div class="page-view active" id="page-signals">
-  <div class="terminal">
+  <!-- MAIN BODY -->
+  <div class="main-body">
 
-    <!-- CHART AREA -->
-    <div class="chart-area">
-      <div class="chart-header">
-        <div class="chart-sym-block">
-          <div class="chart-symbol" id="sym-label">XAU/USD</div>
-          <div class="chart-pair" id="sym-pair">GOLD · OZ</div>
+    <!-- LEFT PANEL: Smart Money Flow -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <span class="panel-title">Smart Money Flow</span>
+        <span class="panel-badge">LIVE</span>
+      </div>
+      <div class="smf-feed" id="smfFeed">
+        <div class="smf-item buy-flow">
+          <div class="smf-header"><span class="smf-actor">Citadel LLC</span><span class="smf-time">14:32 UTC</span></div>
+          <div class="smf-action buy">▲ LONG — XAU/USD</div>
+          <div class="smf-detail">4,200 lot · Giriş: 4,048 · Hedef: 4,120</div>
+          <div class="smf-analysis">ECB faiz kararı sonrası USD zayıflaması beklentisiyle pozisyon açıldı. Teknik: 4,040 desteği üzerinde tutunma.</div>
         </div>
-        <div class="tf-tabs">
-          <div class="tf-tab" onclick="setTF(this,'1')">1M</div>
-          <div class="tf-tab" onclick="setTF(this,'5')">5M</div>
-          <div class="tf-tab" onclick="setTF(this,'15')">15M</div>
-          <div class="tf-tab" onclick="setTF(this,'60')">1H</div>
-          <div class="tf-tab" onclick="setTF(this,'240')">4H</div>
-          <div class="tf-tab active" onclick="setTF(this,'D')">1D</div>
+        <div class="smf-item sell-flow">
+          <div class="smf-header"><span class="smf-actor">Bridgewater</span><span class="smf-time">13:58 UTC</span></div>
+          <div class="smf-action sell">▼ SHORT — EUR/USD</div>
+          <div class="smf-detail">1,800 lot · Giriş: 1.0875 · Hedef: 1.0780</div>
+          <div class="smf-analysis">ECB'nin şahin duruşu beklentinin altında kaldı. EUR/USD 1.090 direncinden döndü, momentum satış yönünde.</div>
         </div>
-        <div class="inst-btns">
-          <div class="inst-btn active" id="btn-XAUUSD" onclick="setInstrument('OANDA:XAUUSD','XAUUSD','XAU/USD','Gold Spot · OZ','4,053.98','4,129.35')">XAU/USD</div>
-          <div class="inst-btn" id="btn-SPX500" onclick="setInstrument('SP:SPX','SPX500','SPX500','S&P 500 Index','5,312.46','5,289.20')">SPX</div>
-          <div class="inst-btn" id="btn-NDX100" onclick="setInstrument('NASDAQ:NDX','NDX100','NDX100','Nasdaq 100','18,742.60','18,690.10')">NDX</div>
-          <div class="inst-btn" id="btn-BTCUSD" onclick="setInstrument('COINBASE:BTCUSD','BTCUSD','BTC/USD','Bitcoin · USD','66,140.00','65,200.00')">BTC/USD</div>
-          <div class="inst-btn" id="btn-EURUSD" onclick="setInstrument('FX:EURUSD','EURUSD','EUR/USD','Euro · Dollar','1.0812','1.0845')">EUR/USD</div>
-          <div class="inst-btn" id="btn-AAPL" onclick="setInstrument('NASDAQ:AAPL','AAPL','AAPL','Apple Inc.','189.84','187.20')">AAPL</div>
+        <div class="smf-item buy-flow">
+          <div class="smf-header"><span class="smf-actor">BlackRock</span><span class="smf-time">13:15 UTC</span></div>
+          <div class="smf-action buy">▲ LONG — BTC/USD</div>
+          <div class="smf-detail">850 lot · Giriş: 116,400 · Hedef: 122,000</div>
+          <div class="smf-analysis">Spot ETF akışları güçlü. 115K destek bölgesinden teknik alım. Risk iştahı artıyor.</div>
+        </div>
+        <div class="smf-item sell-flow">
+          <div class="smf-header"><span class="smf-actor">Goldman Sachs</span><span class="smf-time">12:44 UTC</span></div>
+          <div class="smf-action sell">▼ HEDGE — XAU/USD</div>
+          <div class="smf-detail">2,100 lot · Giriş: 4,065 · Hedef: 4,000</div>
+          <div class="smf-analysis">Portföy hedge'i. US İşsizlik verisi beklentinin altında geldi, USD güçlendi, altın baskı altında.</div>
         </div>
       </div>
 
-      <div class="price-strip">
-        <div>
-          <div class="price-meta" id="price-label-top">GOLD SPOT · XAU/USD · OZ</div>
-          <div class="price-main" id="live-price">4,053.98</div>
-        </div>
-        <div id="price-change" class="price-down">▼ -75.37 (-1.83%)</div>
-        <div class="sr-badges" id="sr-badges">
-          <span class="sr-badge sr-res">R3: 4,155</span>
-          <span class="sr-badge sr-res">R2: 4,118</span>
-          <span class="sr-badge sr-res">R1: 4,085</span>
-          <span class="sr-badge sr-sup">S1: 4,040</span>
-          <span class="sr-badge sr-sup">S2: 4,000</span>
-          <span class="sr-badge sr-sup">S3: 3,960</span>
-        </div>
-        <div style="color:var(--muted);font-size:9.5px;margin-left:8px;" id="price-time">As of --:--</div>
+      <!-- AI SIGNAL -->
+      <div class="panel-header" style="margin-top:auto;">
+        <span class="panel-title">AI Signal Engine</span>
+        <span class="panel-badge" id="sigBadge">SELL</span>
       </div>
-
-      <div class="chart-frame">
-        <iframe id="tv-chart"
-          src="https://s.tradingview.com/widgetembed/?frameElementId=tv_chart&symbol=OANDA%3AXAUUSD&interval=D&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=050b14&studies=RSI%40tv-basicstudies%2CMACD%40tv-basicstudies%2CVolume%40tv-basicstudies&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1&locale=en"
-          allowtransparency="true" frameborder="0" scrolling="no">
-        </iframe>
-        <!-- S/R overlay lines drawn on top of the chart -->
-        <div class="sr-overlay" id="sr-overlay"></div>
-      </div>
-
-      <div class="news-ticker-bar">
-        <div class="news-ticker-label">📡 LIVE FEED</div>
-        <div class="news-ticker-track">
-          <div class="news-ticker-inner" id="ticker-inner"></div>
+      <div class="signal-box">
+        <div class="signal-direction sell" id="sigDir">▼ SELL</div>
+        <div class="signal-pair" id="sigPair">XAU/USD · Confidence: 74%</div>
+        <div class="signal-confidence">
+          <div class="conf-bar"><div class="conf-fill" id="confFill" style="width:74%;"></div></div>
+          <span class="conf-pct" id="confPct">74%</span>
+        </div>
+        <div class="signal-levels">
+          <div class="level-box"><div class="level-label">ENTRY</div><div class="level-val entry" id="sigEntry">4,053.98</div></div>
+          <div class="level-box"><div class="level-label">STOP</div><div class="level-val sl" id="sigSL">4,090.00</div></div>
+          <div class="level-box"><div class="level-label">TARGET</div><div class="level-val tp" id="sigTP">4,000.00</div></div>
+        </div>
+        <div class="signal-rationale" id="sigRationale">
+          RSI(14): 38.2 — aşırı satım bölgesine yaklaşıyor. MACD negatif momentum. EMA200 altında seyir. US İşsizlik verisi USD'yi güçlendirdi. ECB kararı EUR/USD'yi baskıladı, risk-off ortamı altın için çift yönlü baskı yaratıyor. Kısa vadeli SELL, 4,000 psikolojik destek hedef.
         </div>
       </div>
     </div>
 
-    <!-- RIGHT PANEL -->
+    <!-- CENTER PANEL -->
+    <div class="center-panel">
+
+      <!-- TERMINAL TAB -->
+      <div id="tab-terminal" class="tab-content active" style="padding:0;display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="chart-container" id="chartContainer">
+          <iframe id="tvChart" class="chart-frame"
+            src="https://www.tradingview.com/widgetembed/?frameElementId=tvChart&symbol=OANDA%3AXAUUSD&interval=60&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=1&toolbarbg=060d18&studies=RSI%4014%7CMACD%4012%2C26%2C9&theme=dark&style=1&timezone=Europe%2FIstanbul&withdateranges=1&showpopupbutton=1&locale=en"
+            allowtransparency="true" allowfullscreen="true">
+          </iframe>
+          <!-- S/R OVERLAY -->
+          <div class="sr-overlay" id="srOverlay"></div>
+        </div>
+      </div>
+
+      <!-- PORTFOLIO TAB -->
+      <div id="tab-portfolio" class="tab-content" style="display:none;">
+        <div class="portfolio-grid">
+          <div class="port-card"><div class="port-card-label">TOTAL AUM</div><div class="port-card-value">$4.82M</div><div class="port-card-sub">▲ +$142K today</div></div>
+          <div class="port-card"><div class="port-card-label">DAILY P&L</div><div class="port-card-value" style="color:var(--green);">+$142,380</div><div class="port-card-sub">▲ +2.87% vs yesterday</div></div>
+          <div class="port-card"><div class="port-card-label">OPEN POSITIONS</div><div class="port-card-value">7</div><div class="port-card-sub">3 Long · 4 Short</div></div>
+          <div class="port-card"><div class="port-card-label">WIN RATE (30D)</div><div class="port-card-value" style="color:var(--gold);">68.4%</div><div class="port-card-sub">Sharpe: 2.14</div></div>
+        </div>
+        <table class="positions-table">
+          <thead><tr><th>INSTRUMENT</th><th>DIRECTION</th><th>ENTRY</th><th>CURRENT</th><th>P&L</th><th>SIZE</th></tr></thead>
+          <tbody>
+            <tr><td>XAU/USD</td><td style="color:var(--red);">SHORT</td><td>4,065.00</td><td>4,053.98</td><td style="color:var(--green);">+$23,100</td><td>2,100 lot</td></tr>
+            <tr><td>BTC/USD</td><td style="color:var(--green);">LONG</td><td>116,400</td><td>118,240</td><td style="color:var(--green);">+$15,640</td><td>850 lot</td></tr>
+            <tr><td>EUR/USD</td><td style="color:var(--red);">SHORT</td><td>1.0875</td><td>1.0842</td><td style="color:var(--green);">+$5,940</td><td>1,800 lot</td></tr>
+            <tr><td>SPX500</td><td style="color:var(--green);">LONG</td><td>5,840</td><td>5,892</td><td style="color:var(--green);">+$5,200</td><td>100 lot</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RESEARCH TAB -->
+      <div id="tab-research" class="tab-content" style="display:none;">
+        <div class="research-card"><h4>XAU/USD — Makro Görünüm</h4><p>Merkez bankaları Q2 2026'da 290 ton net altın alımı gerçekleştirdi. Fed'in faiz indirimi beklentileri ve jeopolitik riskler altın talebini desteklemeye devam ediyor. Teknik olarak 4,000 USD kritik destek; bu seviyenin korunması durumunda 4,200 hedefi gündemde.</p></div>
+        <div class="research-card"><h4>ECB Kararı Analizi — 23 Temmuz 2026</h4><p>ECB faiz oranını %2.40'ta sabit tuttu. Lagarde'ın açıklamaları beklentinin altında şahin kaldı. EUR/USD 1.090 direncinden döndü. Kısa vadede 1.078 desteği test edilebilir. Orta vadede EUR için nötr görünüm.</p></div>
+        <div class="research-card"><h4>BTC/USD — Kurumsal Akış</h4><p>Spot Bitcoin ETF'lerine haftalık net giriş $2.1 milyar. BlackRock ve Fidelity fonları ağırlık artırıyor. 115K güçlü destek bölgesi. 120K psikolojik direnç aşılırsa 130K hedefi devreye girer.</p></div>
+      </div>
+
+      <!-- SETTINGS TAB -->
+      <div id="tab-settings" class="tab-content" style="display:none;">
+        <div class="settings-row"><span class="settings-label">Default Instrument</span><span class="settings-val">XAU/USD</span></div>
+        <div class="settings-row"><span class="settings-label">Chart Interval</span><span class="settings-val">1H</span></div>
+        <div class="settings-row"><span class="settings-label">Signal Confidence Threshold</span><span class="settings-val">65%</span></div>
+        <div class="settings-row"><span class="settings-label">Risk Per Trade</span><span class="settings-val">1.5%</span></div>
+        <div class="settings-row"><span class="settings-label">Timezone</span><span class="settings-val">Europe/Istanbul</span></div>
+        <div class="settings-row"><span class="settings-label">Theme</span><span class="settings-val">Dark — Oxford Navy</span></div>
+        <div class="settings-row"><span class="settings-label">News Feed</span><span class="settings-val">LIVE · Auto-refresh 60s</span></div>
+        <div class="settings-row"><span class="settings-label">Terminal Version</span><span class="settings-val">v3.1.0</span></div>
+      </div>
+
+      <!-- ACCOUNT TAB -->
+      <div id="tab-account" class="tab-content" style="display:none;">
+        <div class="port-card" style="margin-bottom:12px;"><div class="port-card-label">ACCOUNT HOLDER</div><div class="port-card-value" style="font-size:16px;">Valens Wealth Capital</div><div class="port-card-sub">Institutional · Tier 1</div></div>
+        <div class="settings-row"><span class="settings-label">Account ID</span><span class="settings-val">VWC-2026-001</span></div>
+        <div class="settings-row"><span class="settings-label">Account Type</span><span class="settings-val">Prime Brokerage</span></div>
+        <div class="settings-row"><span class="settings-label">Leverage</span><span class="settings-val">1:100</span></div>
+        <div class="settings-row"><span class="settings-label">Margin Used</span><span class="settings-val">$482,000</span></div>
+        <div class="settings-row"><span class="settings-label">Free Margin</span><span class="settings-val">$4,338,000</span></div>
+        <div class="settings-row"><span class="settings-label">API Status</span><span class="settings-val" style="color:var(--green);">CONNECTED</span></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT PANEL: Events -->
     <div class="right-panel">
-      <div class="panel-scroll">
+      <div class="panel-header">
+        <span class="panel-title">Key Events</span>
+        <span class="panel-badge">23 TEMMUZ</span>
+      </div>
 
-        <!-- QUANT ENGINE -->
-        <div class="panel-section">
-          <div class="panel-title">⚙️ AI Quant Engine</div>
-          <div id="quant-indicators"></div>
+      <!-- ECB -->
+      <div class="event-card">
+        <div class="event-header">
+          <span class="event-flag">🇪🇺</span>
+          <div><div class="event-name">ECB Faiz Kararı</div></div>
+          <span class="event-time">15:15 UTC</span>
+          <span class="event-impact">🔴 YÜK</span>
         </div>
-
-        <!-- KEY EVENTS -->
-        <div class="events-section">
-          <div class="panel-title">📅 Key Events This Week</div>
-
-          <div class="event-card">
-            <div class="event-header">
-              <span class="event-name">🇪🇺 ECB Faiz Oranı Kararı</span>
-              <span class="event-impact bull">🔥 HIGH IMPACT</span>
-            </div>
-            <div class="event-date">Perşembe, 23 Tem · 15:15 (TSİ) · Beklenti %2.40</div>
-            <div class="event-desc" style="margin-top:5px;">Avrupa Merkez Bankası faiz kararı ve 15:45'teki basın açıklaması. Lagarde'ın tonu EUR/USD ve dolaylı olarak Altın'ı hareketlendirecek.</div>
-            <div class="event-scenarios">
-              <div class="scenario bull-s">
-                <span class="scenario-icon">▲ BUY</span>
-                <span class="scenario-text">ECB %2.40'ta sabit tutar + Lagarde "şahin" (hawkish) konuşursa → EUR/USD 1.0880'e yükselir, Dolar zayıflar, Altın 4,085 direncini test eder.</span>
-              </div>
-              <div class="scenario bear-s">
-                <span class="scenario-icon">▼ SELL</span>
-                <span class="scenario-text">Lagarde "güvercin" (dovish) ve indirim sinyali verirse → EUR/USD 1.0740'a düşer, Dolar güçlenir, Altın 4,000 desteğine baskı görür.</span>
-              </div>
-            </div>
+        <div class="event-body">
+          <div class="event-current">Açıklanan: <strong>%2.40 (Sabit)</strong> · Önceki: %2.40</div>
+          <div class="scenario bull">
+            <div class="scenario-title">▲ ALIM SENARYOSU</div>
+            <div class="scenario-text">Lagarde "yakında faiz indirimi" sinyali verirse → EUR/USD 1.095'e yükselir → XAU/USD USD zayıflamasıyla 4,085 direncini test eder. <strong>XAU LONG, EUR LONG.</strong></div>
           </div>
-
-          <div class="event-card">
-            <div class="event-header">
-              <span class="event-name">🇺🇸 US İşsizlik Başvuruları</span>
-              <span class="event-impact bull">🔥 HIGH IMPACT</span>
-            </div>
-            <div class="event-date">Perşembe, 23 Tem · 15:30 (TSİ) · Beklenti 211K</div>
-            <div class="event-desc" style="margin-top:5px;">ABD Haftalık İşsizlik Hakları Başvuruları. Açıklanan: 187K (önceki 209K). İşgücü piyasası verisi Fed faiz beklentilerini doğrudan etkiliyor.</div>
-            <div class="event-scenarios">
-              <div class="scenario bull-s">
-                <span class="scenario-icon">▲ BUY</span>
-                <span class="scenario-text">Başvurular &lt; 200K gelirse (güçlü istihdam) → Fed'in faiz sabit tutma ihtimali artar, Dolar güçlenir. SPX 5,340 direncine yönelir.</span>
-              </div>
-              <div class="scenario bear-s">
-                <span class="scenario-icon">▼ SELL</span>
-                <span class="scenario-text">Başvurular &gt; 220K gelirse (zayıf istihdam) → Resesyon endişesi, faiz indirim beklentisi. Altın safe-haven alımıyla 4,118'e yükselir.</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="event-card">
-            <div class="event-header">
-              <span class="event-name">🇹🇷 TCMB Faiz Kararı</span>
-              <span class="event-impact bull">🔥 HIGH IMPACT</span>
-            </div>
-            <div class="event-date">Perşembe, 23 Tem · 14:00 (TSİ) · Politika Faizi %37.00</div>
-            <div class="event-desc" style="margin-top:5px;">TCMB bir hafta vadeli repo faizi %37.00'da sabit. Gecelik borçlanma %35.50, gecelik faiz %40.00. USD/TRY ve BIST için kritik.</div>
-            <div class="event-scenarios">
-              <div class="scenario bull-s">
-                <span class="scenario-icon">▲ BUY</span>
-                <span class="scenario-text">Faiz %37'de sabit + şahin metin → TL güçlenir, USD/TRY geriler. BIST100 bankacılık hisseleri toparlanır.</span>
-              </div>
-              <div class="scenario bear-s">
-                <span class="scenario-icon">▼ SELL</span>
-                <span class="scenario-text">Beklenmedik faiz indirimi sinyali → TL baskı altına girer, USD/TRY yükselir. Yatırımcı gram altına yönelir.</span>
-              </div>
-            </div>
+          <div class="scenario bear">
+            <div class="scenario-title">▼ SATIM SENARYOSU</div>
+            <div class="scenario-text">ECB "faiz sabit kalacak" mesajı verirse → EUR/USD 1.078'e düşer → USD güçlenir, XAU 4,000 desteğini test eder. <strong>XAU SHORT, EUR SHORT.</strong></div>
           </div>
         </div>
+      </div>
 
-        <!-- SMART MONEY FLOW -->
-        <div class="smf-section">
-          <div class="panel-title">🏦 Smart Money Flow</div>
-          <div class="smf-scroll">
-            <div class="smf-inner" id="smf-inner"></div>
+      <!-- TCMB -->
+      <div class="event-card">
+        <div class="event-header">
+          <span class="event-flag">🇹🇷</span>
+          <div><div class="event-name">TCMB Faiz Kararı</div></div>
+          <span class="event-time">14:00 UTC</span>
+          <span class="event-impact">🔴 YÜK</span>
+        </div>
+        <div class="event-body">
+          <div class="event-current">Açıklanan: <strong>%37.00 (Sabit)</strong> · Önceki: %40.00</div>
+          <div class="scenario bull">
+            <div class="scenario-title">▲ TL GÜÇLENME</div>
+            <div class="scenario-text">TCMB faiz indirimi hızını yavaşlatırsa → TL stabilize olur → USD/TRY baskı altında. Yerel yatırımcı altın talebinde azalma.</div>
+          </div>
+          <div class="scenario bear">
+            <div class="scenario-title">▼ TL ZAYIFLAMA</div>
+            <div class="scenario-text">Agresif faiz indirimi sinyali gelirse → TL değer kaybeder → Yerel altın talebi artar, XAU/TRY yükselir. <strong>XAU LONG (TRY bazlı).</strong></div>
           </div>
         </div>
+      </div>
 
-        <!-- AI SIGNAL -->
-        <div class="signal-section">
-          <div class="panel-title">🤖 AI Signal</div>
-          <div class="signal-card">
-            <div class="signal-header-bar">ACTIVE SIGNAL</div>
-            <div class="signal-body">
-              <div id="signal-decision" class="signal-decision-sell">🔴 SELL</div>
-              <div class="signal-asset" id="signal-asset">Gold Spot · XAU/USD</div>
-              <div class="signal-confidence" id="signal-conf">76% CONFIDENCE</div>
-              <div class="signal-levels">
-                <div class="signal-level">
-                  <div class="signal-level-label">ENTRY</div>
-                  <div class="signal-level-value" id="sig-entry">4,053.98</div>
-                </div>
-                <div class="signal-level">
-                  <div class="signal-level-label">STOP LOSS</div>
-                  <div class="signal-level-value" id="sig-stop">4,090.00</div>
-                </div>
-                <div class="signal-level">
-                  <div class="signal-level-label">TARGET</div>
-                  <div class="signal-level-value" id="sig-target">4,000.00</div>
-                </div>
-              </div>
-            </div>
+      <!-- US JOBLESS -->
+      <div class="event-card">
+        <div class="event-header">
+          <span class="event-flag">🇺🇸</span>
+          <div><div class="event-name">US İşsizlik Başvuruları</div></div>
+          <span class="event-time">15:30 UTC</span>
+          <span class="event-impact">🟡 ORT</span>
+        </div>
+        <div class="event-body">
+          <div class="event-current">Açıklanan: <strong>187K</strong> · Beklenti: 215K · Önceki: 221K</div>
+          <div class="scenario bull">
+            <div class="scenario-title">▲ USD GÜÇLÜ (GERÇEKLEŞTI)</div>
+            <div class="scenario-text">187K beklentinin çok altında → İşgücü piyasası güçlü → Fed faiz indirimi gecikir → USD güçlendi → XAU baskı altında. <strong>XAU SHORT aktif.</strong></div>
+          </div>
+          <div class="scenario bear">
+            <div class="scenario-title">▼ SENARYO (GERÇEKLEŞMEDİ)</div>
+            <div class="scenario-text">215K+ gelseydi → İşgücü zayıflıyor → Fed dovish → USD zayıflar → XAU yükselirdi.</div>
           </div>
         </div>
+      </div>
 
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== PORTFOLIO PAGE ===== -->
-<div class="page-view" id="page-portfolio">
-  <div class="page-content">
-    <div class="page-card">
-      <div class="page-card-title">📊 Portfolio Overview</div>
-      <div class="stat-grid">
-        <div class="stat-box"><div class="stat-val" style="color:var(--success)">+18.4%</div><div class="stat-lbl">YTD RETURN</div></div>
-        <div class="stat-box"><div class="stat-val">$4.2M</div><div class="stat-lbl">AUM</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:var(--success)">2.31</div><div class="stat-lbl">SHARPE RATIO</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:var(--danger)">-6.2%</div><div class="stat-lbl">MAX DRAWDOWN</div></div>
-        <div class="stat-box"><div class="stat-val">87%</div><div class="stat-lbl">WIN RATE</div></div>
-        <div class="stat-box"><div class="stat-val">142</div><div class="stat-lbl">TOTAL TRADES</div></div>
-      </div>
-    </div>
-    <div class="page-card">
-      <div class="page-card-title">📈 Open Positions</div>
-      <p style="color:var(--muted);font-size:12px;">Connect your broker API to display live positions. Supported: Interactive Brokers, Alpaca, Binance, Bybit.</p>
-    </div>
-    <div class="page-card">
-      <div class="page-card-title">🏆 Allocation</div>
-      <ul>
-        <li>Gold (XAU/USD) — 35%</li>
-        <li>US Equities (SPX/NDX) — 30%</li>
-        <li>Crypto (BTC/ETH) — 20%</li>
-        <li>Forex (EUR/USD) — 10%</li>
-        <li>Cash — 5%</li>
-      </ul>
-    </div>
-  </div>
-</div>
-
-<!-- ===== RESEARCH PAGE ===== -->
-<div class="page-view" id="page-research">
-  <div class="page-content">
-    <div class="page-card">
-      <div class="page-card-title">🔬 Institutional Research</div>
-      <div class="research-item">
-        <div class="research-src">GOLDMAN SACHS · Jul 22, 2025</div>
-        <div class="research-title">Gold Target Raised to $2,700 — Structural Bull Case Intact</div>
-        <div class="research-summary">Central bank demand, de-dollarization flows and Fed pivot expectations underpin a multi-year bull market in gold. GS raises 12-month target from $2,500 to $2,700/oz.</div>
-      </div>
-      <div class="research-item">
-        <div class="research-src">JP MORGAN · Jul 21, 2025</div>
-        <div class="research-title">S&P 500 Year-End Target: 5,800 — AI Earnings Cycle Accelerating</div>
-        <div class="research-summary">Mega-cap tech earnings beats driving index higher. JPM sees AI capex cycle sustaining above-trend EPS growth through 2026. Overweight US equities.</div>
-      </div>
-      <div class="research-item">
-        <div class="research-src">MORGAN STANLEY · Jul 20, 2025</div>
-        <div class="research-title">Bitcoin Institutional Adoption — ETF Inflows Hit Record $2.1B Weekly</div>
-        <div class="research-summary">Spot BTC ETF inflows accelerating post-halving. MS sees $80,000 as next key resistance. Institutional allocation to crypto rising from 1% to 3-5% of portfolios.</div>
-      </div>
-    </div>
-    <div class="page-card">
-      <div class="page-card-title">📐 Technical Analysis — XAU/USD</div>
-      <p>Weekly structure remains bullish above $2,350 (200-week MA). Key resistance cluster at $2,450–$2,480 (previous ATH zone). A weekly close above $2,480 opens path to $2,600+. RSI(14) at 68 — approaching overbought but not yet exhausted on weekly timeframe.</p>
-    </div>
-  </div>
-</div>
-
-<!-- ===== SETTINGS PAGE ===== -->
-<div class="page-view" id="page-settings">
-  <div class="page-content">
-    <div class="page-card">
-      <div class="page-card-title">⚙️ Risk Parameters</div>
-      <div class="form-row"><label class="form-label">SWING TAKE PROFIT (%)</label><input class="form-input" type="number" value="2.5" step="0.1"/></div>
-      <div class="form-row"><label class="form-label">SWING STOP LOSS (%)</label><input class="form-input" type="number" value="1.2" step="0.1"/></div>
-      <div class="form-row"><label class="form-label">SCALP TARGET (× ATR14)</label><input class="form-input" type="number" value="1.5" step="0.1"/></div>
-      <div class="form-row"><label class="form-label">SCALP STOP (× ATR14)</label><input class="form-input" type="number" value="1.0" step="0.1"/></div>
-      <button class="btn-gold">Save Parameters</button>
-    </div>
-    <div class="page-card">
-      <div class="page-card-title">🔔 Alert Settings</div>
-      <div class="form-row"><label class="form-label">EMAIL ALERTS</label><input class="form-input" type="email" placeholder="your@email.com"/></div>
-      <div class="form-row"><label class="form-label">SIGNAL THRESHOLD (min confidence %)</label><input class="form-input" type="number" value="75" step="5"/></div>
-      <button class="btn-gold">Save Alerts</button>
-    </div>
-    <div class="page-card">
-      <div class="page-card-title">🌐 Language & Display</div>
-      <div style="display:flex;gap:10px;margin-top:4px;">
-        <button class="btn-gold">English</button>
-        <button class="btn-gold">Türkçe</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== ACCOUNT PAGE ===== -->
-<div class="page-view" id="page-account">
-  <div class="page-content">
-    <div class="page-card">
-      <div class="page-card-title">👤 Account</div>
-      <div class="stat-grid" style="grid-template-columns:repeat(2,1fr);">
-        <div class="stat-box"><div class="stat-val" style="font-size:14px;">INSTITUTIONAL</div><div class="stat-lbl">TIER</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:var(--success);font-size:14px;">ACTIVE</div><div class="stat-lbl">STATUS</div></div>
-      </div>
-    </div>
-    <div class="page-card">
-      <div class="page-card-title">🔗 Broker Integration</div>
-      <p style="margin-bottom:12px;">Connect your brokerage account for live order execution and position tracking.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn-gold">Interactive Brokers</button>
-        <button class="btn-gold">Alpaca</button>
-        <button class="btn-gold">Binance</button>
-        <button class="btn-gold">Bybit</button>
-      </div>
-    </div>
-    <div class="page-card">
-      <div class="page-card-title">🔐 Security</div>
-      <div class="form-row"><label class="form-label">API KEY</label><input class="form-input" type="password" placeholder="••••••••••••••••"/></div>
-      <div class="form-row"><label class="form-label">API SECRET</label><input class="form-input" type="password" placeholder="••••••••••••••••"/></div>
-      <button class="btn-gold">Update Credentials</button>
     </div>
   </div>
 </div>
 
 <script>
-// ===== CLOCK =====
+// CLOCK
 function updateClock(){
   const now=new Date();
-  const est=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const h=String(est.getHours()).padStart(2,'0'),m=String(est.getMinutes()).padStart(2,'0'),s=String(est.getSeconds()).padStart(2,'0');
-  document.getElementById('clock').textContent=h+':'+m+':'+s+' EST';
-  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  document.getElementById('dateline').textContent=months[est.getMonth()]+' '+est.getDate()+', '+est.getFullYear();
-  document.getElementById('price-time').textContent='As of '+h+':'+m+' EST';
+  document.getElementById('clock').textContent=
+    now.toUTCString().slice(17,25)+' UTC';
 }
-setInterval(updateClock,1000);updateClock();
+setInterval(updateClock,1000);
+updateClock();
 
-// ===== PAGE NAVIGATION =====
-const pages=['signals','portfolio','research','settings','account'];
-function showPage(name){
-  pages.forEach(p=>{
-    const pv=document.getElementById('page-'+p);
-    if(pv) pv.classList.toggle('active',p===name);
-  });
-  document.querySelectorAll('.navbar-tab').forEach((t,i)=>{
-    t.classList.toggle('active',pages[i]===name);
-  });
-}
-
-// ===== CHART CONTROL =====
-let currentSymbol='TVC:GOLD',currentInterval='D';
-function buildChartUrl(sym,interval){
-  return 'https://s.tradingview.com/widgetembed/?frameElementId=tv_chart&symbol='+encodeURIComponent(sym)+'&interval='+interval+'&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=050b14&studies=RSI%40tv-basicstudies%2CMACD%40tv-basicstudies%2CVolume%40tv-basicstudies&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1&locale=en';
-}
-function setTF(el,interval){
-  document.querySelectorAll('.tf-tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');currentInterval=interval;
-  document.getElementById('tv-chart').src=buildChartUrl(currentSymbol,currentInterval);
-}
-
-const srLevels={
-  'XAUUSD':['R3: 2,480','R2: 2,455','R1: 2,432','S1: 2,398','S2: 2,375','S3: 2,350'],
-  'SPX500':['R3: 5,450','R2: 5,380','R1: 5,340','S1: 5,280','S2: 5,220','S3: 5,150'],
-  'NDX100':['R3: 19,200','R2: 18,950','R1: 18,800','S1: 18,600','S2: 18,400','S3: 18,100'],
-  'BTCUSD':['R3: 75,000','R2: 73,500','R1: 72,800','S1: 71,000','S2: 69,500','S3: 67,000'],
-  'EURUSD':['R3: 1.0920','R2: 1.0880','R1: 1.0850','S1: 1.0780','S2: 1.0740','S3: 1.0700'],
-  'AAPL':['R3: 198','R2: 194','R1: 192','S1: 187','S2: 184','S3: 180'],
-};
-const signals={
-  'XAUUSD':{dec:'🟢 STRONG BUY',cls:'signal-decision-buy',conf:'91% CONFIDENCE',entry:'2,418.30',stop:'2,389.10',target:'2,478.60',asset:'Gold Spot · XAU/USD'},
-  'SPX500':{dec:'🟢 STRONG BUY',cls:'signal-decision-buy',conf:'94% CONFIDENCE',entry:'5,312.46',stop:'5,248.20',target:'5,445.80',asset:'S&P 500 · SPX500'},
-  'NDX100':{dec:'🟢 BUY',cls:'signal-decision-buy',conf:'88% CONFIDENCE',entry:'18,742.60',stop:'18,520.00',target:'19,100.00',asset:'Nasdaq 100 · NDX100'},
-  'BTCUSD':{dec:'🟢 BUY',cls:'signal-decision-buy',conf:'82% CONFIDENCE',entry:'72,140.00',stop:'70,800.00',target:'74,500.00',asset:'Bitcoin · BTC/USD'},
-  'EURUSD':{dec:'🔴 SELL',cls:'signal-decision-sell',conf:'78% CONFIDENCE',entry:'1.0812',stop:'1.0860',target:'1.0740',asset:'Euro · EUR/USD'},
-  'AAPL':{dec:'🟢 BUY',cls:'signal-decision-buy',conf:'85% CONFIDENCE',entry:'189.84',stop:'186.20',target:'195.50',asset:'Apple Inc. · AAPL'},
-};
-
-function setInstrument(tvSym,key,symLabel,pairLabel,price,prev){
-  currentSymbol=tvSym;
-  document.querySelectorAll('.inst-btn').forEach(b=>b.classList.remove('active'));
-  const btn=document.getElementById('btn-'+key);
+// TAB SWITCHING
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab-content').forEach(t=>{t.style.display='none';t.classList.remove('active');});
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('tab-'+tab);
+  if(el){el.style.display='flex';el.classList.add('active');}
   if(btn)btn.classList.add('active');
-  document.getElementById('sym-label').textContent=symLabel;
-  document.getElementById('sym-pair').textContent=pairLabel;
-  document.getElementById('price-label-top').textContent=pairLabel.toUpperCase();
-  document.getElementById('live-price').textContent=price;
-  const p=parseFloat(price.replace(/,/g,'')),pv=parseFloat(prev.replace(/,/g,''));
-  const ch=p-pv,chp=(ch/pv)*100;
-  const el=document.getElementById('price-change');
-  el.className=ch>=0?'price-up':'price-down';
-  el.textContent=(ch>=0?'▲ +':'▼ ')+ch.toFixed(2)+' ('+(chp>=0?'+':'')+chp.toFixed(2)+'%)';
-  // SR levels
-  const sr=srLevels[key]||[];
-  const badges=document.getElementById('sr-badges');
-  badges.innerHTML=sr.map((l,i)=>`<span class="sr-badge ${i<3?'sr-res':'sr-sup'}">${l}</span>`).join('');
-  // Signal
-  const s=signals[key]||signals['XAUUSD'];
-  document.getElementById('signal-decision').textContent=s.dec;
-  document.getElementById('signal-decision').className=s.cls;
-  document.getElementById('signal-conf').textContent=s.conf;
-  document.getElementById('sig-entry').textContent=s.entry;
-  document.getElementById('sig-stop').textContent=s.stop;
-  document.getElementById('sig-target').textContent=s.target;
-  document.getElementById('signal-asset').textContent=s.asset;
-  document.getElementById('tv-chart').src=buildChartUrl(currentSymbol,currentInterval);
+  if(tab==='terminal'){
+    const el2=document.getElementById('tab-terminal');
+    if(el2){el2.style.display='flex';}
+  }
 }
 
-// ===== INDICATORS =====
-let indicators=[
-  {name:'RSI',desc:'68 — Overbought',pct:85},
-  {name:'MACD',desc:'Bullish Crossover',pct:72},
-  {name:'EMA 50/200',desc:'Golden Cross Approaching',pct:65},
-  {name:'Bollinger Bands',desc:'Width Expansion',pct:78},
-  {name:'Volume',desc:'Surge Detected',pct:88},
-  {name:'VWAP',desc:'Price Above',pct:74},
-];
-function renderIndicators(inds){
-  document.getElementById('quant-indicators').innerHTML=inds.map(i=>`
-    <div class="ind-row">
-      <div class="ind-top">
-        <span><span class="ind-name">${i.name}</span> <span class="ind-desc">— ${i.desc}</span></span>
-        <span class="ind-pct">${i.pct}%</span>
-      </div>
-      <div class="ind-bar-bg"><div class="ind-bar-fill" style="width:${i.pct}%"></div></div>
-    </div>`).join('');
-}
-renderIndicators(indicators);
-setInterval(()=>{
-  indicators=indicators.map(i=>({...i,pct:Math.min(99,Math.max(10,Math.round(i.pct+(Math.random()-0.5)*3)))}));
-  renderIndicators(indicators);
-},5000);
+// INSTRUMENT DATA
+const instruments={
+  XAU:{symbol:'OANDA:XAUUSD',price:'4,053.98',change:'▼ -75.37 (-1.83%)',dir:'sell',conf:74,entry:'4,053.98',sl:'4,090.00',tp:'4,000.00',rationale:'RSI(14): 38.2 — aşırı satım bölgesine yaklaşıyor. MACD negatif momentum. EMA200 altında seyir. US İşsizlik verisi USD\'yi güçlendirdi. Kısa vadeli SELL, 4,000 psikolojik destek hedef.',sr:{r3:4155,r2:4118,r1:4085,s1:4040,s2:4000,s3:3960},chartMin:3940,chartMax:4180},
+  BTC:{symbol:'COINBASE:BTCUSD',price:'118,240',change:'▲ +2,480 (+2.14%)',dir:'buy',conf:68,entry:'116,400',sl:'113,000',tp:'122,000',rationale:'Spot ETF akışları güçlü. 115K destek bölgesinden teknik alım. RSI(14): 58 — momentum pozitif. MACD bullish crossover.',sr:{r3:125000,r2:122000,r1:120000,s1:115000,s2:112000,s3:108000},chartMin:107000,chartMax:127000},
+  EUR:{symbol:'FX:EURUSD',price:'1.0842',change:'▼ -0.0034 (-0.31%)',dir:'sell',conf:61,entry:'1.0875',sl:'1.0920',tp:'1.0780',rationale:'ECB kararı beklentinin altında şahin kaldı. EUR/USD 1.090 direncinden döndü. MACD negatif. Kısa vadeli SELL.',sr:{r3:1.098,r2:1.092,r1:1.088,s1:1.078,s2:1.072,s3:1.065},chartMin:1.062,chartMax:1.100},
+  SPX:{symbol:'SP:SPX',price:'5,892',change:'▲ +27.4 (+0.47%)',dir:'buy',conf:55,entry:'5,840',sl:'5,780',tp:'5,950',rationale:'Tech sektörü liderliğinde yükseliş. EMA50 üzerinde seyir. Momentum pozitif ancak 5,950 direncinde dikkatli olunmalı.',sr:{r3:6050,r2:5980,r1:5950,s1:5820,s2:5750,s3:5680},chartMin:5660,chartMax:6080}
+};
 
-// ===== SMART MONEY FLOW =====
+let currentInst='XAU';
+
+function switchInstrument(inst,btn){
+  currentInst=inst;
+  document.querySelectorAll('.instrument-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const d=instruments[inst];
+  // Update chart
+  document.getElementById('tvChart').src=
+    'https://www.tradingview.com/widgetembed/?frameElementId=tvChart&symbol='+encodeURIComponent(d.symbol)+'&interval=60&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=1&toolbarbg=060d18&studies=RSI%4014%7CMACD%4012%2C26%2C9&theme=dark&style=1&timezone=Europe%2FIstanbul&withdateranges=1&showpopupbutton=1&locale=en';
+  // Update signal
+  const dir=d.dir;
+  const sigDir=document.getElementById('sigDir');
+  sigDir.textContent=(dir==='buy'?'▲ BUY':'▼ SELL');
+  sigDir.className='signal-direction '+(dir==='buy'?'buy':'sell');
+  document.getElementById('sigBadge').textContent=(dir==='buy'?'BUY':'SELL');
+  document.getElementById('sigPair').textContent=inst+'/USD · Confidence: '+d.conf+'%';
+  document.getElementById('confFill').style.width=d.conf+'%';
+  document.getElementById('confPct').textContent=d.conf+'%';
+  document.getElementById('sigEntry').textContent=d.entry;
+  document.getElementById('sigSL').textContent=d.sl;
+  document.getElementById('sigTP').textContent=d.tp;
+  document.getElementById('sigRationale').textContent=d.rationale;
+  // Draw S/R
+  drawSR(inst);
+}
+
+function drawSR(inst){
+  const overlay=document.getElementById('srOverlay');
+  overlay.innerHTML='';
+  const d=instruments[inst];
+  const sr=d.sr;
+  const min=d.chartMin;
+  const max=d.chartMax;
+  const range=max-min;
+  const levels=[
+    {price:sr.r3,type:'resistance',label:'R3'},
+    {price:sr.r2,type:'resistance',label:'R2'},
+    {price:sr.r1,type:'resistance',label:'R1'},
+    {price:sr.s1,type:'support',label:'S1'},
+    {price:sr.s2,type:'support',label:'S2'},
+    {price:sr.s3,type:'support',label:'S3'}
+  ];
+  levels.forEach(function(lv){
+    const pct=((max-lv.price)/range)*100;
+    if(pct<0||pct>100)return;
+    const line=document.createElement('div');
+    line.className='sr-line '+lv.type;
+    line.style.top=pct+'%';
+    const label=document.createElement('div');
+    label.className='sr-line-label';
+    label.textContent=lv.label+' '+lv.price.toLocaleString();
+    line.appendChild(label);
+    overlay.appendChild(line);
+  });
+}
+
+// Initial S/R draw
+drawSR('XAU');
+
+// SMF auto-rotate (simulated live feed)
 const smfData=[
-  {actor:'BRIDGEWATER',time:'14:38',action:'<span class="buy">BUY</span> 12,400 lots — Gold Futures (GC)',conclusion:'Macro hedge fund accumulation at support. Bullish confluence with EMA200 bounce.'},
-  {actor:'BLACKROCK',time:'14:21',action:'<span class="buy">BUY</span> 8,200 lots — Gold Futures (GC)',conclusion:'Safe-haven rotation. Aligns with DXY weakness & Fed rate pause signals.'},
-  {actor:'CITADEL',time:'14:05',action:'<span class="sell">SELL</span> 5,600 lots — Nasdaq 100 (NQ)',conclusion:'Tech profit-taking post-earnings. MACD bearish divergence on 4H confirms.'},
-  {actor:'RENAISSANCE',time:'13:52',action:'<span class="buy">BUY</span> 3,100 lots — BTC Perpetual',conclusion:'Quant model re-entry above 200-day MA. Volume surge +180% above avg.'},
-  {actor:'TWO SIGMA',time:'13:40',action:'<span class="sell">SELL</span> 9,800 lots — EUR/USD',conclusion:'USD strength on jobs data. Price broke below VWAP — sellers in control.'},
-  {actor:'MILLENNIUM',time:'13:28',action:'<span class="buy">BUY</span> 6,700 lots — Apple (AAPL)',conclusion:'Institutional accumulation pre-earnings. RSI reset from oversold.'},
-  {actor:'POINT72',time:'13:15',action:'<span class="buy">BUY</span> 4,400 lots — S&P 500 (ES)',conclusion:'Momentum continuation. Golden Cross confirmed on daily — trend intact.'},
-  {actor:'D.E. SHAW',time:'13:02',action:'<span class="sell">SELL</span> 2,900 lots — Gold Futures (GC)',conclusion:'Short-term overbought (RSI 74). Bollinger upper band breach — mean reversion risk.'},
+  {actor:'Citadel LLC',time:'14:32 UTC',dir:'buy',inst:'XAU/USD',detail:'4,200 lot · Giriş: 4,048 · Hedef: 4,120',analysis:'ECB faiz kararı sonrası USD zayıflaması beklentisiyle pozisyon açıldı.'},
+  {actor:'Bridgewater',time:'13:58 UTC',dir:'sell',inst:'EUR/USD',detail:'1,800 lot · Giriş: 1.0875 · Hedef: 1.0780',analysis:'ECB şahin duruşu beklentinin altında kaldı. EUR/USD 1.090 direncinden döndü.'},
+  {actor:'BlackRock',time:'13:15 UTC',dir:'buy',inst:'BTC/USD',detail:'850 lot · Giriş: 116,400 · Hedef: 122,000',analysis:'Spot ETF akışları güçlü. 115K destek bölgesinden teknik alım.'},
+  {actor:'Goldman Sachs',time:'12:44 UTC',dir:'sell',inst:'XAU/USD',detail:'2,100 lot · Giriş: 4,065 · Hedef: 4,000',analysis:'Portföy hedge\'i. US İşsizlik verisi USD\'yi güçlendirdi.'},
+  {actor:'JPMorgan',time:'12:10 UTC',dir:'buy',inst:'SPX500',detail:'500 lot · Giriş: 5,840 · Hedef: 5,950',analysis:'Tech sektörü momentum pozitif. EMA50 üzerinde tutunma.'},
+  {actor:'Two Sigma',time:'11:55 UTC',dir:'sell',inst:'XAU/USD',detail:'1,500 lot · Giriş: 4,072 · Hedef: 4,010',analysis:'Quant modeli SELL sinyali. RSI aşırı alım bölgesinden dönüş.'}
 ];
-function renderSMF(data){
-  const doubled=[...data,...data];
-  document.getElementById('smf-inner').innerHTML=doubled.map(d=>`
-    <div class="smf-item">
-      <div class="smf-header"><span class="smf-actor">🏛 ${d.actor}</span><span class="smf-time">${d.time} EST</span></div>
-      <div class="smf-action">${d.action}</div>
-      <div class="smf-conclusion">📊 ${d.conclusion}</div>
-    </div>`).join('');
-}
-renderSMF(smfData);
 
-// ===== NEWS TICKER =====
-const newsItems=[
-  {src:'BLOOMBERG',text:'Fed signals cautious stance on rate cuts amid sticky inflation data',time:'14:42'},
-  {src:'REUTERS',text:'Gold surges past $2,400 — central bank demand hits record quarterly high',time:'14:38'},
-  {src:'WSJ',text:'S&P 500 hits fresh all-time high as tech earnings beat expectations',time:'14:31'},
-  {src:'FT',text:'Bridgewater increases equity exposure — Dalio cites "structural bull market"',time:'14:25'},
-  {src:'CNBC',text:'Bitcoin breaks $72,000 resistance — institutional inflows at record pace',time:'14:19'},
-  {src:'BARRONS',text:'Apple Q2 earnings: EPS $1.89 vs $1.72 est — services revenue up 14%',time:'14:12'},
-  {src:'MARKETWATCH',text:'EUR/USD slides below 1.0820 as ECB holds rates, signals dovish pivot',time:'14:06'},
-  {src:'BLOOMBERG',text:'FOMC Minutes due Wednesday — markets pricing 68% chance of September cut',time:'13:58'},
-  {src:'REUTERS',text:'US GDP Q2 flash estimate Thursday — consensus at +2.1% annualized',time:'13:51'},
-  {src:'FT',text:'OPEC+ maintains output cuts — Brent crude holds above $88/barrel',time:'13:44'},
-  {src:'WSJ',text:'Treasury yields fall 8bps as inflation expectations moderate',time:'13:37'},
-  {src:'CNBC',text:'Goldman Sachs raises Gold target to $2,700 — structural bull case intact',time:'13:30'},
-];
-function buildTicker(items){
-  const doubled=[...items,...items];
-  return doubled.map(n=>`<span class="news-ticker-item"><span class="news-src">${n.src}</span><span class="news-text">${n.text}</span><span class="news-time">${n.time}</span><span class="news-sep"> · </span></span>`).join('');
+let smfIdx=0;
+function rotateSMF(){
+  const feed=document.getElementById('smfFeed');
+  const d=smfData[smfIdx%smfData.length];
+  const item=document.createElement('div');
+  item.className='smf-item '+(d.dir==='buy'?'buy-flow':'sell-flow');
+  item.innerHTML=
+    '<div class="smf-header"><span class="smf-actor">'+d.actor+'</span><span class="smf-time">'+d.time+'</span></div>'+
+    '<div class="smf-action '+(d.dir==='buy'?'buy':'sell')+'">'+(d.dir==='buy'?'▲ LONG':'▼ SHORT')+' — '+d.inst+'</div>'+
+    '<div class="smf-detail">'+d.detail+'</div>'+
+    '<div class="smf-analysis">'+d.analysis+'</div>';
+  feed.insertBefore(item,feed.firstChild);
+  if(feed.children.length>6)feed.removeChild(feed.lastChild);
+  smfIdx++;
 }
-document.getElementById('ticker-inner').innerHTML=buildTicker(newsItems);
+setInterval(rotateSMF,8000);
 </script>
 </body>
 </html>
+"""
+
+components.html(TERMINAL_HTML, height=950, scrolling=False)
