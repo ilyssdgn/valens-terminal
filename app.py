@@ -238,7 +238,7 @@ iframe{height:100%;width:100%;border:0}
         <p style="font-size:8px;color:var(--muted);margin-top:4px">⚠ Bu takvim manuel örnek veridir · veriler doğrulama gerektirir.</p>
       </div>
 
-      <div class="bottomnote">Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir.</div>
+      <div class="bottomnote">Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. Grafik üstündeki çizimler (Fibonacci, trend, kanal, S/R) bot tarafından otomatik üretilir.</div>
     </section>
 
     <aside class="right">
@@ -326,7 +326,7 @@ function rnd(a,b){return a+Math.random()*(b-a);}
 const flowTags=['Agresif satıcı','Alım baskısı','Kurumsal blok','Likidite avı','Piyasa emri','Stop tetikleme','Momentum akışı'];
 function addFlow(){
  if(!isMarketOpen(CUR))return;
- if(CUR==='BINANCE:BTCUSDT')return; // BTC gerçek whale feed kullanır
+ if(CUR==='BINANCE:BTCUSDT')return;
  const cfg=SYMS[CUR], buy=Math.random()>0.5;
  const lots=Math.round(rnd(80,650)/10)*10;
  const px=cfg.price+rnd(-cfg.step*2,cfg.step*2);
@@ -563,7 +563,7 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
 </script>
 
 <script>
-/* ============ VALENS CANLI GRAFİK (15dk gerçek veri + bot çizimleri) ============ */
+/* ============ VALENS CANLI GRAFİK + OTOMATİK ÇİZİM MOTORU ============ */
 (function(){
  const el=document.getElementById('valensChart');
  if(!el||!window.LightweightCharts)return;
@@ -579,10 +579,13 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  const cs=chart.addCandlestickSeries({upColor:'#00c896',downColor:'#ff506d',borderVisible:false,wickUpColor:'#00c896',wickDownColor:'#ff506d'});
  const e20=chart.addLineSeries({color:'#52a9ff',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
  const e50=chart.addLineSeries({color:'#d4af37',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
+ const trendSeries=chart.addLineSeries({color:'#ffcf5c',lineWidth:2,lastValueVisible:false,priceLineVisible:false});
+ const chanUp=chart.addLineSeries({color:'rgba(82,169,255,.7)',lineWidth:1,lineStyle:2,lastValueVisible:false,priceLineVisible:false});
+ const chanLo=chart.addLineSeries({color:'rgba(82,169,255,.7)',lineWidth:1,lineStyle:2,lastValueVisible:false,priceLineVisible:false});
  const resize=()=>chart.applyOptions({width:el.clientWidth,height:el.clientHeight});
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
- let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],dynSup,dynRes;
+ let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes;
  const closedEl=document.getElementById('chartClosed');
 
  const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
@@ -607,13 +610,42 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
    srLines.push(cs.createPriceLine({price:px,color:isRes?'#ff506d':'#00c896',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:s.label}));
   });
  }
+ function drawFibonacci(){
+  fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
+  if(ohlc.length<40)return;
+  const w=ohlc.slice(-80);
+  let hi=-1e12,lo=1e12,hiT=0,loT=0;
+  w.forEach(c=>{if(c.high>hi){hi=c.high;hiT=c.time;} if(c.low<lo){lo=c.low;loT=c.time;}});
+  const upTrend = loT<hiT;
+  const diff=hi-lo;
+  const fibs=[{r:0,c:'#8090a6'},{r:0.236,c:'#52a9ff'},{r:0.382,c:'#52a9ff'},
+              {r:0.5,c:'#d4af37'},{r:0.618,c:'#d4af37'},{r:0.786,c:'#52a9ff'},{r:1,c:'#8090a6'}];
+  fibs.forEach(f=>{
+   const px = upTrend ? hi - diff*f.r : lo + diff*f.r;
+   fibLines.push(cs.createPriceLine({price:px,color:f.c,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:'Fib '+f.r.toFixed(3)}));
+  });
+ }
+ function drawTrendChannel(){
+  if(ohlc.length<30){trendSeries.setData([]);chanUp.setData([]);chanLo.setData([]);return;}
+  const w=ohlc.slice(-60), n=w.length;
+  let sx=0,sy=0,sxy=0,sxx=0;
+  w.forEach((c,i)=>{sx+=i;sy+=c.close;sxy+=i*c.close;sxx+=i*i;});
+  const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx), intercept=(sy-slope*sx)/n;
+  let maxDev=0;
+  w.forEach((c,i)=>{const line=slope*i+intercept;maxDev=Math.max(maxDev,Math.abs(c.high-line),Math.abs(c.low-line));});
+  const mid=[],up=[],low=[];
+  w.forEach((c,i)=>{const v=slope*i+intercept;mid.push({time:c.time,value:+v.toFixed(4)});up.push({time:c.time,value:+(v+maxDev).toFixed(4)});low.push({time:c.time,value:+(v-maxDev).toFixed(4)});});
+  trendSeries.setData(mid); chanUp.setData(up); chanLo.setData(low);
+ }
  function analyze(){
   if(ohlc.length<20)return;
   e20.setData(emaLine(ohlc,20)); e50.setData(emaLine(ohlc,50));
   const{sup,res}=supRes(ohlc);
   if(dynSup)cs.removePriceLine(dynSup); if(dynRes)cs.removePriceLine(dynRes);
-  dynSup=cs.createPriceLine({price:sup,color:'#00c896',lineWidth:1,lineStyle:2,title:'Support'});
-  dynRes=cs.createPriceLine({price:res,color:'#ff506d',lineWidth:1,lineStyle:2,title:'Resistance'});
+  dynSup=cs.createPriceLine({price:sup,color:'#00c896',lineWidth:1,lineStyle:2,title:'Dyn Support'});
+  dynRes=cs.createPriceLine({price:res,color:'#ff506d',lineWidth:1,lineStyle:2,title:'Dyn Resistance'});
+  drawFibonacci();
+  drawTrendChannel();
   const pat=pattern(ohlc);
   if(pat&&pat.d!=='neutral'){
    cs.setMarkers([{time:ohlc[ohlc.length-1].time,position:pat.d==='bull'?'belowBar':'aboveBar',
@@ -664,7 +696,7 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  window.valensSetSymbol=function(sym){
   curSym=sym;
   if(ws){ws.close();ws=null;} if(tradeWs){tradeWs.close();tradeWs=null;}
-  cs.setMarkers([]);
+  cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
   binSym=MAP[sym];
   if(!binSym){
    closedEl.style.display='flex';
