@@ -219,7 +219,7 @@ iframe{height:100%;width:100%;border:0}
       </div>
 
       <div class="analysis">
-        <div class="atitle"><span>📊 CANLI GRAFİK ANALİZİ · <span id="anPair">XAU/USD</span> · 6 İNDİKATÖR</span><em id="anStatus">● GÜNCELLENİYOR</em></div>
+        <div class="atitle"><span>📊 CANLI GRAFİK ANALİZİ · <span id="anPair">XAU/USD</span> · 6 İNDİKATÖR + GRAFİK + HABER</span><em id="anStatus">● GÜNCELLENİYOR</em></div>
         <div class="stats">
           <div class="stat"><small>RSI (14)</small><b id="iRsi">—</b></div>
           <div class="stat"><small>MACD</small><b id="iMacd">—</b></div>
@@ -238,7 +238,7 @@ iframe{height:100%;width:100%;border:0}
         <p style="font-size:8px;color:var(--muted);margin-top:4px">⚠ Bu takvim manuel örnek veridir · veriler doğrulama gerektirir.</p>
       </div>
 
-      <div class="bottomnote">Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. Grafik üstündeki çizimler (Fibonacci, trend, kanal, S/R) bot tarafından otomatik üretilir.</div>
+      <div class="bottomnote">AL/SAT sinyali; 6 indikatör + grafik çizimleri (trend/kanal/Fibonacci/S-R/mum formasyonu) + o günkü haber yönü kombine edilerek üretilir. Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir.</div>
     </section>
 
     <aside class="right">
@@ -277,6 +277,16 @@ const SYMS={
    top:5990,bot:5800, scTP:14, scSL:7, swTP:45, swSL:22}
 };
 let CUR='OANDA:XAUUSD', INT='15';
+
+// O günkü önemli haber yönü (+1 alım / -1 satım / 0 nötr). Haber günü güncelle.
+const NEWS_BIAS={
+ 'OANDA:XAUUSD': -0.5,
+ 'BINANCE:BTCUSDT': +0.3,
+ 'OANDA:EURUSD': -0.3,
+ 'OANDA:SPX500USD': +0.4
+};
+// Grafik motorunun canlı okuması buraya yazılır (trend/pattern/S-R/fib)
+window.valensChartRead={};
 
 function isMarketOpen(sym){
  if(sym==='BINANCE:BTCUSDT')return true;
@@ -451,7 +461,17 @@ function botTick(){
  score+= bollPct>75?-0.3: bollPct<25?0.3:0;
  score+= stoch>80?-0.3: stoch<20?0.3:0;
  score+= adx>25?(macd>0?0.2:-0.2):0;
- const conf=Math.min(92,Math.max(52,Math.round(50+Math.abs(score)*22+rnd(-4,4))));
+
+ // ---- GRAFİKTEN ÇİZİLENLERİ KOMBİNE ET ----
+ const cr=window.valensChartRead||{};
+ if(cr.trend) score+= cr.trend*0.6;
+ if(cr.pattern) score+= cr.pattern*0.5;
+ if(typeof cr.srBias==='number') score+= cr.srBias;
+ if(typeof cr.fibBias==='number') score+= cr.fibBias;
+ // ---- O GÜNKÜ HABER YÖNÜ ----
+ score+= (NEWS_BIAS[CUR]||0);
+
+ const conf=Math.min(96,Math.max(52,Math.round(50+Math.abs(score)*18+rnd(-3,3))));
  const THRESHOLD=87;
 
  let rawDir=0;
@@ -480,7 +500,12 @@ function botTick(){
  document.getElementById('anText').innerHTML=
   'Bot 6 indikatörü '+cfg.label+' üzerinde canlı okuyor. RSI <b>'+rsi.toFixed(1)+'</b> ('+(rsi>55?'alıcı':rsi<45?'satıcı':'nötr')+'), MACD '+(macd>0?'pozitif':'negatif')+
   ', EMA 50/'+(ema50>ema200?'200 üzeri':'200 altı')+'. Bollinger %<b>'+bollPct.toFixed(0)+'</b>, Stoch <b>'+stoch.toFixed(1)+
-  '</b>, ADX <b>'+adx.toFixed(1)+'</b>. Bileşke: <b style="color:'+sigColor+'">'+sigText+'</b> — güven %'+conf+'.';
+  '</b>, ADX <b>'+adx.toFixed(1)+'</b>. '+
+  'Grafik: '+((cr.trend||0)>0?'yükselen trend':(cr.trend||0)<0?'düşen trend':'yatay')+
+  ((cr.patternName)?' · '+cr.patternName:'')+
+  ((cr.srText)?' · '+cr.srText:'')+
+  '. Haber yönü: '+((NEWS_BIAS[CUR]||0)>0?'▲ pozitif':(NEWS_BIAS[CUR]||0)<0?'▼ negatif':'nötr')+
+  '. Bileşke: <b style="color:'+sigColor+'">'+sigText+'</b> — güven %'+conf+'.';
 
  const tg=document.getElementById('trigger');
  if(armed){tg.className='trigger armed';tg.textContent='⚡ EMİR TETİKLENDİ · '+(rawDir>0?'BUY':'SELL')+' · %'+conf+' NETLİK';}
@@ -512,6 +537,7 @@ function botTick(){
 function switchSymbol(sym){
  CUR=sym; seedHist(); loadChart(); drawZones(); drawVolProfile();
  feed.innerHTML=''; netLots=0; flowLog=[];
+ window.valensChartRead={};
  for(let i=0;i<4;i++) addFlow(); botTick();
  updateAggUI();
  if(window.valensSetSymbol) window.valensSetSymbol(sym);
@@ -651,6 +677,25 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
    cs.setMarkers([{time:ohlc[ohlc.length-1].time,position:pat.d==='bull'?'belowBar':'aboveBar',
     color:pat.d==='bull'?'#00c896':'#ff506d',shape:pat.d==='bull'?'arrowUp':'arrowDown',text:pat.n}]);
   }
+
+  // ---- BOTA GÖNDER: trend / pattern / S-R / fib okuması ----
+  const last=ohlc[ohlc.length-1].close;
+  const w=ohlc.slice(-60); let sx=0,sy=0,sxy=0,sxx=0;
+  w.forEach((c,i)=>{sx+=i;sy+=c.close;sxy+=i*c.close;sxx+=i*i;});
+  const slope=(w.length*sxy-sx*sy)/(w.length*sxx-sx*sx);
+  const cfg=SYMS[curSym]; let srBias=0, srText='';
+  if(cfg){cfg.sr.forEach(s=>{const mid=(s.lo+s.hi)/2,dist=Math.abs(last-mid)/last;
+    if(dist<0.004){ if(s.type==='s'){srBias=0.5;srText='desteğe yakın ('+s.label+')';}
+                    else{srBias=-0.5;srText='dirence yakın ('+s.label+')';} }});}
+  let fibBias=0;
+  if(fibLines.length){const up=slope>0;const diff=res-sup;const f618=up?res-diff*0.618:sup+diff*0.618;
+    if(Math.abs(last-f618)/last<0.004) fibBias=up?0.4:-0.4;}
+  window.valensChartRead={
+    trend: slope>0?1:slope<0?-1:0,
+    pattern: pat?(pat.d==='bull'?1:pat.d==='bear'?-1:0):0,
+    patternName: pat?pat.n:'',
+    srBias, srText, fibBias
+  };
  }
  async function loadHistory(){
   try{
@@ -696,15 +741,28 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  window.valensSetSymbol=function(sym){
   curSym=sym;
   if(ws){ws.close();ws=null;} if(tradeWs){tradeWs.close();tradeWs=null;}
+  // ---- ESKİ PARİTENİN TÜM ÇİZGİLERİNİ TEMİZLE (eksen takılmasın) ----
   cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
+  e20.setData([]); e50.setData([]);
+  srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
+  fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
+  if(dynSup){cs.removePriceLine(dynSup);dynSup=null;}
+  if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
+  ohlc=[]; cs.setData([]);
+  window.valensChartRead={};
   binSym=MAP[sym];
   if(!binSym){
    closedEl.style.display='flex';
    closedEl.innerHTML='● CANLI VERİ YOK<small>Bu enstrüman için Binance feed\'i yok — TwelveData/OANDA API gerekir</small>';
-   cs.setData([]); drawSRLines(); return;
+   drawSRLines(); chart.priceScale('right').applyOptions({autoScale:true}); return;
   }
   closedEl.style.display='none';
-  loadHistory().then(()=>{ drawSRLines(); connect(); connectTrades(); });
+  loadHistory().then(()=>{
+    drawSRLines(); connect(); connectTrades();
+    // ---- EKSENİ YENİ FİYATA OTURT ----
+    chart.priceScale('right').applyOptions({autoScale:true});
+    chart.timeScale().fitContent();
+  });
   setTimeout(resize,120);
  };
  window.valensSetSymbol(CUR);
