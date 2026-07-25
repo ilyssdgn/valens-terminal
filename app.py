@@ -1,5 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import requests
+import json as _json
 
 st.set_page_config(
     page_title="Valens Wealth | Quant Terminal",
@@ -15,6 +17,40 @@ st.markdown("""
 .block-container {padding:0!important;max-width:100%!important;}
 </style>
 """, unsafe_allow_html=True)
+
+@st.cache_data(ttl=3600)
+def get_cot(keyword):
+    try:
+        r = requests.get(
+            "https://publicreporting.cftc.gov/resource/6dca-aqww.json",
+            params={
+                "$where": f"market_and_exchange_names like '%{keyword}%'",
+                "$order": "report_date_as_yyyy_mm_dd DESC",
+                "$limit": 1,
+            }, timeout=8)
+        d = r.json()[0]
+        f = lambda k: int(float(d.get(k, 0) or 0))
+        return {
+            "date": d.get("report_date_as_yyyy_mm_dd", "")[:10],
+            "market": d.get("market_and_exchange_names", "")[:40],
+            "fund_long": f("noncomm_positions_long_all"),
+            "fund_short": f("noncomm_positions_short_all"),
+            "fund_dlong": f("change_in_noncomm_long_all"),
+            "fund_dshort": f("change_in_noncomm_short_all"),
+            "bank_long": f("comm_positions_long_all"),
+            "bank_short": f("comm_positions_short_all"),
+            "oi": f("open_interest_all"),
+        }
+    except Exception:
+        return None
+
+COT = {
+    "OANDA:XAUUSD": get_cot("GOLD"),
+    "BINANCE:BTCUSDT": get_cot("BITCOIN"),
+    "OANDA:EURUSD": get_cot("EURO FX"),
+    "OANDA:SPX500USD": get_cot("E-MINI S&P 500"),
+}
+COT_JSON = _json.dumps({k: v for k, v in COT.items() if v})
 
 TERMINAL_HTML = r"""
 <!DOCTYPE html>
@@ -98,10 +134,6 @@ aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px 
 #chartClosed small{color:var(--muted);font-weight:400;font-size:10px}
 iframe{height:100%;width:100%;border:0}
 .zones{position:absolute;inset:0;pointer-events:none;z-index:4}
-.zone{position:absolute;left:8px;right:auto;border-radius:2px;display:flex;align-items:center;padding-left:7px;font:600 9px 'IBM Plex Mono';border-style:solid}
-.zone.r{background:linear-gradient(90deg,rgba(255,80,109,.32),rgba(255,80,109,.03));border-color:rgba(255,80,109,.85);color:#ff8498}
-.zone.s{background:linear-gradient(90deg,rgba(0,200,150,.32),rgba(0,200,150,.03));border-color:rgba(0,200,150,.85);color:#66e6c2}
-.zone em{font-style:normal;opacity:.8;margin-left:5px;font-size:8px}
 .analysis{padding:10px 12px;border-top:1px solid var(--line);background:#080f1a}
 .analysis .atitle{font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:700;margin-bottom:7px;display:flex;justify-content:space-between}
 .analysis .atitle em{font-style:normal;color:var(--green);font-size:8px}
@@ -145,8 +177,8 @@ iframe{height:100%;width:100%;border:0}
 
   <main class="shell">
     <aside class="left">
-      <div class="ph"><b>ORDER FLOW · BUY/SELL</b><span class="badge">AGREGA</span></div>
-      <div class="simwarn">⚠ SİMÜLASYON — Tekil emir sahipleri halka açık değildir. Bu, CME agrega hacim/Open-Interest akışını modeller. Gerçek veri için CME/Barchart/Polygon API gerekir.</div>
+      <div class="ph"><b>ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge">CANLI</span></div>
+      <div class="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
       <div class="netdelta" id="netDelta">NET DELTA: — </div>
       <div id="flowFeed"></div>
     </aside>
@@ -182,7 +214,6 @@ iframe{height:100%;width:100%;border:0}
         <div class="chartwrap">
           <div id="valensChart"></div>
           <div id="chartClosed">● PİYASA KAPALI<small id="chartClosedMsg">Hafta sonu — canlı veri akışı yok</small></div>
-          <iframe id="tvChart" src="" style="display:none"></iframe>
           <div class="zones" id="zones"></div>
         </div>
       </div>
@@ -202,98 +233,74 @@ iframe{height:100%;width:100%;border:0}
 
       <div class="upcoming">
         <div class="atitle">🗓️ YAKLAŞAN ÖNEMLİ HABERLER · <span id="calDate"></span></div>
-        <div class="newsrow"><div class="tm">15:15<br>UTC</div><div class="body"><b>🇪🇺 ECB Faiz Kararı<span class="imp">★★★ YÜKSEK</span></b><p>Beklenti %2.40 · Önceki %2.40</p><div class="exp"><b>Beklenti:</b> Faiz sabit tahmin ediliyor. Lagarde'ın basın toplantısındaki ton belirleyici — güvercin sinyal EUR'yu güçlendirip USD baskısıyla altını yukarı taşıyabilir, şahin ton tersi.</div></div></div>
-        <div class="newsrow"><div class="tm">15:30<br>UTC</div><div class="body"><b>🇺🇸 US İşsizlik Başvuruları<span class="imp">★★★ YÜKSEK</span></b><p>Beklenti 215K · Önceki 209K</p><div class="exp"><b>Beklenti:</b> Beklenti altı (güçlü istihdam) veri USD'yi destekler, altın için baskı; beklenti üstü zayıf veri altını destekler.</div></div></div>
-        <div class="newsrow"><div class="tm">15:45<br>UTC</div><div class="body"><b>🇪🇺 ECB Basın Açıklaması<span class="imp">★★★ YÜKSEK</span></b><p>Lagarde konuşması</p><div class="exp"><b>Beklenti:</b> "Yakında faiz indirimi" ifadesi altını hızla yukarı çekebilir; enflasyon vurgusu ise satış tetikler. Volatilite yüksek olacak.</div></div></div>
-        <p style="font-size:8px;color:var(--muted);margin-top:4px">⚠ Bu takvim manuel örnek veridir. Canlı ekonomik takvim için Investing/ForexFactory API entegrasyonu gereklidir · veriler doğrulama gerektirir.</p>
+        <div class="newsrow"><div class="tm">15:15<br>UTC</div><div class="body"><b>🇪🇺 ECB Faiz Kararı<span class="imp">★★★ YÜKSEK</span></b><p>Beklenti %2.40 · Önceki %2.40</p><div class="exp"><b>Beklenti:</b> Faiz sabit tahmin ediliyor. Lagarde'ın basın toplantısındaki ton belirleyici.</div></div></div>
+        <div class="newsrow"><div class="tm">15:30<br>UTC</div><div class="body"><b>🇺🇸 US İşsizlik Başvuruları<span class="imp">★★★ YÜKSEK</span></b><p>Beklenti 215K · Önceki 209K</p><div class="exp"><b>Beklenti:</b> Beklenti altı veri USD'yi destekler, altın için baskı.</div></div></div>
+        <p style="font-size:8px;color:var(--muted);margin-top:4px">⚠ Bu takvim manuel örnek veridir · veriler doğrulama gerektirir.</p>
       </div>
 
-      <div class="bottomnote">Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). Akış, hacim profili ve takvim simülasyondur; doğrulanmış kurumsal veri değildir.</div>
+      <div class="bottomnote">Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir.</div>
     </section>
 
     <aside class="right">
       <div class="ph"><b>MACRO EVENT ANALYSIS</b><span class="badge" id="macroDate"></span></div>
-      <article class="event"><div class="eventtop">🇪🇺 <b>ECB Faiz Kararı</b><time>15:15 UTC</time></div><div class="eventbody"><p>Beklenti: <strong>%2.40</strong> · Önceki: %2.40</p><div class="scenario bull"><b>▲ XAU ALIM:</b> Dovish ton ve EUR güçlenmesi USD'yi baskılarsa 4,085 test edilebilir.</div><div class="scenario bear"><b>▼ XAU SATIM:</b> Şahin söylem USD'yi güçlendirirse 4,040 / 4,000 izlenir.</div></div></article>
-      <article class="event"><div class="eventtop">🇺🇸 <b>İşsizlik Başvuruları</b><time>15:30 UTC</time></div><div class="eventbody"><p>Beklenti: <strong>215K</strong> · Önceki: 209K</p><div class="scenario bear"><b>▼ USD GÜÇLÜ:</b> Beklenti altı veri, faiz indirimi beklentisini geciktirebilir; altın için kısa vadeli baskı.</div></div></article>
+      <article class="event" id="cotPanel" style="border-color:rgba(212,175,55,.4)">
+        <div class="eventtop">🏦 <b>COT RAPORU · Kurumsal Pozisyon</b><time id="cotDate">—</time></div>
+        <div class="eventbody" id="cotBody"><p style="color:var(--muted)">COT verisi yükleniyor…</p></div>
+      </article>
+      <article class="event"><div class="eventtop">🇪🇺 <b>ECB Faiz Kararı</b><time>15:15 UTC</time></div><div class="eventbody"><p>Beklenti: <strong>%2.40</strong> · Önceki: %2.40</p><div class="scenario bull"><b>▲ XAU ALIM:</b> Dovish ton USD'yi baskılarsa 4,085 test edilebilir.</div><div class="scenario bear"><b>▼ XAU SATIM:</b> Şahin söylem USD'yi güçlendirirse 4,040 / 4,000 izlenir.</div></div></article>
     </aside>
   </main>
 </div>
 
 <script>
-/* ---------- SAAT & TARİH ---------- */
 const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function clock(){const n=new Date();document.getElementById('clock').textContent=n.toUTCString().slice(17,25);}
 clock();setInterval(clock,1000);
 (function setDates(){
   const n=new Date();
-  const ds=n.getDate()+' '+months[n.getMonth()].toUpperCase();
   document.getElementById('calDate').textContent=n.getDate()+' '+months[n.getMonth()]+' '+n.getFullYear();
-  document.getElementById('macroDate').textContent=ds;
+  document.getElementById('macroDate').textContent=n.getDate()+' '+months[n.getMonth()].toUpperCase();
 })();
 
-/* ---------- PARİTE KONFİGÜRASYONU ---------- */
 const SYMS={
  'OANDA:XAUUSD':{label:'XAU/USD',title:'XAU/USD · GOLD SPOT',price:4053.98,step:2.5,dec:2,pipVal:1.0,
-   sr:[{type:'r',lo:4113,hi:4123,label:'R2 · 4,118',vol:62,note:'ARZ'},{type:'r',lo:4079,hi:4091,label:'R1 · 4,085',vol:95,note:'ANA LİKİDİTE'},{type:'s',lo:4034,hi:4046,label:'S1 · 4,040',vol:88,note:'TALEP'},{type:'s',lo:3995,hi:4005,label:'S2 · 4,000',vol:70,note:'PSİKOLOJİK'}],
+   sr:[{type:'r',lo:4113,hi:4123,label:'R2 · 4,118'},{type:'r',lo:4079,hi:4091,label:'R1 · 4,085'},{type:'s',lo:4034,hi:4046,label:'S1 · 4,040'},{type:'s',lo:3995,hi:4005,label:'S2 · 4,000'}],
    top:4190,bot:3990, scTP:10, scSL:5, swTP:30, swSL:15},
  'BINANCE:BTCUSDT':{label:'BTC/USD',title:'BTC/USD · BITCOIN',price:118240,step:900,dec:0,pipVal:1,
-   sr:[{type:'r',lo:121000,hi:122500,label:'R2 · 122K',vol:60,note:'ARZ'},{type:'r',lo:119000,hi:120200,label:'R1 · 120K',vol:90,note:'LİKİDİTE'},{type:'s',lo:116500,hi:117500,label:'S1 · 117K',vol:85,note:'TALEP'},{type:'s',lo:113500,hi:114500,label:'S2 · 114K',vol:68,note:'DESTEK'}],
+   sr:[{type:'r',lo:121000,hi:122500,label:'R2 · 122K'},{type:'r',lo:119000,hi:120200,label:'R1 · 120K'},{type:'s',lo:116500,hi:117500,label:'S1 · 117K'},{type:'s',lo:113500,hi:114500,label:'S2 · 114K'}],
    top:124000,bot:112000, scTP:600, scSL:300, swTP:2200, swSL:1100},
  'OANDA:EURUSD':{label:'EUR/USD',title:'EUR/USD · FX',price:1.0842,step:0.004,dec:4,pipVal:0.0001,
-   sr:[{type:'r',lo:1.091,hi:1.093,label:'R2 · 1.0920',vol:58,note:'ARZ'},{type:'r',lo:1.087,hi:1.0885,label:'R1 · 1.0878',vol:88,note:'LİKİDİTE'},{type:'s',lo:1.080,hi:1.0815,label:'S1 · 1.0808',vol:84,note:'TALEP'},{type:'s',lo:1.075,hi:1.0765,label:'S2 · 1.0758',vol:66,note:'DESTEK'}],
+   sr:[{type:'r',lo:1.091,hi:1.093,label:'R2 · 1.0920'},{type:'r',lo:1.087,hi:1.0885,label:'R1 · 1.0878'},{type:'s',lo:1.080,hi:1.0815,label:'S1 · 1.0808'},{type:'s',lo:1.075,hi:1.0765,label:'S2 · 1.0758'}],
    top:1.096,bot:1.073, scTP:0.0035, scSL:0.0018, swTP:0.011, swSL:0.0055},
  'OANDA:SPX500USD':{label:'SPX500',title:'SPX500 · US500',price:5892,step:6,dec:1,pipVal:0.1,
-   sr:[{type:'r',lo:5945,hi:5970,label:'R2 · 5,958',vol:57,note:'ARZ'},{type:'r',lo:5905,hi:5925,label:'R1 · 5,915',vol:86,note:'LİKİDİTE'},{type:'s',lo:5855,hi:5875,label:'S1 · 5,865',vol:82,note:'TALEP'},{type:'s',lo:5810,hi:5830,label:'S2 · 5,820',vol:64,note:'DESTEK'}],
+   sr:[{type:'r',lo:5945,hi:5970,label:'R2 · 5,958'},{type:'r',lo:5905,hi:5925,label:'R1 · 5,915'},{type:'s',lo:5855,hi:5875,label:'S1 · 5,865'},{type:'s',lo:5810,hi:5830,label:'S2 · 5,820'}],
    top:5990,bot:5800, scTP:14, scSL:7, swTP:45, swSL:22}
 };
 let CUR='OANDA:XAUUSD', INT='15';
 
-/* ---------- PİYASA SAATİ KONTROLÜ ---------- */
 function isMarketOpen(sym){
- if(sym==='BINANCE:BTCUSDT')return true; // kripto 24/7
+ if(sym==='BINANCE:BTCUSDT')return true;
  const d=new Date(),day=d.getUTCDay(),h=d.getUTCHours();
- if(sym==='OANDA:SPX500USD'){ // endeks: hafta içi 14:30-21:00 UTC
+ if(sym==='OANDA:SPX500USD'){
    if(day===0||day===6)return false;
-   const m=h*60+d.getUTCMinutes();
-   return m>=870 && m<=1260;
+   const m=h*60+d.getUTCMinutes(); return m>=870 && m<=1260;
  }
- // XAU/USD & EUR/USD forex saatleri
- if(day===6)return false;                 // Cumartesi kapalı
- if(day===0 && h<23)return false;         // Pazar 23:00 UTC öncesi kapalı
- if(day===5 && h>=22)return false;        // Cuma 22:00 UTC sonrası kapalı
+ if(day===6)return false;
+ if(day===0 && h<23)return false;
+ if(day===5 && h>=22)return false;
  return true;
 }
+function loadChart(){document.getElementById('chartTitle').textContent=SYMS[CUR].title;}
+function drawZones(){document.getElementById('zones').style.display='none';}
 
-/* ---------- GRAFİK YÜKLEME (eski TradingView fonksiyonu — pasif) ---------- */
-function loadChart(){
- document.getElementById('chartTitle').textContent=SYMS[CUR].title;
-}
-
-/* ---------- S/R BÖLGELERİ ---------- */
-function drawZones(){
- const cfg=SYMS[CUR], z=document.getElementById('zones'); z.innerHTML='';
- const p2t=p=>((cfg.top-p)/(cfg.top-cfg.bot))*100;
- cfg.sr.forEach(s=>{
-   const top=p2t(s.hi), bot=p2t(s.lo), h=Math.max(6,bot-top);
-   const bw=1+Math.round(s.vol/28), width=Math.min(94,45+s.vol*0.5);
-   const d=document.createElement('div');
-   d.className='zone '+s.type;
-   d.style.top=top+'%'; d.style.height=h+'%'; d.style.borderWidth=bw+'px'; d.style.width=width+'%';
-   d.innerHTML=s.label+' <em>'+s.note+' · VOL '+s.vol+'</em>';
-   z.appendChild(d);
- });
-}
-
-/* ---------- VOLUME PROFILE ---------- */
 function drawVolProfile(){
  const cfg=SYMS[CUR], box=document.getElementById('vpBars'); box.innerHTML='';
  const p2t=p=>((cfg.top-p)/(cfg.top-cfg.bot))*100;
- const rows=22, span=cfg.top-cfg.bot, step=span/rows;
- let bars=[];
+ const rows=22, span=cfg.top-cfg.bot, step=span/rows; let bars=[];
  for(let i=0;i<rows;i++){
    const pxLevel=cfg.top - i*step - step/2;
    let vol=rnd(15,45);
-   cfg.sr.forEach(s=>{ if(pxLevel<=s.hi && pxLevel>=s.lo) vol+=s.vol*0.9; });
+   cfg.sr.forEach(s=>{ if(pxLevel<=s.hi && pxLevel>=s.lo) vol+=70; });
    vol+=rnd(-6,6);
    const buyDom = pxLevel < cfg.price ? Math.random()>0.35 : Math.random()>0.65;
    bars.push({px:pxLevel,vol:Math.max(8,vol),buy:buyDom});
@@ -303,8 +310,7 @@ function drawVolProfile(){
    const w=Math.max(14,(b.vol/maxV)*130);
    const el=document.createElement('div');
    el.className='vpbar '+(b.buy?'buy':'sell')+(Math.abs(b.px-pocPx)<step/2?' poc':'');
-   el.style.top=p2t(b.px)+'%'; el.style.width=w+'px';
-   el.textContent=Math.round(b.vol);
+   el.style.top=p2t(b.px)+'%'; el.style.width=w+'px'; el.textContent=Math.round(b.vol);
    box.appendChild(el);
    const pl=document.createElement('div');
    pl.className='vpprice'; pl.style.top=p2t(b.px)+'%';
@@ -313,7 +319,6 @@ function drawVolProfile(){
  });
 }
 
-/* ---------- ORDER FLOW (SİMÜLASYON) ---------- */
 const feed=document.getElementById('flowFeed');
 let netLots=0, flowLog=[];
 function utc(){return new Date().toUTCString().slice(17,22)+' UTC';}
@@ -321,6 +326,7 @@ function rnd(a,b){return a+Math.random()*(b-a);}
 const flowTags=['Agresif satıcı','Alım baskısı','Kurumsal blok','Likidite avı','Piyasa emri','Stop tetikleme','Momentum akışı'];
 function addFlow(){
  if(!isMarketOpen(CUR))return;
+ if(CUR==='BINANCE:BTCUSDT')return; // BTC gerçek whale feed kullanır
  const cfg=SYMS[CUR], buy=Math.random()>0.5;
  const lots=Math.round(rnd(80,650)/10)*10;
  const px=cfg.price+rnd(-cfg.step*2,cfg.step*2);
@@ -335,13 +341,11 @@ function addFlow(){
    '<p>@ '+fmt+' · '+tag+'</p>';
  feed.prepend(el);
  while(feed.children.length>8) feed.removeChild(feed.lastChild);
- const nd=document.getElementById('netDelta');
- const dir=netLots>=0;
+ const nd=document.getElementById('netDelta'), dir=netLots>=0;
  nd.className='netdelta '+(dir?'buy':'sell');
  nd.textContent='NET DELTA: '+(dir?'+':'')+Math.round(netLots).toLocaleString('en-US')+' lot '+(dir?'▲ Alıcı baskın':'▼ Satıcı baskın');
 }
 
-/* ---------- SIGNAL HISTORY & AGGREGATION ---------- */
 const SIG_STORE_PREFIX='valens_signals_';
 function getStoreKey(sym){return SIG_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
 function loadSignalStore(sym){try{const raw=localStorage.getItem(getStoreKey(sym));if(!raw)return{signals:[],lastCandleIdxs:{}};return JSON.parse(raw);}catch(e){return{signals:[],lastCandleIdxs:{}};}}
@@ -403,7 +407,6 @@ function updateAggUI(){
   else{detail.innerHTML='3 MUM ONAY: Yok';detail.style.color='var(--muted)';}
 }
 
-/* ---------- AI BOT · 6 İNDİKATÖR ---------- */
 let price, hist=[];
 function seedHist(){
  const cfg=SYMS[CUR]; price=cfg.price; hist=[];
@@ -457,7 +460,7 @@ function botTick(){
 
  let sigText='◇ GÖZLEM', sigColor='var(--gold)';
  if(rawDir>0)sigText='▲ BUY'; else if(rawDir<0)sigText='▼ SELL';
- if(armed){sigText=rawDir>0?'▲ BUY':'▼ SELL';sigColor=rawDir>0?'var(--green)':'var(--red)';}else{sigColor='var(--gold)';}
+ if(armed){sigText=rawDir>0?'▲ BUY':'▼ SELL';sigColor=rawDir>0?'var(--green)':'var(--red)';}
 
  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
  document.getElementById('sigTxt').textContent=sigText;
@@ -476,12 +479,12 @@ function botTick(){
 
  document.getElementById('anText').innerHTML=
   'Bot 6 indikatörü '+cfg.label+' üzerinde canlı okuyor. RSI <b>'+rsi.toFixed(1)+'</b> ('+(rsi>55?'alıcı':rsi<45?'satıcı':'nötr')+'), MACD '+(macd>0?'pozitif':'negatif')+
-  ', EMA 50/'+(ema50>ema200?'200 üzeri (yükseliş yapısı)':'200 altı (düşüş yapısı)')+'. Bollinger %<b>'+bollPct.toFixed(0)+'</b>, Stochastic <b>'+stoch.toFixed(1)+
-  '</b>, ADX <b>'+adx.toFixed(1)+'</b> ('+(adx>25?'trend güçlü':'trend zayıf')+'). Bileşke sinyal: <b style="color:'+sigColor+'">'+sigText+'</b> — güven %'+conf+'.';
+  ', EMA 50/'+(ema50>ema200?'200 üzeri':'200 altı')+'. Bollinger %<b>'+bollPct.toFixed(0)+'</b>, Stoch <b>'+stoch.toFixed(1)+
+  '</b>, ADX <b>'+adx.toFixed(1)+'</b>. Bileşke: <b style="color:'+sigColor+'">'+sigText+'</b> — güven %'+conf+'.';
 
  const tg=document.getElementById('trigger');
  if(armed){tg.className='trigger armed';tg.textContent='⚡ EMİR TETİKLENDİ · '+(rawDir>0?'BUY':'SELL')+' · %'+conf+' NETLİK';}
- else{tg.className='trigger wait';tg.textContent='◇ GÖZLEM · %'+conf+' / %'+THRESHOLD+' eşik · yüksek olasılık bekleniyor';}
+ else{tg.className='trigger wait';tg.textContent='◇ GÖZLEM · %'+conf+' / %'+THRESHOLD+' eşik';}
 
  const scStatusEl=document.getElementById('scStatus');
  if(armed){
@@ -497,7 +500,7 @@ function botTick(){
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
-   scStatusEl.textContent='◇ GÖZLEM — Emir eşiği %'+THRESHOLD+' · %'+conf+' (Seviyeler pasif)';
+   scStatusEl.textContent='◇ GÖZLEM — Emir eşiği %'+THRESHOLD+' · %'+conf;
  }
 
  recordCandleSignal(CUR, INT, rawDir);
@@ -506,23 +509,21 @@ function botTick(){
  if(Math.random()>0.8) drawVolProfile();
 }
 
-/* ---------- PARİTE DEĞİŞTİRME ---------- */
 function switchSymbol(sym){
  CUR=sym; seedHist(); loadChart(); drawZones(); drawVolProfile();
  feed.innerHTML=''; netLots=0; flowLog=[];
  for(let i=0;i<4;i++) addFlow(); botTick();
  updateAggUI();
  if(window.valensSetSymbol) window.valensSetSymbol(sym);
+ if(window.valensRenderCOT) window.valensRenderCOT(sym);
 }
 
-/* ---------- BAŞLAT ---------- */
 seedHist(); loadChart(); drawZones(); drawVolProfile();
 for(let i=0;i<4;i++) addFlow(); botTick();
 setInterval(addFlow, 4500);
 setInterval(botTick, 3000);
 setTimeout(()=>updateAggUI(), 600);
 
-/* ---------- ETKİLEŞİMLER ---------- */
 document.querySelectorAll('.market').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.market').forEach(y=>y.classList.remove('active'));
  x.classList.add('active'); switchSymbol(x.dataset.sym);
@@ -537,12 +538,35 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
 </script>
 
 <script>
-/* ================= VALENS CANLI GRAFİK (15dk gerçek veri + bot çizimleri) ================= */
+/* ============ COT RAPORU (her Salı CFTC) ============ */
+(function(){
+ const COT = __COT_DATA__;
+ function fmt(n){return Number(n).toLocaleString('en-US');}
+ function chg(n){return (n>0?'+':'')+Number(n).toLocaleString('en-US');}
+ window.valensRenderCOT=function(sym){
+   const c=COT[sym], body=document.getElementById('cotBody'), dEl=document.getElementById('cotDate');
+   if(!c){ dEl.textContent='—'; body.innerHTML='<p style="color:var(--muted)">Bu enstrüman için COT verisi yok (CFTC yalnız vadeli piyasa raporlar).</p>'; return; }
+   dEl.textContent=c.date;
+   const fundNet=c.fund_long-c.fund_short, bankNet=c.bank_long-c.bank_short;
+   body.innerHTML=
+    '<p><b>'+c.market+'</b> · OI: '+fmt(c.oi)+'</p>'+
+    '<div class="scenario '+(fundNet>=0?'bull':'bear')+'"><b>'+(fundNet>=0?'▲':'▼')+' HEDGE FONLAR (Spekülatör):</b> '+
+      (fundNet>=0?'NET LONG':'NET SHORT')+' '+fmt(Math.abs(fundNet))+
+      '<br>Long '+fmt(c.fund_long)+' ('+chg(c.fund_dlong)+') · Short '+fmt(c.fund_short)+' ('+chg(c.fund_dshort)+')</div>'+
+    '<div class="scenario '+(bankNet>=0?'bull':'bear')+'"><b>'+(bankNet>=0?'▲':'▼')+' BANKALAR / TİCARİ:</b> '+
+      (bankNet>=0?'NET LONG':'NET SHORT')+' '+fmt(Math.abs(bankNet))+
+      '<br>Long '+fmt(c.bank_long)+' · Short '+fmt(c.bank_short)+'</div>'+
+    '<p style="font-size:8px;color:var(--muted);margin-top:5px">Kaynak: CFTC Legacy COT · her Salı kesiti Cuma yayınlanır.</p>';
+ };
+ window.valensRenderCOT(CUR);
+})();
+</script>
+
+<script>
+/* ============ VALENS CANLI GRAFİK (15dk gerçek veri + bot çizimleri) ============ */
 (function(){
  const el=document.getElementById('valensChart');
  if(!el||!window.LightweightCharts)return;
-
- // OANDA/Binance sembol eşlemesi (Binance canlı feed)
  const MAP={'OANDA:XAUUSD':'PAXGUSDT','BINANCE:BTCUSDT':'BTCUSDT','OANDA:EURUSD':'EURUSDT','OANDA:SPX500USD':null};
 
  const chart=LightweightCharts.createChart(el,{
@@ -558,11 +582,10 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  const resize=()=>chart.applyOptions({width:el.clientWidth,height:el.clientHeight});
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
- let ohlc=[],ws=null,supL,resL,binSym=null;
+ let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],dynSup,dynRes;
  const closedEl=document.getElementById('chartClosed');
- const closedMsg=document.getElementById('chartClosedMsg');
 
- const ema=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
+ const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
  function supRes(a){const s=a.slice(-60);let hi=-1e12,lo=1e12;s.forEach(c=>{if(c.high>hi)hi=c.high;if(c.low<lo)lo=c.low;});return{sup:lo,res:hi};}
  function pattern(a){
   if(a.length<2)return null;const c=a[a.length-1],p=a[a.length-2];
@@ -576,13 +599,21 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
   if(bear&&p.close>p.open&&c.close<p.open&&c.open>p.close)return{n:'Bear Engulf',d:'bear'};
   return null;
  }
+ function drawSRLines(){
+  srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
+  const cfg=SYMS[curSym]; if(!cfg) return;
+  cfg.sr.forEach(s=>{
+   const px=(s.lo+s.hi)/2, isRes=s.type==='r';
+   srLines.push(cs.createPriceLine({price:px,color:isRes?'#ff506d':'#00c896',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:s.label}));
+  });
+ }
  function analyze(){
   if(ohlc.length<20)return;
-  e20.setData(ema(ohlc,20)); e50.setData(ema(ohlc,50));
+  e20.setData(emaLine(ohlc,20)); e50.setData(emaLine(ohlc,50));
   const{sup,res}=supRes(ohlc);
-  if(supL)cs.removePriceLine(supL); if(resL)cs.removePriceLine(resL);
-  supL=cs.createPriceLine({price:sup,color:'#00c896',lineWidth:1,lineStyle:2,title:'Support'});
-  resL=cs.createPriceLine({price:res,color:'#ff506d',lineWidth:1,lineStyle:2,title:'Resistance'});
+  if(dynSup)cs.removePriceLine(dynSup); if(dynRes)cs.removePriceLine(dynRes);
+  dynSup=cs.createPriceLine({price:sup,color:'#00c896',lineWidth:1,lineStyle:2,title:'Support'});
+  dynRes=cs.createPriceLine({price:res,color:'#ff506d',lineWidth:1,lineStyle:2,title:'Resistance'});
   const pat=pattern(ohlc);
   if(pat&&pat.d!=='neutral'){
    cs.setMarkers([{time:ohlc[ohlc.length-1].time,position:pat.d==='bull'?'belowBar':'aboveBar',
@@ -609,22 +640,41 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
    cs.update(bar); analyze();
   };
  }
+ function connectTrades(){
+  if(tradeWs){tradeWs.close();tradeWs=null;}
+  tradeWs=new WebSocket(`wss://stream.binance.com:9443/ws/${binSym.toLowerCase()}@aggTrade`);
+  const TH = binSym==='BTCUSDT'?200000 : binSym==='PAXGUSDT'?150000 : 100000;
+  tradeWs.onmessage=ev=>{
+   const t=JSON.parse(ev.data);
+   const qty=+t.q, px=+t.p, notional=qty*px;
+   if(notional < TH) return;
+   const buy = !t.m;
+   const el2=document.createElement('article');
+   el2.className='flow '+(buy?'buy':'sell');
+   const usd = notional>=1e6 ? '$'+(notional/1e6).toFixed(2)+'M' : '$'+(notional/1e3).toFixed(0)+'K';
+   el2.innerHTML='<h4><span>'+(buy?'🐋 ▲ YÜKLÜ ALIM':'🐋 ▼ YÜKLÜ SATIM')+'</span><time>'+
+     new Date().toUTCString().slice(17,22)+' UTC</time></h4>'+
+     '<div class="act '+(buy?'up':'down')+'">'+qty.toLocaleString('en-US',{maximumFractionDigits:3})+
+     ' @ '+px.toLocaleString('en-US')+'</div>'+
+     '<p>Hacim: <b style="color:'+(buy?'#00c896':'#ff506d')+'">'+usd+'</b> · Binance canlı emir</p>';
+   feed.prepend(el2);
+   while(feed.children.length>10) feed.removeChild(feed.lastChild);
+  };
+ }
  window.valensSetSymbol=function(sym){
-  if(ws){ws.close();ws=null;}
+  curSym=sym;
+  if(ws){ws.close();ws=null;} if(tradeWs){tradeWs.close();tradeWs=null;}
   cs.setMarkers([]);
   binSym=MAP[sym];
-  if(!binSym){ // Binance karşılığı yok (SPX500)
+  if(!binSym){
    closedEl.style.display='flex';
-   closedEl.innerHTML='● CANLI VERİ YOK<small>SPX500 için Binance feed\'i bulunmuyor — TwelveData/OANDA API gerekir</small>';
-   cs.setData([]);
-   return;
+   closedEl.innerHTML='● CANLI VERİ YOK<small>Bu enstrüman için Binance feed\'i yok — TwelveData/OANDA API gerekir</small>';
+   cs.setData([]); drawSRLines(); return;
   }
   closedEl.style.display='none';
-  loadHistory().then(connect);
+  loadHistory().then(()=>{ drawSRLines(); connect(); connectTrades(); });
   setTimeout(resize,120);
  };
-
- // ilk yükleme
  window.valensSetSymbol(CUR);
 })();
 </script>
@@ -632,4 +682,5 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
 </html>
 """
 
+TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON)
 components.html(TERMINAL_HTML, height=1180, scrolling=True)
