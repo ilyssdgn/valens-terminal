@@ -245,6 +245,18 @@ iframe{height:100%;width:100%;border:0}
 
   <main class="shell">
     <aside class="left">
+      <div class="ph"><b data-i18n="risk_governor_title">🛡 CHALLENGE RİSK YÖNETİCİSİ</b><span class="badge" id="riskBadge">—</span></div>
+      <div style="padding:9px;border-bottom:1px solid var(--line)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_balance">Bakiye ($)</span><input id="riskBalance" type="number" step="1000" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_daily">Günlük Kayıp Limiti (%)</span><input id="riskDailyPct" type="number" step="0.5" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_max">Maks. Toplam Kayıp (%)</span><input id="riskMaxPct" type="number" step="0.5" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_target">Kâr Hedefi (%)</span><input id="riskTargetPct" type="number" step="0.5" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+        </div>
+        <div id="riskSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
+        <div style="height:7px;border-radius:4px;background:#07101c;overflow:hidden;border:1px solid var(--line)"><div id="riskBar" style="height:100%;width:0%;background:var(--green);transition:width .3s"></div></div>
+        <div id="riskDetail" style="font-size:9px;margin-top:5px;font-weight:700">—</div>
+      </div>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
       <div class="netdelta" id="netDelta">NET DELTA: — </div>
@@ -271,11 +283,13 @@ iframe{height:100%;width:100%;border:0}
           <div class="levels"><div class="lev"><small data-i18n="entry_lbl">GİRİŞ</small><b class="entry" id="scEntry">—</b></div><div class="lev"><small data-i18n="stop_lbl">STOP</small><b class="stop" id="scStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="scTp">—</b></div></div>
           <div id="scStatus" class="trade-status wait">◇ GÖZLEM — Emir eşiği %87</div>
           <div class="pnl" id="scPnl">Hedef ≈ $250 @ 2.5 lot</div>
+          <div id="scLastSignal" style="font:9px 'IBM Plex Mono';color:var(--muted);margin-top:5px">—</div>
         </div>
         <div class="tradecard">
           <h4>◆ <span data-i18n="swing_plan">SWING PLAN</span> <span class="tf">1H / 4H</span></h4>
           <div class="levels"><div class="lev"><small data-i18n="entry_lbl">GİRİŞ</small><b class="entry" id="swEntry">—</b></div><div class="lev"><small data-i18n="stop_lbl">STOP</small><b class="stop" id="swStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="swTp">—</b></div></div>
           <div class="pnl" id="swPnl">Hedef ≈ $750 @ 2.5 lot</div>
+          <div id="swLastSignal" style="font:9px 'IBM Plex Mono';color:var(--muted);margin-top:5px">—</div>
         </div>
       </div>
 
@@ -407,6 +421,20 @@ const I18N = {
   cotLong:'Long', cotShort:'Short', cotSourceNote:'Kaynak: CFTC Legacy COT · her Salı kesiti Cuma yayınlanır.',
   psarUpLbl:'▲ YÜKSELİŞ', psarDownLbl:'▼ DÜŞÜŞ', trendUp:'yükselen trend', trendDown:'düşen trend', trendFlat:'yatay',
   srNearSupport:l=>'desteğe yakın ('+l+')', srNearResistance:l=>'dirence yakın ('+l+')',
+  srNearDynSupport:'dinamik desteğe (Dyn Support) yakın', srNearDynResistance:'dinamik dirence (Dyn Resistance) yakın',
+  confluenceSuffix:' + Fib seviyesi confluence',
+  conflictWarning:'⚠ KARIŞIK SİNYAL: Destek/direnç ve osilatörler (öncü) bir yönü, trend göstergeleri (MACD/EMA/VWAP — gecikmeli) ters yönü işaret ediyor. Bu genelde bir DÖNÜŞ BÖLGESİ olabilir — sistem burada normalden daha fazla mutabakat istiyor.',
+  conflictBadge:'⚠ KARIŞIK SİNYAL — dönüş bölgesi olabilir',
+  noLastSignal:'Henüz bu seviyede sinyal verilmedi.',
+  lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
+  risk_governor_title:'🛡 CHALLENGE RİSK YÖNETİCİSİ', risk_balance:'Bakiye ($)', risk_daily:'Günlük Kayıp Limiti (%)',
+  risk_max:'Maks. Toplam Kayıp (%)', risk_target:'Kâr Hedefi (%)',
+  riskSummaryLine:(daily,max,target)=>'Günlük limit: <b>$'+daily+'</b> · Maks. kayıp: <b>$'+max+'</b> · Hedef: <b>$'+target+'</b>',
+  riskOkBadge:'GÜVENLİ', riskWarnBadge:'DİKKAT', riskBlockBadge:'DURDUR',
+  riskOkDetail:(pnl)=>'Bugünkü izlenen net: '+(pnl>=0?'+':'')+'$'+pnl+' — sınırın içinde.',
+  riskWarnDetail:(pnl,pct)=>'⚠ Bugünkü kayıp günlük limitin %'+pct+'\'ine ulaştı ('+pnl+'$) — dikkatli olun.',
+  riskBlockDetail:(pnl)=>'🛑 Bugünkü kayıp güvenlik eşiğini aştı ($'+pnl+') — yeni işlem ARANMIYOR. Yarın sıfırlanır.',
+  riskBlockedStatus:'🛑 GÜNLÜK RİSK SINIRI — yeni sinyal durduruldu',
   anText: p => 'Bot 12 indikatörü '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> canlı hesaplıyor. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
    ', EMA 50/'+(p.emaGolden?'200 üzeri':'200 altı')+', ATR <b>'+p.atr+'</b> (volatilite), fiyat VWAP\'ın '+(p.vwapAbove?'üzerinde':'altında')+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR '+(p.psarUp?'yükseliş':'düşüş')+' yönünde. '+
@@ -477,6 +505,20 @@ const I18N = {
   cotLong:'Long', cotShort:'Short', cotSourceNote:'Source: CFTC Legacy COT · each Tuesday cut is published Friday.',
   psarUpLbl:'▲ UP', psarDownLbl:'▼ DOWN', trendUp:'uptrend', trendDown:'downtrend', trendFlat:'sideways',
   srNearSupport:l=>'near support ('+l+')', srNearResistance:l=>'near resistance ('+l+')',
+  srNearDynSupport:'near dynamic support (Dyn Support)', srNearDynResistance:'near dynamic resistance (Dyn Resistance)',
+  confluenceSuffix:' + Fib level confluence',
+  conflictWarning:'⚠ MIXED SIGNAL: support/resistance and oscillators (leading) point one way, trend indicators (MACD/EMA/VWAP — lagging) point the other way. This is often a REVERSAL ZONE — the system requires higher-than-normal agreement here.',
+  conflictBadge:'⚠ MIXED SIGNAL — possible reversal zone',
+  noLastSignal:'No signal has been given at this level yet.',
+  lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
+  risk_governor_title:'🛡 CHALLENGE RISK GOVERNOR', risk_balance:'Balance ($)', risk_daily:'Daily Loss Limit (%)',
+  risk_max:'Max Total Loss (%)', risk_target:'Profit Target (%)',
+  riskSummaryLine:(daily,max,target)=>'Daily limit: <b>$'+daily+'</b> · Max loss: <b>$'+max+'</b> · Target: <b>$'+target+'</b>',
+  riskOkBadge:'SAFE', riskWarnBadge:'CAUTION', riskBlockBadge:'STOP',
+  riskOkDetail:(pnl)=>"Today's tracked net: "+(pnl>=0?'+':'')+'$'+pnl+' — within limit.',
+  riskWarnDetail:(pnl,pct)=>"⚠ Today's loss has reached "+pct+'% of the daily limit ($'+pnl+') — be careful.',
+  riskBlockDetail:(pnl)=>"🛑 Today's loss has crossed the safety threshold ($"+pnl+') — no new trades are being armed. Resets tomorrow.',
+  riskBlockedStatus:'🛑 DAILY RISK LIMIT — new signals paused',
   anText: p => 'The bot computes 12 indicators for '+p.label+' live from <b>real Binance OHLC data</b>. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
    ', EMA 50/'+(p.emaGolden?'above 200':'below 200')+', ATR <b>'+p.atr+'</b> (volatility), price is '+(p.vwapAbove?'above':'below')+' VWAP'+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR pointing '+(p.psarUp?'up':'down')+'. '+
@@ -712,6 +754,95 @@ function updateWinRateUI(){
   el.innerHTML=t('winResult')(wr.total,wr.wins,wr.rate.toFixed(1));
 }
 
+// ============ SON VERİLEN SCALP/SWING SİNYALİ + TARİHİ ============
+// "En son bu seviyede bu işlem verildi" bilgisini kalıcı tutar (localStorage), her sembol/plan için ayrı.
+function lastSigKey(sym,plan){ return 'valens_lastsig_'+plan+'_'+sym.replace(/[:\/]/g,'_'); }
+function recordLastSignal(sym,plan,dir,entry,tp,sl){
+  try{ localStorage.setItem(lastSigKey(sym,plan), JSON.stringify({dir,entry,tp,sl,ts:Date.now()})); }catch(e){}
+}
+function getLastSignal(sym,plan){
+  try{ const raw=localStorage.getItem(lastSigKey(sym,plan)); return raw?JSON.parse(raw):null; }catch(e){ return null; }
+}
+function fmtSigTime(ts){
+  const d=new Date(ts), M=MONTHS[LANG]||MONTHS.tr;
+  return String(d.getDate()).padStart(2,'0')+' '+M[d.getMonth()].slice(0,3)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+' UTC';
+}
+function updateLastSignalUI(){
+  const cfg=SYMS[CUR];
+  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
+  ['scalp','swing'].forEach(plan=>{
+    const el=document.getElementById(plan==='scalp'?'scLastSignal':'swLastSignal'); if(!el)return;
+    const sig=getLastSignal(CUR,plan);
+    if(!sig){ el.textContent=t('noLastSignal'); return; }
+    el.innerHTML=t('lastSignalLine')(sig.dir>0?'BUY':'SELL', fmt(sig.entry), fmt(sig.tp), fmtSigTime(sig.ts));
+  });
+}
+
+// ============ FTMO/PROP FIRM CHALLENGE RİSK YÖNETİCİSİ ============
+// Bot'u daha "agresif" yapmak yerine, gerçek izlenen (win/loss) işlem geçmişinden bugünkü net durumu
+// hesaplayıp günlük kayıp limitine yaklaşılınca YENİ SİNYAL VERMEYİ DURDURUR. Bu, bir prop firm
+// challenge'ında hesabı gerçekten bitiren şeyin "az sinyal" değil "limit ihlali" olması yüzünden var.
+const RISK_KEY='valens_risk_settings';
+function loadRiskSettings(){
+  try{ const raw=localStorage.getItem(RISK_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  return {balance:50000, dailyPct:5, maxPct:10, targetPct:10};
+}
+function saveRiskSettings(s){ try{ localStorage.setItem(RISK_KEY, JSON.stringify(s)); }catch(e){} }
+function computeTodayPnL(){
+  const todayStr=new Date().toISOString().slice(0,10);
+  let pnl=0;
+  Object.keys(SYMS).forEach(sym=>{
+    const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
+    (store.trades||[]).forEach(tr=>{
+      if(!tr.resolved) return;
+      if(new Date(tr.ts).toISOString().slice(0,10)!==todayStr) return;
+      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
+      pnl += dist*cs*2.5;
+    });
+  });
+  return pnl;
+}
+function computeTotalPnL(){
+  let pnl=0;
+  Object.keys(SYMS).forEach(sym=>{
+    const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
+    (store.trades||[]).forEach(tr=>{
+      if(!tr.resolved) return;
+      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
+      pnl += dist*cs*2.5;
+    });
+  });
+  return pnl;
+}
+function riskState(){
+  const s=loadRiskSettings();
+  const dailyLimit=s.balance*(s.dailyPct/100), maxLimit=s.balance*(s.maxPct/100);
+  const todayPnl=computeTodayPnL(), totalPnl=computeTotalPnL();
+  const todayLossPct = dailyLimit>0 ? Math.max(0,-todayPnl)/dailyLimit*100 : 0;
+  const totalLossPct = maxLimit>0 ? Math.max(0,-totalPnl)/maxLimit*100 : 0;
+  let level='ok';
+  if(todayLossPct>=70 || totalLossPct>=70) level='block';
+  else if(todayLossPct>=40 || totalLossPct>=40) level='warn';
+  return {s,dailyLimit,maxLimit,todayPnl,totalPnl,todayLossPct,totalLossPct,level};
+}
+function isRiskBlocked(){ return riskState().level==='block'; }
+function updateRiskUI(){
+  const r=riskState();
+  const bal=r.s.balance;
+  document.getElementById('riskSummary').innerHTML = t('riskSummaryLine')(
+    Math.round(r.dailyLimit).toLocaleString('en-US'), Math.round(r.maxLimit).toLocaleString('en-US'),
+    Math.round(bal*(r.s.targetPct/100)).toLocaleString('en-US'));
+  const bar=document.getElementById('riskBar'), badge=document.getElementById('riskBadge'), detail=document.getElementById('riskDetail');
+  const pct=Math.min(100,Math.max(r.todayLossPct,r.totalLossPct*0.5));
+  bar.style.width=pct+'%';
+  bar.style.background = r.level==='block'?'var(--red)':r.level==='warn'?'#ffb27a':'var(--green)';
+  badge.textContent = r.level==='block'?t('riskBlockBadge'):r.level==='warn'?t('riskWarnBadge'):t('riskOkBadge');
+  badge.style.color = r.level==='block'?'var(--red)':r.level==='warn'?'#ffb27a':'var(--green)';
+  const pnlFmt=Math.round(r.todayPnl).toLocaleString('en-US');
+  detail.innerHTML = r.level==='block'?t('riskBlockDetail')(pnlFmt):r.level==='warn'?t('riskWarnDetail')(pnlFmt,Math.round(r.todayLossPct)):t('riskOkDetail')(pnlFmt);
+  detail.style.color = r.level==='block'?'var(--red)':r.level==='warn'?'#ffb27a':'var(--green)';
+}
+
 function marketClosedUI(){
  const cfg=SYMS[CUR];
  document.getElementById('sigTxt').textContent=t('market_closed');
@@ -778,7 +909,10 @@ function botTick(){
   stoch: stoch>80?-1:stoch<20?1:0,
   adx: adx>25?(macd>0?1:-1):0,
   wr: williamsR<-80?1:williamsR>-20?-1:0,
-  cci: cci>100?1:cci<-100?-1:0,
+  // CCI: RSI/Stoch/Williams %R ile TUTARLI olacak şekilde mean-reversion (aşırı satım/alım dönüş) yorumu kullanılır.
+  // Not: CCI trend-takip (momentum devamı) olarak da yorumlanabilir — ama bu sistemdeki DİĞER tüm osilatörler
+  // mean-reversion mantığıyla çalıştığı için CCI'ı farklı bir felsefeyle bırakmak iç tutarsızlıktı; düzeltildi.
+  cci: cci>100?-1:cci<-100?1:0,
   psar: (psar&&psar.isUp)?1:-1,
   vwap: last>vwap?1:-1,
   trend: cr.trend||0,
@@ -791,6 +925,17 @@ function botTick(){
  let score=0;
  Object.keys(votes).forEach(k=>score+=votes[k]*(weights[k]||0));
 
+ // ---- ÖNCÜ (reversal: RSI/Boll/Stoch/WR/CCI/PSAR/pattern/S-R/Fib) vs GECİKMELİ (trend: MACD/EMA/VWAP/trend/ADX)
+ // göstergeler GÜÇLÜ şekilde ters yöndeyse, bu genelde tam bir DÖNÜŞ BÖLGESİNDE olunduğu anlamına gelir —
+ // mekanik oy çoğunluğu böyle anlarda en az güvenilir olur. Bu durumu şeffaf şekilde işaretliyoruz ve
+ // tetiklenmek için normalden daha yüksek mutabakat istiyoruz.
+ const leadingKeys=['rsi','boll','stoch','wr','cci','pattern','sr','fib'];
+ const laggingKeys=['macd','ema','vwap','trend','adx','psar'];
+ let leadingScore=0, laggingScore=0;
+ leadingKeys.forEach(k=>leadingScore+=votes[k]*(weights[k]||0));
+ laggingKeys.forEach(k=>laggingScore+=votes[k]*(weights[k]||0));
+ const conflicted = (leadingScore>0.8 && laggingScore<-0.8) || (leadingScore<-0.8 && laggingScore>0.8);
+
  const conf=Math.min(97,Math.max(50,Math.round(50+Math.abs(score)*13)));
  const THRESHOLD=87;
 
@@ -798,13 +943,20 @@ function botTick(){
  if(score>0.6)rawDir=1; else if(score<-0.6)rawDir=-1; else rawDir=0;
 
  // ---- SIKILAŞTIRILMIŞ TETİKLEME: sadece güven eşiği değil, indikatörlerin GERÇEKTEN çoğunluğu aynı yönde olmalı ----
+ // Karışık/dönüş bölgesi sinyali varsa mutabakat çıtası %60'tan %75'e çıkar.
  const agreeCount = rawDir!==0 ? Object.values(votes).filter(v=>v===rawDir).length : 0;
  const totalVotes = Object.keys(votes).length; // 15
- const armed = conf>=THRESHOLD && rawDir!==0 && agreeCount>=Math.ceil(totalVotes*0.6); // en az %60 indikatör mutabakatı
+ const requiredAgree = Math.ceil(totalVotes*(conflicted?0.75:0.6));
+ const technicallyArmed = conf>=THRESHOLD && rawDir!==0 && agreeCount>=requiredAgree;
+ const riskBlocked = isRiskBlocked();
+ const armed = technicallyArmed && !riskBlocked;
 
  let sigText='◇ GÖZLEM', sigColor='var(--gold)';
  if(rawDir>0)sigText='▲ BUY'; else if(rawDir<0)sigText='▼ SELL';
  if(armed){sigText=rawDir>0?'▲ BUY':'▼ SELL';sigColor=rawDir>0?'var(--green)':'var(--red)';}
+
+ const sigWhyEl=document.getElementById('sigWhy');
+ if(sigWhyEl) sigWhyEl.innerHTML = conflicted ? '<span style="color:#ffb27a">'+t('conflictWarning')+'</span>' : '';
 
  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
  document.getElementById('sigTxt').textContent=sigText;
@@ -837,6 +989,8 @@ function botTick(){
 
  const tg=document.getElementById('trigger');
  if(armed){tg.className='trigger armed';tg.textContent=t('armedTrigger')(rawDir>0?'BUY':'SELL',conf);}
+ else if(technicallyArmed && riskBlocked){tg.className='trigger wait';tg.textContent=t('riskBlockedStatus');}
+ else if(conflicted){tg.className='trigger wait';tg.textContent=t('conflictBadge')+' · '+t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
  else{tg.className='trigger wait';tg.textContent=t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
 
  const scStatusEl=document.getElementById('scStatus');
@@ -871,15 +1025,19 @@ function botTick(){
    } else { alertBox.classList.remove('show'); }
 
    logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx);
+   recordLastSignal(CUR,'scalp',rawDir,scEntryPx,scTpPx,scStopPx);
+   recordLastSignal(CUR,'swing',rawDir,last,swTpPx,swStopPx);
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
-   scStatusEl.textContent=t('waitStatus')(THRESHOLD,conf);
+   scStatusEl.textContent = (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
  }
 
  updateTradeOutcomes(CUR, last);
  updateWinRateUI();
+ updateLastSignalUI();
+ updateRiskUI();
  recordCandleSignal(CUR, INT, rawDir);
  updateAggUI();
  const bs=document.getElementById('botStatus'); bs.style.opacity=.35; setTimeout(()=>bs.style.opacity=1,250);
@@ -892,7 +1050,7 @@ function switchSymbol(sym){
  window.valensChartRead={};
  document.getElementById('megaAlert').classList.remove('show');
  for(let i=0;i<4;i++) addFlow(); botTick();
- updateAggUI(); updateWinRateUI();
+ updateAggUI(); updateWinRateUI(); updateLastSignalUI(); updateRiskUI();
  if(window.valensSetSymbol) window.valensSetSymbol(sym);
  if(window.valensRenderCOT) window.valensRenderCOT(sym);
 }
@@ -919,11 +1077,33 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  LANG = LANG==='tr' ? 'en' : 'tr';
  try{ localStorage.setItem('valens_lang', LANG); }catch(e){}
  applyStaticI18N(); setDates();
- botTick(); updateAggUI(); updateWinRateUI();
+ botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI();
  if(window.valensRenderCOT) window.valensRenderCOT(CUR);
  if(window.valensRenderNews) window.valensRenderNews();
  if(!isMarketOpen(CUR)) marketClosedUI();
 });
+
+// ---- Risk yöneticisi giriş alanları: değerleri yükle, değişince kaydet + yeniden hesapla ----
+(function initRiskInputs(){
+ const s=loadRiskSettings();
+ document.getElementById('riskBalance').value=s.balance;
+ document.getElementById('riskDailyPct').value=s.dailyPct;
+ document.getElementById('riskMaxPct').value=s.maxPct;
+ document.getElementById('riskTargetPct').value=s.targetPct;
+ const save=()=>{
+  const ns={
+   balance: parseFloat(document.getElementById('riskBalance').value)||50000,
+   dailyPct: parseFloat(document.getElementById('riskDailyPct').value)||5,
+   maxPct: parseFloat(document.getElementById('riskMaxPct').value)||10,
+   targetPct: parseFloat(document.getElementById('riskTargetPct').value)||10,
+  };
+  saveRiskSettings(ns); updateRiskUI();
+ };
+ ['riskBalance','riskDailyPct','riskMaxPct','riskTargetPct'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', save);
+ });
+ updateRiskUI();
+})();
 
 // ---- Sinyal/işlem geçmişini yedekleme: veri sadece bu tarayıcıda saklanıyor (sunucuda değil).
 // Cihaz değiştirirseniz ya da tarayıcı verisini temizlerseniz kaybolur — bu yüzden dışa/içe aktarma var.
@@ -1270,6 +1450,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(pat&&pat.d!=='neutral'){
    cs.setMarkers([{time:ohlc[ohlc.length-1].time,position:pat.d==='bull'?'belowBar':'aboveBar',
     color:pat.d==='bull'?'#00c896':'#ff506d',shape:pat.d==='bull'?'arrowUp':'arrowDown',text:pat.n}]);
+  } else {
+   cs.setMarkers([]); // ÖNEMLİ: yeni mumda formasyon yoksa eski işareti (ör. eski bir Hammer) grafikte bırakma
   }
 
   const last=ohlc[ohlc.length-1].close;
@@ -1281,9 +1463,23 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(cfg){cfg.sr.forEach(s=>{const mid=(s.lo+s.hi)/2,dist=Math.abs(last-mid)/last;
     if(dist<0.004){ if(s.type==='s'){srBias=0.5;srText=t('srNearSupport')(s.label);}
                     else{srBias=-0.5;srText=t('srNearResistance')(s.label);} }});}
+  // Dinamik Dyn Support/Resistance'a (grafikte çizilen, son 60 mumdan hesaplanan gerçek çizgi) yakınlık da
+  // hesaba katılır — önceden SADECE statik/sabit seviyeler kontrol ediliyordu, grafikte görünen asıl
+  // confluence (Dyn Support/Resistance) skorlamaya hiç girmiyordu.
+  if(typeof sup==='number' && typeof res==='number' && isFinite(sup) && isFinite(res)){
+    const distSup=Math.abs(last-sup)/last, distRes=Math.abs(last-res)/last;
+    if(distSup<0.003 && distSup<=distRes && Math.abs(0.6)>Math.abs(srBias)){ srBias=0.6; srText=t('srNearDynSupport'); }
+    else if(distRes<0.003 && distRes<distSup && Math.abs(-0.6)>Math.abs(srBias)){ srBias=-0.6; srText=t('srNearDynResistance'); }
+  }
+  // Fibonacci artık BAĞIMSIZ bir yön oyu değil — fiyat aynı anda hem S/R hem bir Fib seviyesindeyse
+  // bunu bir "confluence" (üst üste binen destek/direnç) olarak S/R sinyaline teyit ekler.
   let fibBias=0;
-  if(fibLines.length){const up=slope>0;const diff=res-sup;const f618=up?res-diff*0.618:sup+diff*0.618;
-    if(Math.abs(last-f618)/last<0.004) fibBias=up?0.4:-0.4;}
+  if(fibLines.length && srBias!==0){
+    const up=slope>0, diff=res-sup;
+    const fibLevels=[0,0.236,0.382,0.5,0.618,0.786,1].map(r=>up?res-diff*r:sup+diff*r);
+    const nearFib = fibLevels.some(px=>Math.abs(last-px)/last<0.003);
+    if(nearFib){ fibBias = srBias>0?0.5:-0.5; srText += t('confluenceSuffix'); }
+  }
 
   // ---- GERÇEK İNDİKATÖRLER: gerçek OHLC'den hesaplanır (rastgele değil) ----
   const rsiReal=calcRSIReal(closes,14);
