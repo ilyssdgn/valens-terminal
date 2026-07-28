@@ -252,10 +252,19 @@ iframe{height:100%;width:100%;border:0}
           <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_daily">Günlük Kayıp Limiti (%)</span><input id="riskDailyPct" type="number" step="0.5" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
           <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_max">Maks. Toplam Kayıp (%)</span><input id="riskMaxPct" type="number" step="0.5" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
           <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_target">Kâr Hedefi (%)</span><input id="riskTargetPct" type="number" step="0.5" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_lotmin">Lot (min)</span><input id="riskLotMin" type="number" step="0.1" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_lotmax">Lot (max)</span><input id="riskLotMax" type="number" step="0.1" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_days">Hedef Gün Sayısı</span><input id="riskDays" type="number" step="1" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="risk_start">Başlangıç Tarihi</span><input id="riskStart" type="date" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
         </div>
         <div id="riskSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
         <div style="height:7px;border-radius:4px;background:#07101c;overflow:hidden;border:1px solid var(--line)"><div id="riskBar" style="height:100%;width:0%;background:var(--green);transition:width .3s"></div></div>
         <div id="riskDetail" style="font-size:9px;margin-top:5px;font-weight:700">—</div>
+        <div style="border-top:1px dashed var(--line);margin-top:9px;padding-top:8px">
+          <div style="font:9px 'IBM Plex Mono';color:var(--gold);margin-bottom:5px" data-i18n="goal_progress_title">🎯 HEDEFE İLERLEME (gerçek izlenen sonuçlardan)</div>
+          <div style="height:7px;border-radius:4px;background:#07101c;overflow:hidden;border:1px solid var(--line)"><div id="goalBar" style="height:100%;width:0%;background:var(--gold);transition:width .3s"></div></div>
+          <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
+        </div>
       </div>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
@@ -429,6 +438,13 @@ const I18N = {
   lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RİSK YÖNETİCİSİ', risk_balance:'Bakiye ($)', risk_daily:'Günlük Kayıp Limiti (%)',
   risk_max:'Maks. Toplam Kayıp (%)', risk_target:'Kâr Hedefi (%)',
+  risk_lotmin:'Lot (min)', risk_lotmax:'Lot (max)', risk_days:'Hedef Gün Sayısı', risk_start:'Başlangıç Tarihi',
+  goal_progress_title:'🎯 HEDEFE İLERLEME (gerçek izlenen sonuçlardan)',
+  goalDetailLine:(net,target,pctDone,daysLeft,paceNeeded,paceActual)=>
+    'İzlenen net: <b>'+net+'</b> / $'+target+' hedef (%'+pctDone+'). Kalan: <b>'+daysLeft+' gün</b>. '+
+    'Hedefe ulaşmak için günde ortalama <b>'+paceNeeded+'</b> gerekir — şu ana kadarki gerçek tempo: <b>'+paceActual+'/gün</b>. '+
+    'Bu bir tahmindir, gerçek lot her işlemde kaydedilmediği için ortalama lot ('+t('avgLotNote')+') ile hesaplanır; garanti değildir.',
+  avgLotNote:'lot aralığınızın ortalaması',
   riskSummaryLine:(daily,max,target)=>'Günlük limit: <b>$'+daily+'</b> · Maks. kayıp: <b>$'+max+'</b> · Hedef: <b>$'+target+'</b>',
   riskOkBadge:'GÜVENLİ', riskWarnBadge:'DİKKAT', riskBlockBadge:'DURDUR',
   riskOkDetail:(pnl)=>'Bugünkü izlenen net: '+(pnl>=0?'+':'')+'$'+pnl+' — sınırın içinde.',
@@ -448,8 +464,10 @@ const I18N = {
   confirmedStatus:(dir,conf,time)=>'⚡ KESİN İŞLEM · '+dir+' · %'+conf+' · '+time,
   waitStatus:(thr,conf)=>'◇ GÖZLEM — Emir eşiği %'+thr+' · %'+conf,
   targetHit:(amt)=>'Hedefe ulaşırsa ≈ $'+amt+' @ 2.5 lot (projeksiyon, garanti değil)',
+  targetHitRange:(min,max,lotMin,lotMax)=>'Hedefe ulaşırsa ≈ $'+min+'–$'+max+' @ '+lotMin+'-'+lotMax+' lot (projeksiyon, garanti değil)',
   megaAlertTitleDyn:(dir,label)=>'🚨 YÜKSEK POTANSİYEL SCALP · '+dir+' · '+label,
   megaAlertBodyDyn:(en,st,tp,amt)=>'Giriş '+en+' · Stop '+st+' · Hedef '+tp+' · Hedefe ulaşırsa ≈ $'+amt+' @ 2.5 lot (15-30M) — bu bir garanti değil, TP\'ye ulaşırsa oluşacak projeksiyondur.',
+  megaAlertBodyRange:(en,st,tp,min,max,lotMin,lotMax)=>'Giriş '+en+' · Stop '+st+' · Hedef '+tp+' · Hedefe ulaşırsa ≈ $'+min+'–$'+max+' @ '+lotMin+'-'+lotMax+' lot (15-30M) — bu bir garanti değil, TP\'ye ulaşırsa oluşacak projeksiyondur.',
  },
  en: {
   live:'LIVE', order_flow_title:'ORDER FLOW · LARGE TRADES',
@@ -513,6 +531,13 @@ const I18N = {
   lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RISK GOVERNOR', risk_balance:'Balance ($)', risk_daily:'Daily Loss Limit (%)',
   risk_max:'Max Total Loss (%)', risk_target:'Profit Target (%)',
+  risk_lotmin:'Lot (min)', risk_lotmax:'Lot (max)', risk_days:'Target Days', risk_start:'Start Date',
+  goal_progress_title:'🎯 PROGRESS TO TARGET (from real tracked results)',
+  goalDetailLine:(net,target,pctDone,daysLeft,paceNeeded,paceActual)=>
+    'Tracked net: <b>'+net+'</b> / $'+target+' target ('+pctDone+'%). Remaining: <b>'+daysLeft+' days</b>. '+
+    'Reaching the target needs an average of <b>'+paceNeeded+'</b>/day — your actual tracked pace so far: <b>'+paceActual+'</b>/day. '+
+    'This is an estimate — actual lot size isn\'t logged per trade, so it uses the average of your lot range ('+t('avgLotNote')+'); not a guarantee.',
+  avgLotNote:'the average of your lot range',
   riskSummaryLine:(daily,max,target)=>'Daily limit: <b>$'+daily+'</b> · Max loss: <b>$'+max+'</b> · Target: <b>$'+target+'</b>',
   riskOkBadge:'SAFE', riskWarnBadge:'CAUTION', riskBlockBadge:'STOP',
   riskOkDetail:(pnl)=>"Today's tracked net: "+(pnl>=0?'+':'')+'$'+pnl+' — within limit.',
@@ -532,8 +557,10 @@ const I18N = {
   confirmedStatus:(dir,conf,time)=>'⚡ CONFIRMED TRADE · '+dir+' · %'+conf+' · '+time,
   waitStatus:(thr,conf)=>'◇ WATCHING — Order threshold %'+thr+' · %'+conf,
   targetHit:(amt)=>'If target is reached ≈ $'+amt+' @ 2.5 lots (projection, not guaranteed)',
+  targetHitRange:(min,max,lotMin,lotMax)=>'If target is reached ≈ $'+min+'–$'+max+' @ '+lotMin+'-'+lotMax+' lots (projection, not guaranteed)',
   megaAlertTitleDyn:(dir,label)=>'🚨 HIGH-POTENTIAL SCALP · '+dir+' · '+label,
   megaAlertBodyDyn:(en,st,tp,amt)=>'Entry '+en+' · Stop '+st+' · Target '+tp+' · If target is reached ≈ $'+amt+' @ 2.5 lots (15-30M) — this is not a guarantee, it is a projection if TP is reached.',
+  megaAlertBodyRange:(en,st,tp,min,max,lotMin,lotMax)=>'Entry '+en+' · Stop '+st+' · Target '+tp+' · If target is reached ≈ $'+min+'–$'+max+' @ '+lotMin+'-'+lotMax+' lots (15-30M) — this is not a guarantee, it is a projection if TP is reached.',
  }
 };
 function t(key){ const v=(I18N[LANG]&&I18N[LANG][key]); return v!==undefined? v : I18N.tr[key]; }
@@ -784,12 +811,14 @@ function updateLastSignalUI(){
 // challenge'ında hesabı gerçekten bitiren şeyin "az sinyal" değil "limit ihlali" olması yüzünden var.
 const RISK_KEY='valens_risk_settings';
 function loadRiskSettings(){
-  try{ const raw=localStorage.getItem(RISK_KEY); if(raw) return JSON.parse(raw); }catch(e){}
-  return {balance:50000, dailyPct:5, maxPct:10, targetPct:10};
+  try{ const raw=localStorage.getItem(RISK_KEY); if(raw) return Object.assign({balance:50000, dailyPct:5, maxPct:10, targetPct:10, lotMin:0.8, lotMax:1.2, challengeDays:10, startDate:new Date().toISOString().slice(0,10)}, JSON.parse(raw)); }catch(e){}
+  return {balance:50000, dailyPct:5, maxPct:10, targetPct:10, lotMin:0.8, lotMax:1.2, challengeDays:10, startDate:new Date().toISOString().slice(0,10)};
 }
 function saveRiskSettings(s){ try{ localStorage.setItem(RISK_KEY, JSON.stringify(s)); }catch(e){} }
+function avgLot(){ const s=loadRiskSettings(); return ((parseFloat(s.lotMin)||0.8)+(parseFloat(s.lotMax)||1.2))/2; }
 function computeTodayPnL(){
   const todayStr=new Date().toISOString().slice(0,10);
+  const lot=avgLot();
   let pnl=0;
   Object.keys(SYMS).forEach(sym=>{
     const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
@@ -797,19 +826,20 @@ function computeTodayPnL(){
       if(!tr.resolved) return;
       if(new Date(tr.ts).toISOString().slice(0,10)!==todayStr) return;
       const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
-      pnl += dist*cs*2.5;
+      pnl += dist*cs*lot;
     });
   });
   return pnl;
 }
 function computeTotalPnL(){
+  const lot=avgLot();
   let pnl=0;
   Object.keys(SYMS).forEach(sym=>{
     const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
     (store.trades||[]).forEach(tr=>{
       if(!tr.resolved) return;
       const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
-      pnl += dist*cs*2.5;
+      pnl += dist*cs*lot;
     });
   });
   return pnl;
@@ -841,6 +871,24 @@ function updateRiskUI(){
   const pnlFmt=Math.round(r.todayPnl).toLocaleString('en-US');
   detail.innerHTML = r.level==='block'?t('riskBlockDetail')(pnlFmt):r.level==='warn'?t('riskWarnDetail')(pnlFmt,Math.round(r.todayLossPct)):t('riskOkDetail')(pnlFmt);
   detail.style.color = r.level==='block'?'var(--red)':r.level==='warn'?'#ffb27a':'var(--green)';
+
+  // ---- Hedefe ilerleme (gerçek izlenen sonuçlardan; TAHMİN'dir, garanti değildir) ----
+  const targetUsd = bal*(r.s.targetPct/100);
+  const trackedNet = computeTotalPnL();
+  const pctDone = targetUsd>0 ? Math.max(0,Math.min(100, trackedNet/targetUsd*100)) : 0;
+  const start = new Date(r.s.startDate+'T00:00:00Z');
+  const totalDays = parseFloat(r.s.challengeDays)||10;
+  const elapsedDays = Math.max(0,(Date.now()-start.getTime())/86400000);
+  const daysLeft = Math.max(0, Math.ceil(totalDays-elapsedDays));
+  const remaining = Math.max(0, targetUsd-trackedNet);
+  const paceNeeded = daysLeft>0 ? remaining/daysLeft : remaining;
+  const paceActual = elapsedDays>=1 ? trackedNet/elapsedDays : trackedNet;
+  document.getElementById('goalBar').style.width = pctDone+'%';
+  document.getElementById('goalDetail').innerHTML = t('goalDetailLine')(
+    (trackedNet>=0?'+':'')+'$'+Math.round(trackedNet).toLocaleString('en-US'),
+    Math.round(targetUsd).toLocaleString('en-US'), pctDone.toFixed(0), daysLeft,
+    '$'+Math.round(paceNeeded).toLocaleString('en-US'), (paceActual>=0?'+':'')+'$'+Math.round(paceActual).toLocaleString('en-US')
+  );
 }
 
 function marketClosedUI(){
@@ -1012,16 +1060,21 @@ function botTick(){
    scStatusEl.className='trade-status armed';
    scStatusEl.textContent=t('confirmedStatus')(rawDir>0?'BUY':'SELL',conf,utc());
 
-   // ---- Gerçek $ hedef potansiyeli (2.5 lot varsayımıyla) — GARANTİ DEĞİL, sadece TP'ye ulaşırsa oluşacak projeksiyon ----
-   const scTpUsd = Math.abs(scTpPx-scEntryPx) * cfg.contractSize * 2.5;
-   document.getElementById('scPnl').textContent = t('targetHit')(Math.round(scTpUsd).toLocaleString('en-US'));
-   const swTpUsd = Math.abs(swTpPx-last) * cfg.contractSize * 2.5;
-   document.getElementById('swPnl').textContent = t('targetHit')(Math.round(swTpUsd).toLocaleString('en-US'));
+   // ---- Gerçek $ hedef potansiyeli (SİZİN planladığınız 0.8-1.2 lot aralığıyla) — GARANTİ DEĞİL, sadece TP'ye ulaşırsa oluşacak projeksiyon ----
+   const rs=loadRiskSettings(), lotMin=parseFloat(rs.lotMin)||0.8, lotMax=parseFloat(rs.lotMax)||1.2, lotAvg=(lotMin+lotMax)/2;
+   const scDist=Math.abs(scTpPx-scEntryPx), swDist=Math.abs(swTpPx-last);
+   const scTpUsdMin=scDist*cfg.contractSize*lotMin, scTpUsdMax=scDist*cfg.contractSize*lotMax, scTpUsdAvg=scDist*cfg.contractSize*lotAvg;
+   const swTpUsdMin=swDist*cfg.contractSize*lotMin, swTpUsdMax=swDist*cfg.contractSize*lotMax;
+   document.getElementById('scPnl').textContent = t('targetHitRange')(Math.round(scTpUsdMin).toLocaleString('en-US'),Math.round(scTpUsdMax).toLocaleString('en-US'),lotMin,lotMax);
+   document.getElementById('swPnl').textContent = t('targetHitRange')(Math.round(swTpUsdMin).toLocaleString('en-US'),Math.round(swTpUsdMax).toLocaleString('en-US'),lotMin,lotMax);
 
-   if(scTpUsd>=1000){
+   // Eşik eskiden 2.5 lot'a göre sabit $1000'di; artık SİZİN gerçek ortalama lotunuza göre orantılı ölçekleniyor
+   // (aynı fiyat-hareketi kalitesi bar'ı, sadece gerçek pozisyon büyüklüğünüzle ifade ediliyor).
+   const alertThreshold = 1000 * (lotAvg/2.5);
+   if(scTpUsdAvg>=alertThreshold){
      alertBox.classList.add('show');
      document.getElementById('megaAlertTitle').textContent=t('megaAlertTitleDyn')(rawDir>0?'BUY':'SELL',cfg.label);
-     document.getElementById('megaAlertBody').textContent=t('megaAlertBodyDyn')(fmt(scEntryPx),fmt(scStopPx),fmt(scTpPx),Math.round(scTpUsd).toLocaleString('en-US'));
+     document.getElementById('megaAlertBody').textContent=t('megaAlertBodyRange')(fmt(scEntryPx),fmt(scStopPx),fmt(scTpPx),Math.round(scTpUsdMin).toLocaleString('en-US'),Math.round(scTpUsdMax).toLocaleString('en-US'),lotMin,lotMax);
    } else { alertBox.classList.remove('show'); }
 
    logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx);
@@ -1090,16 +1143,24 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  document.getElementById('riskDailyPct').value=s.dailyPct;
  document.getElementById('riskMaxPct').value=s.maxPct;
  document.getElementById('riskTargetPct').value=s.targetPct;
+ document.getElementById('riskLotMin').value=s.lotMin;
+ document.getElementById('riskLotMax').value=s.lotMax;
+ document.getElementById('riskDays').value=s.challengeDays;
+ document.getElementById('riskStart').value=s.startDate;
  const save=()=>{
   const ns={
    balance: parseFloat(document.getElementById('riskBalance').value)||50000,
    dailyPct: parseFloat(document.getElementById('riskDailyPct').value)||5,
    maxPct: parseFloat(document.getElementById('riskMaxPct').value)||10,
    targetPct: parseFloat(document.getElementById('riskTargetPct').value)||10,
+   lotMin: parseFloat(document.getElementById('riskLotMin').value)||0.8,
+   lotMax: parseFloat(document.getElementById('riskLotMax').value)||1.2,
+   challengeDays: parseFloat(document.getElementById('riskDays').value)||10,
+   startDate: document.getElementById('riskStart').value || new Date().toISOString().slice(0,10),
   };
   saveRiskSettings(ns); updateRiskUI();
  };
- ['riskBalance','riskDailyPct','riskMaxPct','riskTargetPct'].forEach(id=>{
+ ['riskBalance','riskDailyPct','riskMaxPct','riskTargetPct','riskLotMin','riskLotMax','riskDays','riskStart'].forEach(id=>{
   document.getElementById(id).addEventListener('change', save);
  });
  updateRiskUI();
@@ -1271,7 +1332,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  const resize=()=>chart.applyOptions({width:el.clientWidth,height:el.clientHeight});
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
- let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes;
+ let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[];
  const closedEl=document.getElementById('chartClosed');
 
  const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
@@ -1447,12 +1508,17 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   drawFibonacci();
   drawTrendChannel();
   const pat=pattern(ohlc);
+  const lastTime=ohlc[ohlc.length-1].time;
+  // Formasyon işaretleri KALICI: tespit edilen her mum formasyonu grafikte kalır, sadece o an
+  // oluşmakta olan SON mumun girdisi (henüz mum kapanmadığı için) canlı güncellenir/kaldırılır.
+  patternMarkers = patternMarkers.filter(m=>m.time!==lastTime);
   if(pat&&pat.d!=='neutral'){
-   cs.setMarkers([{time:ohlc[ohlc.length-1].time,position:pat.d==='bull'?'belowBar':'aboveBar',
-    color:pat.d==='bull'?'#00c896':'#ff506d',shape:pat.d==='bull'?'arrowUp':'arrowDown',text:pat.n}]);
-  } else {
-   cs.setMarkers([]); // ÖNEMLİ: yeni mumda formasyon yoksa eski işareti (ör. eski bir Hammer) grafikte bırakma
+   patternMarkers.push({time:lastTime, position:pat.d==='bull'?'belowBar':'aboveBar',
+    color:pat.d==='bull'?'#00c896':'#ff506d', shape:pat.d==='bull'?'arrowUp':'arrowDown', text:pat.n});
   }
+  if(patternMarkers.length>300) patternMarkers=patternMarkers.slice(-300); // makul bir üst sınır
+  patternMarkers.sort((a,b)=>a.time-b.time); // lightweight-charts zaman sırası ister
+  cs.setMarkers(patternMarkers);
 
   const last=ohlc[ohlc.length-1].close;
   const closes=ohlc.map(c=>c.close);
@@ -1566,6 +1632,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(ws){ws.close();ws=null;} if(tradeWs){tradeWs.close();tradeWs=null;}
   // ---- ESKİ PARİTENİN TÜM ÇİZGİLERİNİ TEMİZLE (eksen takılmasın) ----
   cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
+  patternMarkers=[]; // farklı enstrümana geçince eski sembolün formasyon geçmişini taşıma
   e20.setData([]); e50.setData([]);
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
