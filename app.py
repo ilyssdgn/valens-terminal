@@ -266,6 +266,11 @@ iframe{height:100%;width:100%;border:0}
           <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
         </div>
       </div>
+      <div class="ph"><b data-i18n="trade_log_title">📒 SİNYAL KAR/ZARAR TAKİBİ</b><span class="badge" id="tradeLogBadge">—</span></div>
+      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
+        <div id="tradeLogSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
+        <div id="tradeLogList" style="max-height:230px;overflow:auto"></div>
+      </div>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
       <div class="netdelta" id="netDelta">NET DELTA: — </div>
@@ -445,6 +450,11 @@ const I18N = {
     'Hedefe ulaşmak için günde ortalama <b>'+paceNeeded+'</b> gerekir — şu ana kadarki gerçek tempo: <b>'+paceActual+'/gün</b>. '+
     'Bu bir tahmindir, gerçek lot her işlemde kaydedilmediği için ortalama lot ('+t('avgLotNote')+') ile hesaplanır; garanti değildir.',
   avgLotNote:'lot aralığınızın ortalaması',
+  trade_log_title:'📒 SİNYAL KAR/ZARAR TAKİBİ',
+  tradeLogBadge:(n)=>n+' İŞLEM',
+  tradeLogSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
+  tradeLogEmpty:'Henüz sonuçlanan bir sinyal yok — bir sinyal TP veya SL\'ye ulaştığında burada listelenecek.',
+  tradeLogWin:'✓', tradeLogLoss:'✗',
   riskSummaryLine:(daily,max,target)=>'Günlük limit: <b>$'+daily+'</b> · Maks. kayıp: <b>$'+max+'</b> · Hedef: <b>$'+target+'</b>',
   riskOkBadge:'GÜVENLİ', riskWarnBadge:'DİKKAT', riskBlockBadge:'DURDUR',
   riskOkDetail:(pnl)=>'Bugünkü izlenen net: '+(pnl>=0?'+':'')+'$'+pnl+' — sınırın içinde.',
@@ -538,6 +548,11 @@ const I18N = {
     'Reaching the target needs an average of <b>'+paceNeeded+'</b>/day — your actual tracked pace so far: <b>'+paceActual+'</b>/day. '+
     'This is an estimate — actual lot size isn\'t logged per trade, so it uses the average of your lot range ('+t('avgLotNote')+'); not a guarantee.',
   avgLotNote:'the average of your lot range',
+  trade_log_title:'📒 SIGNAL P&L TRACKING',
+  tradeLogBadge:(n)=>n+' TRADES',
+  tradeLogSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
+  tradeLogEmpty:'No signal has resolved yet — trades will appear here once TP or SL is reached.',
+  tradeLogWin:'✓', tradeLogLoss:'✗',
   riskSummaryLine:(daily,max,target)=>'Daily limit: <b>$'+daily+'</b> · Max loss: <b>$'+max+'</b> · Target: <b>$'+target+'</b>',
   riskOkBadge:'SAFE', riskWarnBadge:'CAUTION', riskBlockBadge:'STOP',
   riskOkDetail:(pnl)=>"Today's tracked net: "+(pnl>=0?'+':'')+'$'+pnl+' — within limit.',
@@ -891,6 +906,45 @@ function updateRiskUI(){
   );
 }
 
+// ============ SİNYAL KAR/ZARAR GÜNLÜĞÜ ============
+// Bot her "armed" (net BUY/SELL) sinyal verdiğinde o anki grafikten aldığı gerçek giriş/TP/SL
+// zaten logArmedTrade() ile kaydediliyor; updateTradeOutcomes() her tick'te fiyatın TP'ye mi SL'ye mi
+// ÖNCE ulaştığını kontrol edip sonucu (win/loss) kalıcı olarak işaretliyor. Burada bunu görünür bir
+// kâr/zarar listesine dönüştürüyoruz — tüm enstrümanlar birlikte, en yeni en üstte.
+function getAllResolvedTrades(){
+  const lot=avgLot(); let all=[];
+  Object.keys(SYMS).forEach(sym=>{
+    const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
+    (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
+      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
+      all.push(Object.assign({sym, usd:dist*cs*lot}, tr));
+    });
+  });
+  all.sort((a,b)=>b.ts-a.ts);
+  return all;
+}
+function updateTradeLogUI(){
+  const list=document.getElementById('tradeLogList'), summary=document.getElementById('tradeLogSummary'), badge=document.getElementById('tradeLogBadge');
+  if(!list||!summary||!badge) return;
+  const trades=getAllResolvedTrades();
+  const wins=trades.filter(tr=>tr.outcome==='win').length, losses=trades.length-wins;
+  const netUsd=trades.reduce((a,tr)=>a+tr.usd,0);
+  badge.textContent=t('tradeLogBadge')(trades.length);
+  summary.innerHTML=t('tradeLogSummaryLine')(trades.length,wins,losses,(netUsd>=0?'+':'')+'$'+Math.round(netUsd).toLocaleString('en-US'));
+  if(!trades.length){ list.innerHTML='<p style="color:var(--muted);font-size:9px;padding:6px 2px">'+t('tradeLogEmpty')+'</p>'; return; }
+  list.innerHTML = trades.slice(0,40).map(tr=>{
+    const cfg=SYMS[tr.sym]; if(!cfg) return '';
+    const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
+    const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
+    const hitPx = win?tr.tp:tr.sl;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
+      '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+
+      '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span></div>'+
+      '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
+      '</div>';
+  }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
+}
+
 function marketClosedUI(){
  const cfg=SYMS[CUR];
  document.getElementById('sigTxt').textContent=t('market_closed');
@@ -1091,6 +1145,7 @@ function botTick(){
  updateWinRateUI();
  updateLastSignalUI();
  updateRiskUI();
+ updateTradeLogUI();
  recordCandleSignal(CUR, INT, rawDir);
  updateAggUI();
  const bs=document.getElementById('botStatus'); bs.style.opacity=.35; setTimeout(()=>bs.style.opacity=1,250);
@@ -1103,7 +1158,7 @@ function switchSymbol(sym){
  window.valensChartRead={};
  document.getElementById('megaAlert').classList.remove('show');
  for(let i=0;i<4;i++) addFlow(); botTick();
- updateAggUI(); updateWinRateUI(); updateLastSignalUI(); updateRiskUI();
+ updateAggUI(); updateWinRateUI(); updateLastSignalUI(); updateRiskUI(); updateTradeLogUI();
  if(window.valensSetSymbol) window.valensSetSymbol(sym);
  if(window.valensRenderCOT) window.valensRenderCOT(sym);
 }
@@ -1130,7 +1185,7 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  LANG = LANG==='tr' ? 'en' : 'tr';
  try{ localStorage.setItem('valens_lang', LANG); }catch(e){}
  applyStaticI18N(); setDates();
- botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI();
+ botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI(); updateTradeLogUI();
  if(window.valensRenderCOT) window.valensRenderCOT(CUR);
  if(window.valensRenderNews) window.valensRenderNews();
  if(!isMarketOpen(CUR)) marketClosedUI();
@@ -1163,7 +1218,7 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  ['riskBalance','riskDailyPct','riskMaxPct','riskTargetPct','riskLotMin','riskLotMax','riskDays','riskStart'].forEach(id=>{
   document.getElementById(id).addEventListener('change', save);
  });
- updateRiskUI();
+ updateRiskUI(); updateTradeLogUI();
 })();
 
 // ---- Sinyal/işlem geçmişini yedekleme: veri sadece bu tarayıcıda saklanıyor (sunucuda değil).
