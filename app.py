@@ -25,10 +25,19 @@ def get_cot(keyword):
             "https://publicreporting.cftc.gov/resource/6dca-aqww.json",
             params={
                 "$where": f"market_and_exchange_names like '%{keyword}%'",
-                "$order": "report_date_as_yyyy_mm_dd DESC",
-                "$limit": 1,
+                "$order": "report_date_as_yyyy_mm_dd DESC, open_interest_all DESC",
+                "$limit": 25,
             }, timeout=8)
-        d = r.json()[0]
+        rows = r.json()
+        if not rows:
+            return None
+        # "GOLD" gibi geniş bir anahtar kelime CFTC'de birden fazla kontratı eşleştirebilir
+        # (ör. gerçek COMEX GOLD kontratı VS küçük, tokenize "PAX GOLD" türev kontratı).
+        # Önce en güncel rapor tarihine indirge, sonra o tarihteki en yüksek açık pozisyonlu
+        # (open interest) kontratı seç — bu güvenilir şekilde asıl/likit kontrattır.
+        latest_date = rows[0].get("report_date_as_yyyy_mm_dd")
+        candidates = [row for row in rows if row.get("report_date_as_yyyy_mm_dd") == latest_date] or rows
+        d = max(candidates, key=lambda row: int(float(row.get("open_interest_all", 0) or 0)))
         f = lambda k: int(float(d.get(k, 0) or 0))
         return {
             "date": d.get("report_date_as_yyyy_mm_dd", "")[:10],
@@ -51,6 +60,55 @@ COT = {
     "OANDA:SPX500USD": get_cot("E-MINI S&P 500"),
 }
 COT_JSON = _json.dumps({k: v for k, v in COT.items() if v})
+
+# ============ GÜNÜN ÖNEMLİ EKONOMİK HABERLERİ ============
+# Ücretsiz, anahtarsız/keyless ve Investing.com/ForexFactory gibi sitelerin kullanım şartlarını
+# ihlal etmeyen bir takvim kaynağı yok. Bu yüzden Finnhub'ın ücretsiz katmanını (finnhub.io/register,
+# ~1 dk, kredi kartı gerekmez) kullanıyoruz. Anahtar YOKSA panel bunu açıkça söyler, uydurma veri
+# göstermez.
+import datetime as _dt
+
+@st.cache_data(ttl=900)
+def get_econ_calendar():
+    key = ""
+    try:
+        key = st.secrets.get("FINNHUB_API_KEY", "")
+    except Exception:
+        key = ""
+    key = key or __import__("os").environ.get("FINNHUB_API_KEY", "")
+    if not key:
+        return {"available": False, "events": []}
+    try:
+        today = _dt.date.today()
+        r = requests.get(
+            "https://finnhub.io/api/v1/calendar/economic",
+            params={"from": today.isoformat(), "to": (today + _dt.timedelta(days=6)).isoformat(), "token": key},
+            timeout=8,
+        )
+        raw = r.json().get("economicCalendar", []) or []
+        wanted = {"US", "EU", "DE", "GB", "JP", "CN", "TR"}
+        out = []
+        for ev in raw:
+            if ev.get("impact") not in ("medium", "high"):
+                continue
+            if ev.get("country") not in wanted:
+                continue
+            out.append({
+                "time": ev.get("time"),
+                "country": ev.get("country"),
+                "event": ev.get("event"),
+                "impact": ev.get("impact"),
+                "actual": ev.get("actual"),
+                "estimate": ev.get("estimate"),
+                "prev": ev.get("prev"),
+                "unit": ev.get("unit"),
+            })
+        out.sort(key=lambda e: e.get("time") or "")
+        return {"available": True, "events": out[:14]}
+    except Exception:
+        return {"available": False, "events": []}
+
+ECON_JSON = _json.dumps(get_econ_calendar())
 
 TERMINAL_HTML = r"""
 <!DOCTYPE html>
@@ -166,8 +224,11 @@ iframe{height:100%;width:100%;border:0}
 <div id="app">
   <nav>
     <div class="brand"><img src="https://cdn.abacus.ai/images/0f498010-a0a5-4cf2-98cd-491f08add03c.png" alt="Valens Wealth"/><b>VALENS WEALTH</b></div>
-    <div class="tabs"><button class="tab active">TERMINAL</button><button class="tab">PORTFOLIO</button><button class="tab">RESEARCH</button><button class="tab">SETTINGS</button><button class="tab">ACCOUNT</button></div>
-    <div class="live"><i class="dot"></i> LIVE · <span id="clock"></span> UTC</div>
+    <div class="tabs"><button class="tab active" data-i18n="tab_terminal">TERMINAL</button><button class="tab" data-i18n="tab_portfolio">PORTFOLIO</button><button class="tab" data-i18n="tab_research">RESEARCH</button><button class="tab" data-i18n="tab_settings">SETTINGS</button><button class="tab" data-i18n="tab_account">ACCOUNT</button></div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <button id="langToggle" style="font:700 10px 'IBM Plex Mono';background:transparent;border:1px solid rgba(212,175,55,.35);color:var(--gold);padding:4px 9px;border-radius:4px;cursor:pointer;letter-spacing:.5px">EN</button>
+      <div class="live"><i class="dot"></i> <span data-i18n="live">LIVE</span> · <span id="clock"></span> UTC</div>
+    </div>
   </nav>
 
   <div class="ticker"><div class="ticklabel">LIVE</div><div class="tickscroll">
@@ -184,36 +245,36 @@ iframe{height:100%;width:100%;border:0}
 
   <main class="shell">
     <aside class="left">
-      <div class="ph"><b>ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge">CANLI</span></div>
-      <div class="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
+      <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
+      <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
       <div class="netdelta" id="netDelta">NET DELTA: — </div>
       <div id="flowFeed"></div>
     </aside>
 
     <section class="center">
-      <div class="megaalert" id="megaAlert"><span style="font-size:16px">🚨</span><div><b id="megaAlertTitle">YÜKSEK POTANSİYELLİ SCALP</b><br><span id="megaAlertBody">—</span></div></div>
+      <div class="megaalert" id="megaAlert"><span style="font-size:16px">🚨</span><div><b id="megaAlertTitle" data-i18n="mega_alert_title">YÜKSEK POTANSİYELLİ SCALP</b><br><span id="megaAlertBody">—</span></div></div>
 
       <div class="decision-desk">
         <div class="signal-main">
-          <div class="kicker"><span>AI SIGNAL ENGINE · <span id="sigPair">XAU/USD</span></span><em id="botStatus">● ÇALIŞIYOR</em></div>
+          <div class="kicker"><span><span data-i18n="signal_engine">AI SIGNAL ENGINE</span> · <span id="sigPair">XAU/USD</span></span><em id="botStatus" data-i18n="running">● ÇALIŞIYOR</em></div>
           <div class="signalrow"><div class="sigtxt" id="sigTxt">—</div><div class="conf" id="sigConf">—</div></div>
-          <div class="why" id="sigWhy">Bot indikatörleri okuyor…</div>
+          <div class="why" id="sigWhy" data-i18n="why_placeholder">Bot indikatörleri okuyor…</div>
           <div class="trigger wait" id="trigger">◇ GÖZLEM — Emir eşiği %87</div>
-          <div class="winrate" id="winRate">Geçmiş sinyal takibi: veri birikiyor…</div>
+          <div class="winrate" id="winRate" data-i18n="winrate_placeholder">Geçmiş sinyal takibi: veri birikiyor…</div>
           <div style="margin-top:5px;display:flex;gap:8px">
-            <a href="#" id="exportTrades" style="font:9px 'IBM Plex Mono';color:var(--blue);text-decoration:none">⬇ Geçmişi Dışa Aktar (.json)</a>
-            <label style="font:9px 'IBM Plex Mono';color:var(--blue);cursor:pointer">⬆ İçe Aktar<input type="file" id="importTrades" accept="application/json" style="display:none"></label>
+            <a href="#" id="exportTrades" style="font:9px 'IBM Plex Mono';color:var(--blue);text-decoration:none" data-i18n="export_btn">⬇ Geçmişi Dışa Aktar (.json)</a>
+            <label style="font:9px 'IBM Plex Mono';color:var(--blue);cursor:pointer"><span data-i18n="import_btn">⬆ İçe Aktar</span><input type="file" id="importTrades" accept="application/json" style="display:none"></label>
           </div>
         </div>
         <div class="tradecard">
-          <h4>⚡ SCALP PLAN <span class="tf">15M / 30M</span></h4>
-          <div class="levels"><div class="lev"><small>GİRİŞ</small><b class="entry" id="scEntry">—</b></div><div class="lev"><small>STOP</small><b class="stop" id="scStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="scTp">—</b></div></div>
+          <h4>⚡ <span data-i18n="scalp_plan">SCALP PLAN</span> <span class="tf">15M / 30M</span></h4>
+          <div class="levels"><div class="lev"><small data-i18n="entry_lbl">GİRİŞ</small><b class="entry" id="scEntry">—</b></div><div class="lev"><small data-i18n="stop_lbl">STOP</small><b class="stop" id="scStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="scTp">—</b></div></div>
           <div id="scStatus" class="trade-status wait">◇ GÖZLEM — Emir eşiği %87</div>
           <div class="pnl" id="scPnl">Hedef ≈ $250 @ 2.5 lot</div>
         </div>
         <div class="tradecard">
-          <h4>◆ SWING PLAN <span class="tf">1H / 4H</span></h4>
-          <div class="levels"><div class="lev"><small>GİRİŞ</small><b class="entry" id="swEntry">—</b></div><div class="lev"><small>STOP</small><b class="stop" id="swStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="swTp">—</b></div></div>
+          <h4>◆ <span data-i18n="swing_plan">SWING PLAN</span> <span class="tf">1H / 4H</span></h4>
+          <div class="levels"><div class="lev"><small data-i18n="entry_lbl">GİRİŞ</small><b class="entry" id="swEntry">—</b></div><div class="lev"><small data-i18n="stop_lbl">STOP</small><b class="stop" id="swStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="swTp">—</b></div></div>
           <div class="pnl" id="swPnl">Hedef ≈ $750 @ 2.5 lot</div>
         </div>
       </div>
@@ -224,16 +285,16 @@ iframe{height:100%;width:100%;border:0}
       </div>
 
       <div class="chartzone">
-        <div class="volprofile"><div class="vphead">📊 HACİM PROFİLİ</div><div id="vpBars"></div></div>
+        <div class="volprofile"><div class="vphead" data-i18n="vol_profile">📊 HACİM PROFİLİ</div><div id="vpBars"></div></div>
         <div class="chartwrap">
           <div id="valensChart"></div>
-          <div id="chartClosed">● PİYASA KAPALI<small id="chartClosedMsg">Hafta sonu — canlı veri akışı yok</small></div>
+          <div id="chartClosed"><span data-i18n="market_closed">● PİYASA KAPALI</span><small id="chartClosedMsg" data-i18n="weekend_msg">Hafta sonu — canlı veri akışı yok</small></div>
           <div class="zones" id="zones"></div>
         </div>
       </div>
 
       <div class="analysis">
-        <div class="atitle"><span>📊 CANLI GRAFİK ANALİZİ · <span id="anPair">XAU/USD</span> · 6 İNDİKATÖR + GRAFİK + HABER</span><em id="anStatus">● GÜNCELLENİYOR</em></div>
+        <div class="atitle"><span data-i18n="analysis_title_pre">📊 CANLI GRAFİK ANALİZİ ·</span> <span id="anPair">XAU/USD</span> <span data-i18n="analysis_title_post">· 12 GERÇEK İNDİKATÖR + GRAFİK + HABER</span><em id="anStatus" data-i18n="updating">● GÜNCELLENİYOR</em></div>
         <div class="stats">
           <div class="stat"><small>RSI (14)</small><b id="iRsi">—</b></div>
           <div class="stat"><small>MACD</small><b id="iMacd">—</b></div>
@@ -248,11 +309,11 @@ iframe{height:100%;width:100%;border:0}
           <div class="stat"><small>PARABOLIC SAR</small><b id="iPsar">—</b></div>
           <div class="stat"><small>PIVOT (P/R1/S1)</small><b id="iPivot">—</b></div>
         </div>
-        <p id="anText">Analiz motoru başlatılıyor…</p>
+        <p id="anText" data-i18n="analysis_starting">Analiz motoru başlatılıyor…</p>
       </div>
 
       <div class="upcoming">
-        <div class="atitle">🗓️ EKONOMİK TAKVİM · BUGÜN + YAKLAŞAN (CANLI) <span id="calDate"></span></div>
+        <div class="atitle"><span data-i18n="econ_calendar_title">🗓️ EKONOMİK TAKVİM · BUGÜN + YAKLAŞAN (CANLI)</span> <span id="calDate"></span></div>
         <div class="tradingview-widget-container" style="border-radius:6px;overflow:hidden;border:1px solid var(--line)">
           <div class="tradingview-widget-container__widget"></div>
           <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
@@ -267,32 +328,186 @@ iframe{height:100%;width:100%;border:0}
           }
           </script>
         </div>
-        <p style="font-size:8px;color:var(--muted);margin-top:4px">Kaynak: TradingView resmi Economic Calendar widget'ı (ücretsiz, gömme amaçlı sağlanır) · canlı ve otomatik güncellenir.</p>
+        <p style="font-size:8px;color:var(--muted);margin-top:4px" data-i18n="tv_source_note">Kaynak: TradingView resmi Economic Calendar widget'ı (ücretsiz, gömme amaçlı sağlanır) · canlı ve otomatik güncellenir.</p>
       </div>
 
-      <div class="bottomnote">AL/SAT sinyali; 12 gerçek indikatör (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + grafik çizimleri (trend/kanal/Fibonacci/S-R/mum formasyonu) + o günkü haber yönü (manuel) kombine edilerek üretilir. Stop/hedef mesafeleri gerçek ATR volatilitesine göre dinamik hesaplanır. Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. "Geçmiş başarı oranı" gerçekten üretilen sinyallerin TP/SL'ye önce ulaşma sonucundan hesaplanır — sabit/iddia edilen bir doğruluk yüzdesi değildir.</div>
+      <div class="bottomnote" data-i18n="bottomnote">AL/SAT sinyali; 12 gerçek indikatör (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + grafik çizimleri (trend/kanal/Fibonacci/S-R/mum formasyonu) + o günkü haber yönü (manuel/canlı) kombine edilerek üretilir. Stop/hedef mesafeleri gerçek ATR volatilitesine göre dinamik hesaplanır. Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. "Geçmiş başarı oranı" gerçekten üretilen sinyallerin TP/SL'ye önce ulaşma sonucundan hesaplanır — sabit/iddia edilen bir doğruluk yüzdesi değildir.</div>
     </section>
 
     <aside class="right">
-      <div class="ph"><b>MACRO EVENT ANALYSIS</b><span class="badge" id="macroDate"></span></div>
+      <div class="ph"><b data-i18n="macro_event_analysis">MACRO EVENT ANALYSIS</b><span class="badge" id="macroDate"></span></div>
       <article class="event" id="cotPanel" style="border-color:rgba(212,175,55,.4)">
-        <div class="eventtop">🏦 <b>COT RAPORU · Kurumsal Pozisyon</b><time id="cotDate">—</time></div>
-        <div class="eventbody" id="cotBody"><p style="color:var(--muted)">COT verisi yükleniyor…</p></div>
+        <div class="eventtop">🏦 <b data-i18n="cot_report">COT RAPORU · Kurumsal Pozisyon</b><time id="cotDate">—</time></div>
+        <div class="eventbody" id="cotBody"><p style="color:var(--muted)" data-i18n="cot_loading">COT verisi yükleniyor…</p></div>
       </article>
-      <article class="event"><div class="eventtop">🇪🇺 <b>ECB Faiz Kararı</b><time>15:15 UTC</time></div><div class="eventbody"><p>Beklenti: <strong>%2.40</strong> · Önceki: %2.40</p><div class="scenario bull"><b>▲ XAU ALIM:</b> Dovish ton USD'yi baskılarsa 4,085 test edilebilir.</div><div class="scenario bear"><b>▼ XAU SATIM:</b> Şahin söylem USD'yi güçlendirirse 4,040 / 4,000 izlenir.</div></div></article>
+      <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="todays_news">GÜNÜN ÖNEMLİ HABERLERİ</b><span class="badge" id="newsBadge">—</span></div>
+      <div id="newsEvents"><p style="color:var(--muted);font-size:10px;padding:9px" data-i18n="loading">Yükleniyor…</p></div>
     </aside>
   </main>
 </div>
 
 <script>
-const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+let LANG = localStorage.getItem('valens_lang')||'tr';
+const MONTHS = {
+ tr: ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'],
+ en: ['January','February','March','April','May','June','July','August','September','October','November','December']
+};
+const I18N = {
+ tr: {
+  live:'CANLI', order_flow_title:'ORDER FLOW · YÜKLÜ İŞLEMLER',
+  simwarn:"🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.",
+  mega_alert_title:'YÜKSEK POTANSİYELLİ SCALP', signal_engine:'AI SIGNAL ENGINE', running:'● ÇALIŞIYOR',
+  why_placeholder:'Bot indikatörleri okuyor…', winrate_placeholder:'Geçmiş sinyal takibi: veri birikiyor…',
+  export_btn:'⬇ Geçmişi Dışa Aktar (.json)', import_btn:'⬆ İçe Aktar',
+  scalp_plan:'SCALP PLAN', swing_plan:'SWING PLAN', entry_lbl:'GİRİŞ', stop_lbl:'STOP',
+  vol_profile:'📊 HACİM PROFİLİ', market_closed:'● PİYASA KAPALI', weekend_msg:'Hafta sonu — canlı veri akışı yok',
+  analysis_title_pre:'📊 CANLI GRAFİK ANALİZİ ·', analysis_title_post:'· 12 GERÇEK İNDİKATÖR + GRAFİK + HABER',
+  updating:'● GÜNCELLENİYOR', analysis_starting:'Analiz motoru başlatılıyor…',
+  econ_calendar_title:'🗓️ EKONOMİK TAKVİM · BUGÜN + YAKLAŞAN (CANLI)',
+  tv_source_note:"Kaynak: TradingView resmi Economic Calendar widget'ı (ücretsiz, gömme amaçlı sağlanır) · canlı ve otomatik güncellenir.",
+  bottomnote:'AL/SAT sinyali; 12 gerçek indikatör (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + grafik çizimleri (trend/kanal/Fibonacci/S-R/mum formasyonu) + o günkü haber yönü (manuel/canlı) kombine edilerek üretilir. Stop/hedef mesafeleri gerçek ATR volatilitesine göre dinamik hesaplanır. Grafik verisi Binance canlı feed\'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. "Geçmiş başarı oranı" gerçekten üretilen sinyallerin TP/SL\'ye önce ulaşma sonucundan hesaplanır — sabit/iddia edilen bir doğruluk yüzdesi değildir.',
+  macro_event_analysis:'MACRO EVENT ANALYSIS', cot_report:'COT RAPORU · Kurumsal Pozisyon', cot_loading:'COT verisi yükleniyor…',
+  todays_news:'GÜNÜN ÖNEMLİ HABERLERİ', loading:'Yükleniyor…',
+  tab_terminal:'TERMINAL', tab_portfolio:'PORTFOLIO', tab_research:'RESEARCH', tab_settings:'SETTINGS', tab_account:'ACCOUNT',
+  noDataStatus:'● VERİ YOK', noDataDesc:l=>'<b>'+l+'</b> için canlı OHLC/fiyat feed bağlantısı yok (bu enstrüman için gerçek veri kaynağı entegre edilmedi). Gerçek veri olmadan sinyal ve gösterge <b>üretilmiyor</b> — uydurma sayı göstermek yerine devre dışı bırakıldı.',
+  noDataTrigger:'● VERİ AKIŞI YOK — sinyal üretilmiyor', noDataStatusShort:'● VERİ YOK',
+  loadingStatus:'◇ YÜKLENİYOR', loadingDesc:l=>'Gerçek zamanlı OHLC verisi yükleniyor ('+l+')… veri gelince göstergeler ve sinyal motoru canlanacak.',
+  loadingTrigger:'◇ VERİ YÜKLENİYOR…',
+  marketClosedDesc:l=>'<b>'+l+'</b> piyasası şu an <b style="color:var(--red)">KAPALI</b>. Piyasa açılana kadar sinyal üretilmez.',
+  marketClosedTrigger:'● PİYASA KAPALI — sinyal yok',
+  watching:'◇ GÖZLEM', armedText:(dir)=>'⚡ EMİR TETİKLENDİ · '+dir+' · %',
+  netlik:' NETLİK', esik:' / %', mutabakat:' eşik · ', mutabakatSuffix:' mutabakat',
+  confidenceSuffix:'% CONFIDENCE · ', indicatorAgree:' indikatör mutabık',
+  confirmedTrade:'⚡ KESİN İŞLEM · ', watchingThreshold:'◇ GÖZLEM — Emir eşiği %',
+  targetProjection:(amt)=>'Hedefe ulaşırsa ≈ $'+amt+' @ 2.5 lot (projeksiyon, garanti değil)',
+  megaAlertBody:(dir,l,en,st,tp,amt)=>'Giriş '+en+' · Stop '+st+' · Hedef '+tp+' · Hedefe ulaşırsa ≈ $'+amt+' @ 2.5 lot (15-30M) — bu bir garanti değil, TP\'ye ulaşırsa oluşacak projeksiyondur.',
+  winBuilding:(n)=>'Geçmiş sinyal takibi: veri birikiyor ('+n+' sonuçlanan işlem) — güvenilir olması için en az birkaç düzine gerekir.',
+  winResult:(n,w,r)=>'Gerçek takip: son '+n+' sinyalden <b>'+w+'</b> kazandı → <b>%'+r+'</b> gerçekleşen başarı oranı (bu terminaldeki geçmiş sinyallerden hesaplanır, iddia edilen bir hedef değildir).',
+  aggConfirmNone:'3 MUM ONAY: Yok', aggConfirmYes:(dir)=>'3 MUM ONAY: '+dir+' · Güçlü teyit',
+  exportSuccess:null, importSuccess:'Sinyal geçmişi içe aktarıldı.', importFail:'Dosya okunamadı — geçerli bir Valens yedek dosyası olduğundan emin olun.',
+  newsApiMissing:'Canlı haber akışı için ücretsiz bir Finnhub API anahtarı gerekiyor (finnhub.io/register, ~1 dk, kart istemez) — Streamlit secrets\'e <code>FINNHUB_API_KEY</code> olarak eklenince bu panel otomatik dolar. Anahtar yokken uydurma haber gösterilmiyor.',
+  newsNoEvents:'Önümüzdeki günler için orta/yüksek etkili planlı haber bulunamadı.', newsNoTemplate:'Bu veri tipi için hazır senaryo şablonu yok — rakamları kendi analizinize göre değerlendirin.',
+  newsSame:'Sonuç beklentiyle aynı geldi — belirgin bir yön sinyali yok.',
+  newsBeat:'aştı', newsMiss:'ıskaladı', newsHigh:'YÜKSEK', newsMed:'ORTA',
+  ccyStrengthens:'güçlendirir', ccyWeakens:'zayıflatır',
+  xauPressureNote:' XAU/USD için genel eğilim: baskı (USD güçlü).', xauSupportNote:' XAU/USD için genel eğilim: destek (USD zayıf).',
+  xauPressureScenario:' → XAU/USD üzerinde baskı yönünde etki beklenir.', xauSupportScenario:' → XAU/USD üzerinde destekleyici etki beklenir.',
+  apiMissingBadge:'API YOK', newsCountBadge:n=>n+' HABER', defaultEventName:'Ekonomik Veri',
+  ruleNfp:'İstihdam verisi', ruleUnrate:'İşsizlik oranı', ruleClaims:'İşsizlik başvuruları', ruleCpi:'Enflasyon (CPI)',
+  ruleGdp:'GSYH (GDP)', ruleRetail:'Perakende satışlar', rulePmi:'PMI', ruleRate:'Faiz kararı', ruleTrade:'Dış ticaret dengesi',
+  noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir",
+  newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
+  newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+' PARA BİRİMİ:</b> '+label+' beklentiyi '+beatTxt+' → genellikle '+ccy+' para birimini '+dirTxt+'.'+extra,
+  newsScenarioBeat:(label,ccy,extra)=>'<b>▲ BEKLENTİ ÜSTÜ GELİRSE:</b> '+label+' güçlü gelirse, genellikle '+ccy+' para birimi güçlenir'+extra,
+  newsScenarioMiss:(label,ccy,extra)=>'<b>▼ BEKLENTİ ALTI GELİRSE:</b> '+label+' zayıf gelirse, genellikle '+ccy+' para birimi zayıflar'+extra,
+  newsBeatUp:'beklenti üstü', newsBeatDown:'beklenti altı', newsLive:'(bugünkü gerçek veriden — ', newsManual:' (manuel)',
+  newsData:'Haber',
+  cotNoData:'Bu enstrüman için COT verisi yok (CFTC yalnız vadeli piyasa raporlar).',
+  cotHedgeFunds:'HEDGE FONLAR (Spekülatör)', cotBanks:'BANKALAR / TİCARİ', cotNetLong:'NET LONG', cotNetShort:'NET SHORT',
+  cotLong:'Long', cotShort:'Short', cotSourceNote:'Kaynak: CFTC Legacy COT · her Salı kesiti Cuma yayınlanır.',
+  psarUpLbl:'▲ YÜKSELİŞ', psarDownLbl:'▼ DÜŞÜŞ', trendUp:'yükselen trend', trendDown:'düşen trend', trendFlat:'yatay',
+  srNearSupport:l=>'desteğe yakın ('+l+')', srNearResistance:l=>'dirence yakın ('+l+')',
+  anText: p => 'Bot 12 indikatörü '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> canlı hesaplıyor. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
+   ', EMA 50/'+(p.emaGolden?'200 üzeri':'200 altı')+', ATR <b>'+p.atr+'</b> (volatilite), fiyat VWAP\'ın '+(p.vwapAbove?'üzerinde':'altında')+
+   ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR '+(p.psarUp?'yükseliş':'düşüş')+' yönünde. '+
+   'Grafik: '+(p.trend>0?'yükselen trend':p.trend<0?'düşen trend':'yatay')+
+   (p.patternName?' · '+p.patternName:'')+ (p.srText?' · '+p.srText:'')+
+   '. Haber yönü'+(p.newsLive?' (bugünkü gerçek veriden — '+p.newsDetail+')':' (manuel)')+': '+(p.newsBias>0?'▲ pozitif':p.newsBias<0?'▼ negatif':'nötr')+
+   '. Bileşke: <b style="color:'+p.sigColor+'">'+p.sigText+'</b> — güven %'+p.conf+' · '+p.agreeCount+'/'+p.totalVotes+' indikatör aynı yönde.',
+  confSuffixLine:(conf,agree,total)=>conf+'% CONFIDENCE · '+agree+'/'+total+' indikatör mutabık',
+  armedTrigger:(dir,conf)=>'⚡ EMİR TETİKLENDİ · '+dir+' · %'+conf+' NETLİK',
+  waitTrigger:(conf,thr,agree,total)=>'◇ GÖZLEM · %'+conf+' / %'+thr+' eşik · '+agree+'/'+total+' mutabakat',
+  confirmedStatus:(dir,conf,time)=>'⚡ KESİN İŞLEM · '+dir+' · %'+conf+' · '+time,
+  waitStatus:(thr,conf)=>'◇ GÖZLEM — Emir eşiği %'+thr+' · %'+conf,
+  targetHit:(amt)=>'Hedefe ulaşırsa ≈ $'+amt+' @ 2.5 lot (projeksiyon, garanti değil)',
+  megaAlertTitleDyn:(dir,label)=>'🚨 YÜKSEK POTANSİYEL SCALP · '+dir+' · '+label,
+  megaAlertBodyDyn:(en,st,tp,amt)=>'Giriş '+en+' · Stop '+st+' · Hedef '+tp+' · Hedefe ulaşırsa ≈ $'+amt+' @ 2.5 lot (15-30M) — bu bir garanti değil, TP\'ye ulaşırsa oluşacak projeksiyondur.',
+ },
+ en: {
+  live:'LIVE', order_flow_title:'ORDER FLOW · LARGE TRADES',
+  simwarn:"🐋 Live whale orders shown for BTC/crypto (Binance). Forex/index flow is an aggregate simulation.",
+  mega_alert_title:'HIGH-POTENTIAL SCALP', signal_engine:'AI SIGNAL ENGINE', running:'● RUNNING',
+  why_placeholder:'Bot is reading indicators…', winrate_placeholder:'Historical signal tracking: gathering data…',
+  export_btn:'⬇ Export History (.json)', import_btn:'⬆ Import',
+  scalp_plan:'SCALP PLAN', swing_plan:'SWING PLAN', entry_lbl:'ENTRY', stop_lbl:'STOP',
+  vol_profile:'📊 VOLUME PROFILE', market_closed:'● MARKET CLOSED', weekend_msg:'Weekend — no live data feed',
+  analysis_title_pre:'📊 LIVE CHART ANALYSIS ·', analysis_title_post:'· 12 REAL INDICATORS + CHART + NEWS',
+  updating:'● UPDATING', analysis_starting:'Starting analysis engine…',
+  econ_calendar_title:'🗓️ ECONOMIC CALENDAR · TODAY + UPCOMING (LIVE)',
+  tv_source_note:"Source: TradingView's official Economic Calendar widget (free, provided for embedding) · updates live and automatically.",
+  bottomnote:'The BUY/SELL signal is produced by combining 12 real indicators (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + chart drawings (trend/channel/Fibonacci/S-R/candle pattern) + the day\'s news direction (manual/live). Stop/target distances are dynamically sized from real ATR volatility. Chart data comes from Binance\'s live feed (XAU→PAXG proxy). COT data comes from the official CFTC source. The "historical win rate" is computed from whether real generated signals actually reached TP or SL first — it is not a fixed or claimed accuracy figure.',
+  macro_event_analysis:'MACRO EVENT ANALYSIS', cot_report:'COT REPORT · Institutional Positioning', cot_loading:'Loading COT data…',
+  todays_news:"TODAY'S KEY NEWS", loading:'Loading…',
+  tab_terminal:'TERMINAL', tab_portfolio:'PORTFOLIO', tab_research:'RESEARCH', tab_settings:'SETTINGS', tab_account:'ACCOUNT',
+  noDataStatus:'● NO DATA', noDataDesc:l=>'No live OHLC/price feed is connected for <b>'+l+'</b> (no real data source is integrated for this instrument). No signal or indicator is <b>produced</b> without real data — disabled instead of showing a made-up number.',
+  noDataTrigger:'● NO DATA FEED — no signal produced', noDataStatusShort:'● NO DATA',
+  loadingStatus:'◇ LOADING', loadingDesc:l=>'Loading real-time OHLC data ('+l+')… indicators and the signal engine will come alive once data arrives.',
+  loadingTrigger:'◇ LOADING DATA…',
+  marketClosedDesc:l=>'<b>'+l+'</b> market is currently <b style="color:var(--red)">CLOSED</b>. No signal is produced until the market opens.',
+  marketClosedTrigger:'● MARKET CLOSED — no signal',
+  watching:'◇ WATCHING', armedText:(dir)=>'⚡ ORDER TRIGGERED · '+dir+' · ',
+  netlik:' CERTAINTY', esik:' / ', mutabakat:' threshold · ', mutabakatSuffix:' agreement',
+  confidenceSuffix:'% CONFIDENCE · ', indicatorAgree:' indicators agree',
+  confirmedTrade:'⚡ CONFIRMED TRADE · ', watchingThreshold:'◇ WATCHING — Order threshold %',
+  targetProjection:(amt)=>'If target is reached ≈ $'+amt+' @ 2.5 lots (projection, not guaranteed)',
+  megaAlertBody:(dir,l,en,st,tp,amt)=>'Entry '+en+' · Stop '+st+' · Target '+tp+' · If target is reached ≈ $'+amt+' @ 2.5 lots (15-30M) — this is not a guarantee, it is a projection if TP is reached.',
+  winBuilding:(n)=>'Historical signal tracking: gathering data ('+n+' resolved trades) — a reliable figure needs at least a few dozen.',
+  winResult:(n,w,r)=>'Real tracking: <b>'+w+'</b> of the last '+n+' signals won → <b>'+r+'%</b> realized win rate (computed from this terminal\'s own signal history, not a claimed target).',
+  aggConfirmNone:'3-CANDLE CONFIRM: None', aggConfirmYes:(dir)=>'3-CANDLE CONFIRM: '+dir+' · Strong confirmation',
+  exportSuccess:null, importSuccess:'Signal history imported.', importFail:'Could not read file — make sure it is a valid Valens backup file.',
+  newsApiMissing:'Live news requires a free Finnhub API key (finnhub.io/register, ~1 min, no card needed) — add it as <code>FINNHUB_API_KEY</code> in Streamlit secrets and this panel fills automatically. No made-up news is shown without a key.',
+  newsNoEvents:'No medium/high-impact scheduled news found for the coming days.', newsNoTemplate:'No ready-made scenario template for this data type — evaluate the raw numbers yourself.',
+  newsSame:'Result matched expectations — no clear directional signal.',
+  newsBeat:'beat', newsMiss:'missed', newsHigh:'HIGH', newsMed:'MEDIUM',
+  ccyStrengthens:'strengthens', ccyWeakens:'weakens',
+  xauPressureNote:' General tendency for XAU/USD: pressure (USD strong).', xauSupportNote:' General tendency for XAU/USD: support (USD weak).',
+  xauPressureScenario:' → typically pressures XAU/USD.', xauSupportScenario:' → typically supports XAU/USD.',
+  apiMissingBadge:'NO API', newsCountBadge:n=>n+' NEWS', defaultEventName:'Economic Data',
+  ruleNfp:'Employment data', ruleUnrate:'Unemployment rate', ruleClaims:'Jobless claims', ruleCpi:'Inflation (CPI)',
+  ruleGdp:'GDP', ruleRetail:'Retail sales', rulePmi:'PMI', ruleRate:'Rate decision', ruleTrade:'Trade balance',
+  noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required',
+  newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
+  newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+':</b> '+label+' '+beatTxt+' forecast → typically '+dirTxt+' '+ccy+'.'+extra,
+  newsScenarioBeat:(label,ccy,extra)=>'<b>▲ IF ABOVE FORECAST:</b> if '+label+' comes in strong, '+ccy+' typically strengthens'+extra,
+  newsScenarioMiss:(label,ccy,extra)=>'<b>▼ IF BELOW FORECAST:</b> if '+label+' comes in weak, '+ccy+' typically weakens'+extra,
+  newsBeatUp:'beat forecast', newsBeatDown:'missed forecast', newsLive:'(from today\'s real data — ', newsManual:' (manual)',
+  newsData:'News',
+  cotNoData:'No COT data for this instrument (CFTC only reports futures markets).',
+  cotHedgeFunds:'HEDGE FUNDS (Speculators)', cotBanks:'BANKS / COMMERCIALS', cotNetLong:'NET LONG', cotNetShort:'NET SHORT',
+  cotLong:'Long', cotShort:'Short', cotSourceNote:'Source: CFTC Legacy COT · each Tuesday cut is published Friday.',
+  psarUpLbl:'▲ UP', psarDownLbl:'▼ DOWN', trendUp:'uptrend', trendDown:'downtrend', trendFlat:'sideways',
+  srNearSupport:l=>'near support ('+l+')', srNearResistance:l=>'near resistance ('+l+')',
+  anText: p => 'The bot computes 12 indicators for '+p.label+' live from <b>real Binance OHLC data</b>. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
+   ', EMA 50/'+(p.emaGolden?'above 200':'below 200')+', ATR <b>'+p.atr+'</b> (volatility), price is '+(p.vwapAbove?'above':'below')+' VWAP'+
+   ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR pointing '+(p.psarUp?'up':'down')+'. '+
+   'Chart: '+(p.trend>0?'uptrend':p.trend<0?'downtrend':'sideways')+
+   (p.patternName?' · '+p.patternName:'')+ (p.srText?' · '+p.srText:'')+
+   '. News direction'+(p.newsLive?' (from today\'s real data — '+p.newsDetail+')':' (manual)')+': '+(p.newsBias>0?'▲ positive':p.newsBias<0?'▼ negative':'neutral')+
+   '. Combined: <b style="color:'+p.sigColor+'">'+p.sigText+'</b> — confidence %'+p.conf+' · '+p.agreeCount+'/'+p.totalVotes+' indicators aligned.',
+  confSuffixLine:(conf,agree,total)=>conf+'% CONFIDENCE · '+agree+'/'+total+' indicators agree',
+  armedTrigger:(dir,conf)=>'⚡ ORDER TRIGGERED · '+dir+' · %'+conf+' CERTAINTY',
+  waitTrigger:(conf,thr,agree,total)=>'◇ WATCHING · %'+conf+' / %'+thr+' threshold · '+agree+'/'+total+' agreement',
+  confirmedStatus:(dir,conf,time)=>'⚡ CONFIRMED TRADE · '+dir+' · %'+conf+' · '+time,
+  waitStatus:(thr,conf)=>'◇ WATCHING — Order threshold %'+thr+' · %'+conf,
+  targetHit:(amt)=>'If target is reached ≈ $'+amt+' @ 2.5 lots (projection, not guaranteed)',
+  megaAlertTitleDyn:(dir,label)=>'🚨 HIGH-POTENTIAL SCALP · '+dir+' · '+label,
+  megaAlertBodyDyn:(en,st,tp,amt)=>'Entry '+en+' · Stop '+st+' · Target '+tp+' · If target is reached ≈ $'+amt+' @ 2.5 lots (15-30M) — this is not a guarantee, it is a projection if TP is reached.',
+ }
+};
+function t(key){ const v=(I18N[LANG]&&I18N[LANG][key]); return v!==undefined? v : I18N.tr[key]; }
+function applyStaticI18N(){
+ document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.getAttribute('data-i18n')); });
+ document.documentElement.lang=LANG;
+ const btn=document.getElementById('langToggle'); if(btn) btn.textContent = LANG==='tr'?'EN':'TR';
+}
+function setDates(){
+ const n=new Date(), M=MONTHS[LANG]||MONTHS.tr;
+ document.getElementById('calDate').textContent=n.getDate()+' '+M[n.getMonth()]+' '+n.getFullYear();
+ document.getElementById('macroDate').textContent=n.getDate()+' '+M[n.getMonth()].toUpperCase();
+}
 function clock(){const n=new Date();document.getElementById('clock').textContent=n.toUTCString().slice(17,25);}
 clock();setInterval(clock,1000);
-(function setDates(){
-  const n=new Date();
-  document.getElementById('calDate').textContent=n.getDate()+' '+months[n.getMonth()]+' '+n.getFullYear();
-  document.getElementById('macroDate').textContent=n.getDate()+' '+months[n.getMonth()].toUpperCase();
-})();
+applyStaticI18N(); setDates();
 
 // contractSize: 1 lot'ta fiyat 1.0 birim hareket ederse oluşan USD kâr/zarar (broker'ınıza göre AYARLAYIN — bunlar tipik sektör varsayımlarıdır, garanti değildir)
 const SYMS={
@@ -448,8 +663,8 @@ function updateAggUI(){
   badge.style.background=topEval.side==='BUY'?'linear-gradient(90deg, rgba(0,200,150,.08), rgba(0,200,150,.18))':'linear-gradient(90deg, rgba(255,80,109,.08), rgba(255,80,109,.18))';
   badge.style.color=topEval.side==='BUY'?'var(--green)':(topEval.side==='SELL'?'var(--red)':'var(--gold)');
   let conf=lastNConsecutiveSame(CUR,INT,3);
-  if(conf){detail.innerHTML='3 MUM ONAY: '+(conf>0?'▲ BUY':'▼ SELL')+' · Güçlü teyit';detail.style.color=conf>0?'var(--green)':'var(--red)';}
-  else{detail.innerHTML='3 MUM ONAY: Yok';detail.style.color='var(--muted)';}
+  if(conf){detail.innerHTML=t('aggConfirmYes')(conf>0?'▲ BUY':'▼ SELL');detail.style.color=conf>0?'var(--green)':'var(--red)';}
+  else{detail.innerHTML=t('aggConfirmNone');detail.style.color='var(--muted)';}
 }
 
 // ============ GERÇEK SİNYAL BAŞARI TAKİBİ ============
@@ -493,22 +708,22 @@ function getWinRate(sym){
 function updateWinRateUI(){
   const el=document.getElementById('winRate'); if(!el)return;
   const wr=getWinRate(CUR);
-  if(wr.total<5){ el.textContent='Geçmiş sinyal takibi: veri birikiyor ('+wr.total+' sonuçlanan işlem) — güvenilir olması için en az birkaç düzine gerekir.'; return; }
-  el.innerHTML='Gerçek takip: son '+wr.total+' sinyalden <b>'+wr.wins+'</b> kazandı → <b>%'+wr.rate.toFixed(1)+'</b> gerçekleşen başarı oranı (bu terminaldeki geçmiş sinyallerden hesaplanır, iddia edilen bir hedef değildir).';
+  if(wr.total<5){ el.textContent=t('winBuilding')(wr.total); return; }
+  el.innerHTML=t('winResult')(wr.total,wr.wins,wr.rate.toFixed(1));
 }
 
 function marketClosedUI(){
  const cfg=SYMS[CUR];
- document.getElementById('sigTxt').textContent='● PİYASA KAPALI';
+ document.getElementById('sigTxt').textContent=t('market_closed');
  document.getElementById('sigTxt').style.color='var(--red)';
  document.getElementById('sigConf').textContent='—';
  document.getElementById('sigPair').textContent=cfg.label;
  document.getElementById('anPair').textContent=cfg.label;
  ['iRsi','iMacd','iEma','iBoll','iStoch','iAdx','iAtr','iVwap','iWr','iCci','iPsar','iPivot'].forEach(id=>{const e=document.getElementById(id);e.textContent='—';e.className='';});
- document.getElementById('anText').innerHTML='<b>'+cfg.label+'</b> piyasası şu an <b style="color:var(--red)">KAPALI</b>. Piyasa açılana kadar sinyal üretilmez.';
- const tg=document.getElementById('trigger');tg.className='trigger wait';tg.textContent='● PİYASA KAPALI — sinyal yok';
+ document.getElementById('anText').innerHTML=t('marketClosedDesc')(cfg.label);
+ const tg=document.getElementById('trigger');tg.className='trigger wait';tg.textContent=t('marketClosedTrigger');
  ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
- const sc=document.getElementById('scStatus');sc.className='trade-status wait';sc.textContent='● PİYASA KAPALI';
+ const sc=document.getElementById('scStatus');sc.className='trade-status wait';sc.textContent=t('market_closed');
  document.getElementById('megaAlert').classList.remove('show');
 }
 
@@ -522,18 +737,18 @@ function noLiveDataUI(reason){
  ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
  document.getElementById('megaAlert').classList.remove('show');
  if(reason==='feed-none'){
-   document.getElementById('sigTxt').textContent='● VERİ YOK';
+   document.getElementById('sigTxt').textContent=t('noDataStatus');
    document.getElementById('sigTxt').style.color='var(--muted)';
    document.getElementById('sigConf').textContent='—';
-   document.getElementById('anText').innerHTML='<b>'+cfg.label+'</b> için canlı OHLC/fiyat feed bağlantısı yok (bu enstrüman için gerçek veri kaynağı entegre edilmedi). Gerçek veri olmadan sinyal ve gösterge <b>üretilmiyor</b> — uydurma sayı göstermek yerine devre dışı bırakıldı.';
-   tg.className='trigger wait'; tg.textContent='● VERİ AKIŞI YOK — sinyal üretilmiyor';
-   sc.className='trade-status wait'; sc.textContent='● VERİ YOK';
+   document.getElementById('anText').innerHTML=t('noDataDesc')(cfg.label);
+   tg.className='trigger wait'; tg.textContent=t('noDataTrigger');
+   sc.className='trade-status wait'; sc.textContent=t('noDataStatusShort');
  } else {
-   document.getElementById('sigTxt').textContent='◇ YÜKLENİYOR';
+   document.getElementById('sigTxt').textContent=t('loadingStatus');
    document.getElementById('sigTxt').style.color='var(--gold)';
    document.getElementById('sigConf').textContent='—';
-   document.getElementById('anText').innerHTML='Gerçek zamanlı OHLC verisi yükleniyor ('+cfg.label+')… veri gelince göstergeler ve sinyal motoru canlanacak.';
-   tg.className='trigger wait'; tg.textContent='◇ VERİ YÜKLENİYOR…';
+   document.getElementById('anText').innerHTML=t('loadingDesc')(cfg.label);
+   tg.className='trigger wait'; tg.textContent=t('loadingTrigger');
    sc.className='trade-status wait'; sc.textContent='◇ YÜKLENİYOR';
  }
 }
@@ -547,6 +762,12 @@ function botTick(){
  if(!cr.indicators){ noLiveDataUI('loading'); return; }
 
  const {rsi,macd,ema50,ema200,bollPct,stoch,adx,atr,vwap,williamsR,cci,psar,pivots,lastClose:last}=cr.indicators;
+
+ // Haber yönü: gerçek zamanlı takvimden (bugün açıklanan, beklenti-vs-gerçekleşen) hesaplanan
+ // bias varsa ONU kullan; yoksa (API anahtarı yoksa ya da bugün ilgili haber yoksa) elle
+ // girilen sabit NEWS_BIAS'a düş.
+ const liveNewsBias = (window.valensNewsBias && typeof window.valensNewsBias[CUR]==='number') ? window.valensNewsBias[CUR] : null;
+ const effectiveNewsBias = liveNewsBias!==null ? liveNewsBias : (NEWS_BIAS[CUR]||0);
 
  // her indikatör kendi yönünü "oy" olarak verir (-1/0/+1) — hem skora hem de "kaç indikatör aynı yönde?" sayacına girer
  const votes={
@@ -564,7 +785,7 @@ function botTick(){
   pattern: cr.pattern||0,
   sr: typeof cr.srBias==='number'?Math.sign(cr.srBias):0,
   fib: typeof cr.fibBias==='number'?Math.sign(cr.fibBias):0,
-  news: Math.sign(NEWS_BIAS[CUR]||0)
+  news: Math.sign(effectiveNewsBias)
  };
  const weights={rsi:.5,macd:.6,ema:.5,boll:.3,stoch:.3,adx:.2,wr:.35,cci:.35,psar:.4,vwap:.25,trend:.6,pattern:.5,sr:1,fib:.4,news:1};
  let score=0;
@@ -588,7 +809,7 @@ function botTick(){
  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
  document.getElementById('sigTxt').textContent=sigText;
  document.getElementById('sigTxt').style.color=sigColor;
- document.getElementById('sigConf').textContent=conf+'% CONFIDENCE · '+agreeCount+'/'+totalVotes+' indikatör mutabık';
+ document.getElementById('sigConf').textContent=t('confSuffixLine')(conf,agreeCount,totalVotes);
  document.getElementById('sigPair').textContent=cfg.label;
  document.getElementById('anPair').textContent=cfg.label;
 
@@ -603,22 +824,20 @@ function botTick(){
  set('iVwap', fmt(vwap), last>vwap?1:-1);
  set('iWr', williamsR.toFixed(1), williamsR<-80?1:williamsR>-20?-1:0);
  set('iCci', cci.toFixed(1), cci>100?1:cci<-100?-1:0);
- set('iPsar', (psar?(psar.isUp?'▲ YÜKSELİŞ':'▼ DÜŞÜŞ'):'—'), psar?(psar.isUp?1:-1):0);
+ set('iPsar', (psar?(psar.isUp?t('psarUpLbl'):t('psarDownLbl')):'—'), psar?(psar.isUp?1:-1):0);
  set('iPivot', pivots?('P '+fmt(pivots.pp)+' / R1 '+fmt(pivots.r1)+' / S1 '+fmt(pivots.s1)):'—', 0);
 
- document.getElementById('anText').innerHTML=
-  'Bot 12 indikatörü '+cfg.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> canlı hesaplıyor. RSI <b>'+rsi.toFixed(1)+'</b>, MACD '+(macd>0?'pozitif':'negatif')+
-  ', EMA 50/'+(ema50>ema200?'200 üzeri':'200 altı')+', ATR <b>'+fmt(atr)+'</b> (volatilite), fiyat VWAP\'ın '+(last>vwap?'üzerinde':'altında')+
-  ', Williams %R <b>'+williamsR.toFixed(1)+'</b>, CCI <b>'+cci.toFixed(1)+'</b>, Parabolic SAR '+(psar&&psar.isUp?'yükseliş':'düşüş')+' yönünde. '+
-  'Grafik: '+((cr.trend||0)>0?'yükselen trend':(cr.trend||0)<0?'düşen trend':'yatay')+
-  ((cr.patternName)?' · '+cr.patternName:'')+
-  ((cr.srText)?' · '+cr.srText:'')+
-  '. Haber yönü (manuel): '+((NEWS_BIAS[CUR]||0)>0?'▲ pozitif':(NEWS_BIAS[CUR]||0)<0?'▼ negatif':'nötr')+
-  '. Bileşke: <b style="color:'+sigColor+'">'+sigText+'</b> — güven %'+conf+' · '+agreeCount+'/'+totalVotes+' indikatör aynı yönde.';
+ document.getElementById('anText').innerHTML = t('anText')({
+  label:cfg.label, rsi:rsi.toFixed(1), macdPos:macd>0, emaGolden:ema50>ema200, atr:fmt(atr), vwapAbove:last>vwap,
+  williamsR:williamsR.toFixed(1), cci:cci.toFixed(1), psarUp:psar&&psar.isUp, trend:cr.trend||0,
+  patternName:cr.patternName, srText:cr.srText,
+  newsLive:liveNewsBias!==null, newsDetail:(window.valensNewsDetail&&window.valensNewsDetail[CUR]||[]).slice(0,2).join(', ')||t('newsData'),
+  newsBias:effectiveNewsBias, sigColor, sigText, conf, agreeCount, totalVotes
+ });
 
  const tg=document.getElementById('trigger');
- if(armed){tg.className='trigger armed';tg.textContent='⚡ EMİR TETİKLENDİ · '+(rawDir>0?'BUY':'SELL')+' · %'+conf+' NETLİK';}
- else{tg.className='trigger wait';tg.textContent='◇ GÖZLEM · %'+conf+' / %'+THRESHOLD+' eşik · '+agreeCount+'/'+totalVotes+' mutabakat';}
+ if(armed){tg.className='trigger armed';tg.textContent=t('armedTrigger')(rawDir>0?'BUY':'SELL',conf);}
+ else{tg.className='trigger wait';tg.textContent=t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
 
  const scStatusEl=document.getElementById('scStatus');
  const alertBox=document.getElementById('megaAlert');
@@ -637,25 +856,25 @@ function botTick(){
    document.getElementById('swStop').textContent=fmt(swStopPx);
    document.getElementById('swTp').textContent=fmt(swTpPx);
    scStatusEl.className='trade-status armed';
-   scStatusEl.textContent='⚡ KESİN İŞLEM · '+(rawDir>0?'BUY':'SELL')+' · %'+conf+' · '+utc();
+   scStatusEl.textContent=t('confirmedStatus')(rawDir>0?'BUY':'SELL',conf,utc());
 
    // ---- Gerçek $ hedef potansiyeli (2.5 lot varsayımıyla) — GARANTİ DEĞİL, sadece TP'ye ulaşırsa oluşacak projeksiyon ----
    const scTpUsd = Math.abs(scTpPx-scEntryPx) * cfg.contractSize * 2.5;
-   document.getElementById('scPnl').textContent = 'Hedefe ulaşırsa ≈ $'+Math.round(scTpUsd).toLocaleString('en-US')+' @ 2.5 lot (projeksiyon, garanti değil)';
+   document.getElementById('scPnl').textContent = t('targetHit')(Math.round(scTpUsd).toLocaleString('en-US'));
    const swTpUsd = Math.abs(swTpPx-last) * cfg.contractSize * 2.5;
-   document.getElementById('swPnl').textContent = 'Hedefe ulaşırsa ≈ $'+Math.round(swTpUsd).toLocaleString('en-US')+' @ 2.5 lot (projeksiyon, garanti değil)';
+   document.getElementById('swPnl').textContent = t('targetHit')(Math.round(swTpUsd).toLocaleString('en-US'));
 
    if(scTpUsd>=1000){
      alertBox.classList.add('show');
-     document.getElementById('megaAlertTitle').textContent='🚨 YÜKSEK POTANSİYEL SCALP · '+(rawDir>0?'BUY':'SELL')+' · '+cfg.label;
-     document.getElementById('megaAlertBody').textContent='Giriş '+fmt(scEntryPx)+' · Stop '+fmt(scStopPx)+' · Hedef '+fmt(scTpPx)+' · Hedefe ulaşırsa ≈ $'+Math.round(scTpUsd).toLocaleString('en-US')+' @ 2.5 lot (15-30M) — bu bir garanti değil, TP\'ye ulaşırsa oluşacak projeksiyondur.';
+     document.getElementById('megaAlertTitle').textContent=t('megaAlertTitleDyn')(rawDir>0?'BUY':'SELL',cfg.label);
+     document.getElementById('megaAlertBody').textContent=t('megaAlertBodyDyn')(fmt(scEntryPx),fmt(scStopPx),fmt(scTpPx),Math.round(scTpUsd).toLocaleString('en-US'));
    } else { alertBox.classList.remove('show'); }
 
    logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx);
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
-   scStatusEl.textContent='◇ GÖZLEM — Emir eşiği %'+THRESHOLD+' · %'+conf;
+   scStatusEl.textContent=t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
  }
 
@@ -696,6 +915,16 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tab').forEach(y=>y.classList.remove('active')); x.classList.add('active');
 });
 
+document.getElementById('langToggle').addEventListener('click', ()=>{
+ LANG = LANG==='tr' ? 'en' : 'tr';
+ try{ localStorage.setItem('valens_lang', LANG); }catch(e){}
+ applyStaticI18N(); setDates();
+ botTick(); updateAggUI(); updateWinRateUI();
+ if(window.valensRenderCOT) window.valensRenderCOT(CUR);
+ if(window.valensRenderNews) window.valensRenderNews();
+ if(!isMarketOpen(CUR)) marketClosedUI();
+});
+
 // ---- Sinyal/işlem geçmişini yedekleme: veri sadece bu tarayıcıda saklanıyor (sunucuda değil).
 // Cihaz değiştirirseniz ya da tarayıcı verisini temizlerseniz kaybolur — bu yüzden dışa/içe aktarma var.
 document.getElementById('exportTrades').addEventListener('click', e=>{
@@ -715,8 +944,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
      const dump=JSON.parse(reader.result);
      Object.keys(dump).forEach(sym=>{ if(SYMS[sym]) saveTradeStore(sym, dump[sym]); });
      updateWinRateUI();
-     alert('Sinyal geçmişi içe aktarıldı.');
-   }catch(err){ alert('Dosya okunamadı — geçerli bir Valens yedek dosyası olduğundan emin olun.'); }
+     alert(t('importSuccess'));
+   }catch(err){ alert(t('importFail')); }
  };
  reader.readAsText(file);
 });
@@ -730,20 +959,112 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  function chg(n){return (n>0?'+':'')+Number(n).toLocaleString('en-US');}
  window.valensRenderCOT=function(sym){
    const c=COT[sym], body=document.getElementById('cotBody'), dEl=document.getElementById('cotDate');
-   if(!c){ dEl.textContent='—'; body.innerHTML='<p style="color:var(--muted)">Bu enstrüman için COT verisi yok (CFTC yalnız vadeli piyasa raporlar).</p>'; return; }
+   if(!c){ dEl.textContent='—'; body.innerHTML='<p style="color:var(--muted)">'+t('cotNoData')+'</p>'; return; }
    dEl.textContent=c.date;
    const fundNet=c.fund_long-c.fund_short, bankNet=c.bank_long-c.bank_short;
    body.innerHTML=
     '<p><b>'+c.market+'</b> · OI: '+fmt(c.oi)+'</p>'+
-    '<div class="scenario '+(fundNet>=0?'bull':'bear')+'"><b>'+(fundNet>=0?'▲':'▼')+' HEDGE FONLAR (Spekülatör):</b> '+
-      (fundNet>=0?'NET LONG':'NET SHORT')+' '+fmt(Math.abs(fundNet))+
-      '<br>Long '+fmt(c.fund_long)+' ('+chg(c.fund_dlong)+') · Short '+fmt(c.fund_short)+' ('+chg(c.fund_dshort)+')</div>'+
-    '<div class="scenario '+(bankNet>=0?'bull':'bear')+'"><b>'+(bankNet>=0?'▲':'▼')+' BANKALAR / TİCARİ:</b> '+
-      (bankNet>=0?'NET LONG':'NET SHORT')+' '+fmt(Math.abs(bankNet))+
-      '<br>Long '+fmt(c.bank_long)+' · Short '+fmt(c.bank_short)+'</div>'+
-    '<p style="font-size:8px;color:var(--muted);margin-top:5px">Kaynak: CFTC Legacy COT · her Salı kesiti Cuma yayınlanır.</p>';
+    '<div class="scenario '+(fundNet>=0?'bull':'bear')+'"><b>'+(fundNet>=0?'▲':'▼')+' '+t('cotHedgeFunds')+':</b> '+
+      (fundNet>=0?t('cotNetLong'):t('cotNetShort'))+' '+fmt(Math.abs(fundNet))+
+      '<br>'+t('cotLong')+' '+fmt(c.fund_long)+' ('+chg(c.fund_dlong)+') · '+t('cotShort')+' '+fmt(c.fund_short)+' ('+chg(c.fund_dshort)+')</div>'+
+    '<div class="scenario '+(bankNet>=0?'bull':'bear')+'"><b>'+(bankNet>=0?'▲':'▼')+' '+t('cotBanks')+':</b> '+
+      (bankNet>=0?t('cotNetLong'):t('cotNetShort'))+' '+fmt(Math.abs(bankNet))+
+      '<br>'+t('cotLong')+' '+fmt(c.bank_long)+' · '+t('cotShort')+' '+fmt(c.bank_short)+'</div>'+
+    '<p style="font-size:8px;color:var(--muted);margin-top:5px">'+t('cotSourceNote')+'</p>';
  };
  window.valensRenderCOT(CUR);
+})();
+</script>
+
+<script>
+/* ============ GÜNÜN ÖNEMLİ HABERLERİ + SENARYO ANALİZİ ============ */
+(function(){
+ const ECON = __ECON_DATA__; // {available, events:[{time,country,event,impact,actual,estimate,prev,unit}]}
+ window.valensNewsBias = {};   // botTick bunu okur; bir sembol için değer yoksa manuel NEWS_BIAS'a düşer
+ window.valensNewsDetail = {};
+
+ // Standart makro ilişki şablonları — ders kitabı seviyesinde genel eğilimlerdir, kesin tahmin DEĞİLDİR.
+ const RULES = [
+  {re:/non-?farm|nfp|payroll/i, higherIsCurrencyPositive:true, labelKey:'ruleNfp'},
+  {re:/unemployment rate/i, higherIsCurrencyPositive:false, labelKey:'ruleUnrate'},
+  {re:/jobless claims|unemployment claims/i, higherIsCurrencyPositive:false, labelKey:'ruleClaims'},
+  {re:/cpi|inflation/i, higherIsCurrencyPositive:true, labelKey:'ruleCpi'},
+  {re:/gdp/i, higherIsCurrencyPositive:true, labelKey:'ruleGdp'},
+  {re:/retail sales/i, higherIsCurrencyPositive:true, labelKey:'ruleRetail'},
+  {re:/pmi/i, higherIsCurrencyPositive:true, labelKey:'rulePmi'},
+  {re:/interest rate|rate decision/i, higherIsCurrencyPositive:true, labelKey:'ruleRate'},
+  {re:/trade balance/i, higherIsCurrencyPositive:true, labelKey:'ruleTrade'},
+ ];
+ function classify(name){ for(const r of RULES){ if(r.re.test(name||'')) return r; } return null; }
+ // Sembol fiyatı üzerindeki etki yönü para birimine göre TERS olabilir: USD hem XAUUSD hem EURUSD'de
+ // karşı/quote para birimidir (USD güçlenirse ikisi de düşer), ama EUR, EURUSD'de TABAN (base) para
+ // birimidir (EUR güçlenirse EURUSD YÜKSELİR) — bu yüzden tek bir yön formülü kullanmıyoruz.
+ const CCY_EFFECT = { US: {'OANDA:XAUUSD': -1, 'OANDA:EURUSD': -1}, EU: {'OANDA:EURUSD': 1} };
+ function countryFlag(c){return {US:'🇺🇸',EU:'🇪🇺',DE:'🇩🇪',GB:'🇬🇧',JP:'🇯🇵',CN:'🇨🇳',TR:'🇹🇷'}[c]||'🌐';}
+ function impStars(imp){return imp==='high'?('★★★ '+t('newsHigh')):('★★ '+t('newsMed'));}
+ function fmtTime(tm){ if(!tm) return '—'; try{ return new Date(tm).toISOString().slice(11,16)+' UTC'; }catch(e){ return tm; } }
+
+ function renderNews(){
+  const box=document.getElementById('newsEvents'), badge=document.getElementById('newsBadge');
+  if(!ECON.available){
+   badge.textContent=t('apiMissingBadge');
+   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px;line-height:1.6">'+t('newsApiMissing')+'</p>';
+   return;
+  }
+  const events=ECON.events||[];
+  if(!events.length){ badge.textContent=t('newsCountBadge')(0); box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px">'+t('newsNoEvents')+'</p>'; return; }
+  badge.textContent=t('newsCountBadge')(events.length);
+  let html='';
+  events.forEach(ev=>{
+   const rule=classify(ev.event);
+   const label=rule?t(rule.labelKey):null;
+   const released = ev.actual!==null && ev.actual!==undefined && ev.actual!=='';
+   html+='<article class="event"><div class="eventtop">'+countryFlag(ev.country)+' <b>'+(ev.event||t('defaultEventName'))+'<span class="imp">'+impStars(ev.impact)+'</span></b><time>'+fmtTime(ev.time)+'</time></div><div class="eventbody">';
+   html+='<p>'+t('newsExpectLbl')+': <strong>'+(ev.estimate??'—')+'</strong> · '+t('newsPrevLbl')+': '+(ev.prev??'—')+(released?(' · '+t('newsActualLbl')+': <strong>'+ev.actual+'</strong>'):'')+'</p>';
+   if(!rule){
+    html+='<p style="font-size:9px;color:var(--muted)">'+t('newsNoTemplate')+'</p>';
+   } else if(released){
+    const est=parseFloat(ev.estimate), act=parseFloat(ev.actual);
+    if(!isNaN(est)&&!isNaN(act)&&est!==act){
+     const beat=act>est, ccyPos=rule.higherIsCurrencyPositive?beat:!beat;
+     const extra = ev.country==='US' ? (ccyPos?t('xauPressureNote'):t('xauSupportNote')) : '';
+     html+='<div class="scenario '+(ccyPos?'bull':'bear')+'">'+t('newsCcyResult')(ccyPos?'▲':'▼', ev.country, label, beat?t('newsBeat'):t('newsMiss'), ccyPos?t('ccyStrengthens'):t('ccyWeakens'), extra)+'</div>';
+    } else { html+='<p style="font-size:9px;color:var(--muted)">'+t('newsSame')+'</p>'; }
+   } else {
+    const extraBull = ev.country==='US' ? t('xauPressureScenario') : '.';
+    const extraBear = ev.country==='US' ? t('xauSupportScenario') : '.';
+    html+='<div class="scenario bull">'+t('newsScenarioBeat')(label, ev.country, extraBull)+'</div>';
+    html+='<div class="scenario bear">'+t('newsScenarioMiss')(label, ev.country, extraBear)+'</div>';
+   }
+   html+='</div></article>';
+  });
+  box.innerHTML=html;
+ }
+ window.valensRenderNews = renderNews;
+
+ function computeNewsBias(){
+  const bias={}, detail={}, todayStr=new Date().toISOString().slice(0,10);
+  (ECON.events||[]).forEach(ev=>{
+   if(!ev.time || !ev.time.startsWith(todayStr)) return; // sadece BUGÜN gerçekleşen/gerçekleşecek haberler
+   const released = ev.actual!==null && ev.actual!==undefined && ev.actual!=='';
+   if(!released) return; // gerçekleşmemiş haberin yönünü önceden bilemeyiz — tahmin uydurmuyoruz
+   const rule=classify(ev.event); if(!rule) return;
+   const est=parseFloat(ev.estimate), act=parseFloat(ev.actual);
+   if(isNaN(est)||isNaN(act)||est===act) return;
+   const beat=act>est, ccyPos=rule.higherIsCurrencyPositive?beat:!beat, w=ev.impact==='high'?0.6:0.3;
+   const effects=CCY_EFFECT[ev.country]||{};
+   Object.keys(effects).forEach(sym=>{
+    const dir = ccyPos? effects[sym] : -effects[sym];
+    bias[sym]=(bias[sym]||0)+dir*w;
+    detail[sym]=detail[sym]||[]; detail[sym].push((ev.event||t('newsData'))+' ('+(beat?t('newsBeatUp'):t('newsBeatDown'))+')');
+   });
+  });
+  Object.keys(bias).forEach(sym=>{ bias[sym]=Math.max(-1,Math.min(1,bias[sym])); });
+  window.valensNewsBias=bias; window.valensNewsDetail=detail;
+ }
+
+ renderNews();
+ computeNewsBias();
 })();
 </script>
 
@@ -958,8 +1279,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const slope=(w.length*sxy-sx*sy)/(w.length*sxx-sx*sx);
   const cfg=SYMS[curSym]; let srBias=0, srText='';
   if(cfg){cfg.sr.forEach(s=>{const mid=(s.lo+s.hi)/2,dist=Math.abs(last-mid)/last;
-    if(dist<0.004){ if(s.type==='s'){srBias=0.5;srText='desteğe yakın ('+s.label+')';}
-                    else{srBias=-0.5;srText='dirence yakın ('+s.label+')';} }});}
+    if(dist<0.004){ if(s.type==='s'){srBias=0.5;srText=t('srNearSupport')(s.label);}
+                    else{srBias=-0.5;srText=t('srNearResistance')(s.label);} }});}
   let fibBias=0;
   if(fibLines.length){const up=slope>0;const diff=res-sup;const f618=up?res-diff*0.618:sup+diff*0.618;
     if(Math.abs(last-f618)/last<0.004) fibBias=up?0.4:-0.4;}
@@ -1059,7 +1380,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(!binSym){
    window.valensChartRead={hasLiveData:false};
    closedEl.style.display='flex';
-   closedEl.innerHTML='● CANLI VERİ YOK<small>Bu enstrüman için Binance feed\'i yok — TwelveData/OANDA API gerekir</small>';
+   closedEl.innerHTML='<span>'+t('noLiveFeedTitle')+'</span><small>'+t('noLiveFeedDesc')+'</small>';
    drawSRLines(); chart.priceScale('right').applyOptions({autoScale:true}); return;
   }
   window.valensChartRead={};
@@ -1079,5 +1400,5 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 </html>
 """
 
-TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON)
+TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON)
 components.html(TERMINAL_HTML, height=1180, scrolling=True)
