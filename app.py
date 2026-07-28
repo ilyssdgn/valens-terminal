@@ -285,7 +285,7 @@ const NEWS_BIAS={
  'OANDA:EURUSD': -0.3,
  'OANDA:SPX500USD': +0.4
 };
-// Grafik motorunun canlı okuması buraya yazılır (trend/pattern/S-R/fib)
+// Grafik motorunun canlı okuması buraya yazılır (trend/pattern/S-R/fib + gerçek indikatörler)
 window.valensChartRead={};
 
 function isMarketOpen(sym){
@@ -339,7 +339,9 @@ function addFlow(){
  if(CUR==='BINANCE:BTCUSDT')return;
  const cfg=SYMS[CUR], buy=Math.random()>0.5;
  const lots=Math.round(rnd(80,650)/10)*10;
- const px=cfg.price+rnd(-cfg.step*2,cfg.step*2);
+ const cr=window.valensChartRead||{};
+ const basePx=(cr.indicators && cr.indicators.lastClose)?cr.indicators.lastClose:cfg.price;
+ const px=basePx+rnd(-cfg.step*2,cfg.step*2);
  const fmt=px.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
  const tag=flowTags[Math.floor(Math.random()*flowTags.length)];
  netLots += buy?lots:-lots;
@@ -417,15 +419,6 @@ function updateAggUI(){
   else{detail.innerHTML='3 MUM ONAY: Yok';detail.style.color='var(--muted)';}
 }
 
-let price, hist=[];
-function seedHist(){
- const cfg=SYMS[CUR]; price=cfg.price; hist=[];
- for(let i=0;i<220;i++){ price+=rnd(-cfg.step,cfg.step*0.95); hist.push(price); }
- price=cfg.price;
-}
-function ema(arr,p){let k=2/(p+1),e=arr[0];for(let i=1;i<arr.length;i++)e=arr[i]*k+e*(1-k);return e;}
-function calcRSI(arr,p){let g=0,l=0;for(let i=arr.length-p;i<arr.length;i++){let d=arr[i]-arr[i-1];if(d>=0)g+=d;else l-=d;}if(l===0)return 100;let rs=(g/p)/(l/p);return 100-100/(1+rs);}
-
 function marketClosedUI(){
  const cfg=SYMS[CUR];
  document.getElementById('sigTxt').textContent='● PİYASA KAPALI';
@@ -440,19 +433,40 @@ function marketClosedUI(){
  const sc=document.getElementById('scStatus');sc.className='trade-status wait';sc.textContent='● PİYASA KAPALI';
 }
 
+function noLiveDataUI(reason){
+ const cfg=SYMS[CUR];
+ document.getElementById('sigPair').textContent=cfg.label;
+ document.getElementById('anPair').textContent=cfg.label;
+ ['iRsi','iMacd','iEma','iBoll','iStoch','iAdx'].forEach(id=>{const e=document.getElementById(id);e.textContent='—';e.className='';});
+ const tg=document.getElementById('trigger');
+ const sc=document.getElementById('scStatus');
+ ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
+ if(reason==='feed-none'){
+   document.getElementById('sigTxt').textContent='● VERİ YOK';
+   document.getElementById('sigTxt').style.color='var(--muted)';
+   document.getElementById('sigConf').textContent='—';
+   document.getElementById('anText').innerHTML='<b>'+cfg.label+'</b> için canlı OHLC/fiyat feed bağlantısı yok (bu enstrüman için gerçek veri kaynağı entegre edilmedi). Gerçek veri olmadan sinyal ve gösterge <b>üretilmiyor</b> — uydurma sayı göstermek yerine devre dışı bırakıldı.';
+   tg.className='trigger wait'; tg.textContent='● VERİ AKIŞI YOK — sinyal üretilmiyor';
+   sc.className='trade-status wait'; sc.textContent='● VERİ YOK';
+ } else {
+   document.getElementById('sigTxt').textContent='◇ YÜKLENİYOR';
+   document.getElementById('sigTxt').style.color='var(--gold)';
+   document.getElementById('sigConf').textContent='—';
+   document.getElementById('anText').innerHTML='Gerçek zamanlı OHLC verisi yükleniyor ('+cfg.label+')… veri gelince göstergeler ve sinyal motoru canlanacak.';
+   tg.className='trigger wait'; tg.textContent='◇ VERİ YÜKLENİYOR…';
+   sc.className='trade-status wait'; sc.textContent='◇ YÜKLENİYOR';
+ }
+}
+
 function botTick(){
  if(!isMarketOpen(CUR)){ marketClosedUI(); return; }
  const cfg=SYMS[CUR];
- price+=rnd(-cfg.step*1.1,cfg.step*0.98); hist.push(price); if(hist.length>240)hist.shift();
- const last=hist[hist.length-1];
- const rsi=calcRSI(hist,14);
- const macd=ema(hist.slice(-40),12)-ema(hist.slice(-60),26);
- const ema50=ema(hist.slice(-90),50), ema200=ema(hist.slice(-200),200);
- const sma20=hist.slice(-20).reduce((a,b)=>a+b,0)/20;
- const sd=Math.sqrt(hist.slice(-20).reduce((a,b)=>a+(b-sma20)**2,0)/20);
- const bollUp=sma20+2*sd, bollLo=sma20-2*sd, bollPct=((last-bollLo)/((bollUp-bollLo)||1))*100;
- const win=hist.slice(-14), hi=Math.max(...win), lo=Math.min(...win), stoch=((last-lo)/((hi-lo)||1))*100;
- const adx=Math.min(60,Math.abs(macd/cfg.pipVal)*0.4+rnd(12,26));
+ const cr=window.valensChartRead||{};
+
+ if(cr.hasLiveData===false){ noLiveDataUI('feed-none'); return; }
+ if(!cr.indicators){ noLiveDataUI('loading'); return; }
+
+ const {rsi,macd,ema50,ema200,bollPct,stoch,adx,lastClose:last}=cr.indicators;
 
  let score=0;
  score+= rsi>55?0.5: rsi<45?-0.5:0;
@@ -463,12 +477,11 @@ function botTick(){
  score+= adx>25?(macd>0?0.2:-0.2):0;
 
  // ---- GRAFİKTEN ÇİZİLENLERİ KOMBİNE ET ----
- const cr=window.valensChartRead||{};
  if(cr.trend) score+= cr.trend*0.6;
  if(cr.pattern) score+= cr.pattern*0.5;
  if(typeof cr.srBias==='number') score+= cr.srBias;
  if(typeof cr.fibBias==='number') score+= cr.fibBias;
- // ---- O GÜNKÜ HABER YÖNÜ ----
+ // ---- O GÜNKÜ HABER YÖNÜ (manuel girilen sabit bias, NLP/otomatik değildir) ----
  score+= (NEWS_BIAS[CUR]||0);
 
  const conf=Math.min(96,Math.max(52,Math.round(50+Math.abs(score)*18+rnd(-3,3))));
@@ -498,13 +511,13 @@ function botTick(){
  set('iAdx', adx.toFixed(1), adx>25?1:0);
 
  document.getElementById('anText').innerHTML=
-  'Bot 6 indikatörü '+cfg.label+' üzerinde canlı okuyor. RSI <b>'+rsi.toFixed(1)+'</b> ('+(rsi>55?'alıcı':rsi<45?'satıcı':'nötr')+'), MACD '+(macd>0?'pozitif':'negatif')+
+  'Bot 6 indikatörü '+cfg.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> canlı hesaplıyor. RSI <b>'+rsi.toFixed(1)+'</b> ('+(rsi>55?'alıcı':rsi<45?'satıcı':'nötr')+'), MACD '+(macd>0?'pozitif':'negatif')+
   ', EMA 50/'+(ema50>ema200?'200 üzeri':'200 altı')+'. Bollinger %<b>'+bollPct.toFixed(0)+'</b>, Stoch <b>'+stoch.toFixed(1)+
-  '</b>, ADX <b>'+adx.toFixed(1)+'</b>. '+
+  '</b>, ADX <b>'+adx.toFixed(1)+'</b> (gerçek Wilder ADX). '+
   'Grafik: '+((cr.trend||0)>0?'yükselen trend':(cr.trend||0)<0?'düşen trend':'yatay')+
   ((cr.patternName)?' · '+cr.patternName:'')+
   ((cr.srText)?' · '+cr.srText:'')+
-  '. Haber yönü: '+((NEWS_BIAS[CUR]||0)>0?'▲ pozitif':(NEWS_BIAS[CUR]||0)<0?'▼ negatif':'nötr')+
+  '. Haber yönü (manuel): '+((NEWS_BIAS[CUR]||0)>0?'▲ pozitif':(NEWS_BIAS[CUR]||0)<0?'▼ negatif':'nötr')+
   '. Bileşke: <b style="color:'+sigColor+'">'+sigText+'</b> — güven %'+conf+'.';
 
  const tg=document.getElementById('trigger');
@@ -535,7 +548,7 @@ function botTick(){
 }
 
 function switchSymbol(sym){
- CUR=sym; seedHist(); loadChart(); drawZones(); drawVolProfile();
+ CUR=sym; loadChart(); drawZones(); drawVolProfile();
  feed.innerHTML=''; netLots=0; flowLog=[];
  window.valensChartRead={};
  for(let i=0;i<4;i++) addFlow(); botTick();
@@ -544,7 +557,7 @@ function switchSymbol(sym){
  if(window.valensRenderCOT) window.valensRenderCOT(sym);
 }
 
-seedHist(); loadChart(); drawZones(); drawVolProfile();
+loadChart(); drawZones(); drawVolProfile();
 for(let i=0;i<4;i++) addFlow(); botTick();
 setInterval(addFlow, 4500);
 setInterval(botTick, 3000);
@@ -589,7 +602,7 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
 </script>
 
 <script>
-/* ============ VALENS CANLI GRAFİK + OTOMATİK ÇİZİM MOTORU ============ */
+/* ============ VALENS CANLI GRAFİK + OTOMATİK ÇİZİM MOTORU + GERÇEK İNDİKATÖR HESABI ============ */
 (function(){
  const el=document.getElementById('valensChart');
  if(!el||!window.LightweightCharts)return;
@@ -615,6 +628,63 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  const closedEl=document.getElementById('chartClosed');
 
  const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
+ function emaValue(closes,period){
+  if(!closes.length)return null;
+  const k=2/(period+1); let e=closes[0];
+  for(let i=1;i<closes.length;i++) e=closes[i]*k+e*(1-k);
+  return e;
+ }
+ function calcRSIReal(closes,period){
+  if(closes.length<period+1)return null;
+  let gains=0,losses=0;
+  for(let i=closes.length-period;i<closes.length;i++){
+   const d=closes[i]-closes[i-1];
+   if(d>=0)gains+=d; else losses-=d;
+  }
+  const avgGain=gains/period, avgLoss=losses/period;
+  if(avgLoss===0)return 100;
+  const rs=avgGain/avgLoss;
+  return 100-100/(1+rs);
+ }
+ function calcBollPct(closes,period){
+  if(closes.length<period)return null;
+  const w=closes.slice(-period), sma=w.reduce((a,b)=>a+b,0)/period;
+  const sd=Math.sqrt(w.reduce((a,b)=>a+(b-sma)**2,0)/period);
+  const up=sma+2*sd, lo=sma-2*sd;
+  return ((closes[closes.length-1]-lo)/((up-lo)||1))*100;
+ }
+ function calcStoch(candles,period){
+  if(candles.length<period)return null;
+  const w=candles.slice(-period);
+  const hi=Math.max(...w.map(c=>c.high)), lo=Math.min(...w.map(c=>c.low));
+  const last=candles[candles.length-1].close;
+  return ((last-lo)/((hi-lo)||1))*100;
+ }
+ function calcADXReal(candles,period){
+  if(candles.length<period*2+1)return null;
+  let trs=[],plusDMs=[],minusDMs=[];
+  for(let i=1;i<candles.length;i++){
+   const cur=candles[i],prev=candles[i-1];
+   const upMove=cur.high-prev.high, downMove=prev.low-cur.low;
+   plusDMs.push((upMove>downMove&&upMove>0)?upMove:0);
+   minusDMs.push((downMove>upMove&&downMove>0)?downMove:0);
+   trs.push(Math.max(cur.high-cur.low,Math.abs(cur.high-prev.close),Math.abs(cur.low-prev.close)));
+  }
+  function wilder(arr,p){
+   let out=[],sum=arr.slice(0,p).reduce((a,b)=>a+b,0); out.push(sum);
+   for(let i=p;i<arr.length;i++){ sum=out[out.length-1]-(out[out.length-1]/p)+arr[i]; out.push(sum); }
+   return out;
+  }
+  const trSm=wilder(trs,period), plusSm=wilder(plusDMs,period), minusSm=wilder(minusDMs,period);
+  let dxs=[];
+  for(let i=0;i<trSm.length;i++){
+   const pDI=100*(plusSm[i]/(trSm[i]||1e-9)), mDI=100*(minusSm[i]/(trSm[i]||1e-9));
+   dxs.push(100*Math.abs(pDI-mDI)/((pDI+mDI)||1));
+  }
+  const tail=dxs.slice(-period);
+  return tail.reduce((a,b)=>a+b,0)/tail.length;
+ }
+
  function supRes(a){const s=a.slice(-60);let hi=-1e12,lo=1e12;s.forEach(c=>{if(c.high>hi)hi=c.high;if(c.low<lo)lo=c.low;});return{sup:lo,res:hi};}
  function pattern(a){
   if(a.length<2)return null;const c=a[a.length-1],p=a[a.length-2];
@@ -678,8 +748,8 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
     color:pat.d==='bull'?'#00c896':'#ff506d',shape:pat.d==='bull'?'arrowUp':'arrowDown',text:pat.n}]);
   }
 
-  // ---- BOTA GÖNDER: trend / pattern / S-R / fib okuması ----
   const last=ohlc[ohlc.length-1].close;
+  const closes=ohlc.map(c=>c.close);
   const w=ohlc.slice(-60); let sx=0,sy=0,sxy=0,sxx=0;
   w.forEach((c,i)=>{sx+=i;sy+=c.close;sxy+=i*c.close;sxx+=i*i;});
   const slope=(w.length*sxy-sx*sy)/(w.length*sxx-sx*sx);
@@ -690,11 +760,32 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
   let fibBias=0;
   if(fibLines.length){const up=slope>0;const diff=res-sup;const f618=up?res-diff*0.618:sup+diff*0.618;
     if(Math.abs(last-f618)/last<0.004) fibBias=up?0.4:-0.4;}
+
+  // ---- GERÇEK İNDİKATÖRLER: gerçek OHLC'den hesaplanır (rastgele değil) ----
+  const rsiReal=calcRSIReal(closes,14);
+  const macdReal=(emaValue(closes.slice(-40),12)||last)-(emaValue(closes.slice(-60),26)||last);
+  const ema50Real=emaValue(closes.slice(-90),50)||last;
+  const ema200Real=emaValue(closes,200)||last;
+  const bollPctReal=calcBollPct(closes,20);
+  const stochReal=calcStoch(ohlc,14);
+  const adxReal=calcADXReal(ohlc,14);
+
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
     pattern: pat?(pat.d==='bull'?1:pat.d==='bear'?-1:0):0,
     patternName: pat?pat.n:'',
-    srBias, srText, fibBias
+    srBias, srText, fibBias,
+    hasLiveData:true,
+    indicators:{
+      rsi: rsiReal!==null?rsiReal:50,
+      macd: macdReal,
+      ema50: ema50Real,
+      ema200: ema200Real,
+      bollPct: bollPctReal!==null?bollPctReal:50,
+      stoch: stochReal!==null?stochReal:50,
+      adx: adxReal!==null?adxReal:15,
+      lastClose: last
+    }
   };
  }
  async function loadHistory(){
@@ -749,13 +840,14 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
   if(dynSup){cs.removePriceLine(dynSup);dynSup=null;}
   if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
   ohlc=[]; cs.setData([]);
-  window.valensChartRead={};
   binSym=MAP[sym];
   if(!binSym){
+   window.valensChartRead={hasLiveData:false};
    closedEl.style.display='flex';
    closedEl.innerHTML='● CANLI VERİ YOK<small>Bu enstrüman için Binance feed\'i yok — TwelveData/OANDA API gerekir</small>';
    drawSRLines(); chart.priceScale('right').applyOptions({autoScale:true}); return;
   }
+  window.valensChartRead={};
   closedEl.style.display='none';
   loadHistory().then(()=>{
     drawSRLines(); connect(); connectTrades();
