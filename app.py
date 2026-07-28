@@ -200,6 +200,10 @@ iframe{height:100%;width:100%;border:0}
           <div class="why" id="sigWhy">Bot indikatörleri okuyor…</div>
           <div class="trigger wait" id="trigger">◇ GÖZLEM — Emir eşiği %87</div>
           <div class="winrate" id="winRate">Geçmiş sinyal takibi: veri birikiyor…</div>
+          <div style="margin-top:5px;display:flex;gap:8px">
+            <a href="#" id="exportTrades" style="font:9px 'IBM Plex Mono';color:var(--blue);text-decoration:none">⬇ Geçmişi Dışa Aktar (.json)</a>
+            <label style="font:9px 'IBM Plex Mono';color:var(--blue);cursor:pointer">⬆ İçe Aktar<input type="file" id="importTrades" accept="application/json" style="display:none"></label>
+          </div>
         </div>
         <div class="tradecard">
           <h4>⚡ SCALP PLAN <span class="tf">15M / 30M</span></h4>
@@ -248,10 +252,22 @@ iframe{height:100%;width:100%;border:0}
       </div>
 
       <div class="upcoming">
-        <div class="atitle">🗓️ YAKLAŞAN ÖNEMLİ HABERLER · <span id="calDate"></span></div>
-        <div class="newsrow"><div class="tm">15:15<br>UTC</div><div class="body"><b>🇪🇺 ECB Faiz Kararı<span class="imp">★★★ YÜKSEK</span></b><p>Beklenti %2.40 · Önceki %2.40</p><div class="exp"><b>Beklenti:</b> Faiz sabit tahmin ediliyor. Lagarde'ın basın toplantısındaki ton belirleyici.</div></div></div>
-        <div class="newsrow"><div class="tm">15:30<br>UTC</div><div class="body"><b>🇺🇸 US İşsizlik Başvuruları<span class="imp">★★★ YÜKSEK</span></b><p>Beklenti 215K · Önceki 209K</p><div class="exp"><b>Beklenti:</b> Beklenti altı veri USD'yi destekler, altın için baskı.</div></div></div>
-        <p style="font-size:8px;color:var(--muted);margin-top:4px">⚠ Bu takvim manuel örnek veridir · veriler doğrulama gerektirir.</p>
+        <div class="atitle">🗓️ EKONOMİK TAKVİM · BUGÜN + YAKLAŞAN (CANLI) <span id="calDate"></span></div>
+        <div class="tradingview-widget-container" style="border-radius:6px;overflow:hidden;border:1px solid var(--line)">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+          {
+          "colorTheme": "dark",
+          "isTransparent": true,
+          "width": "100%",
+          "height": "360",
+          "locale": "tr",
+          "importanceFilter": "-1,0,1",
+          "countryFilter": "us,eu,gb,tr,de,jp,cn"
+          }
+          </script>
+        </div>
+        <p style="font-size:8px;color:var(--muted);margin-top:4px">Kaynak: TradingView resmi Economic Calendar widget'ı (ücretsiz, gömme amaçlı sağlanır) · canlı ve otomatik güncellenir.</p>
       </div>
 
       <div class="bottomnote">AL/SAT sinyali; 12 gerçek indikatör (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + grafik çizimleri (trend/kanal/Fibonacci/S-R/mum formasyonu) + o günkü haber yönü (manuel) kombine edilerek üretilir. Stop/hedef mesafeleri gerçek ATR volatilitesine göre dinamik hesaplanır. Grafik verisi Binance canlı feed'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. "Geçmiş başarı oranı" gerçekten üretilen sinyallerin TP/SL'ye önce ulaşma sonucundan hesaplanır — sabit/iddia edilen bir doğruluk yüzdesi değildir.</div>
@@ -678,6 +694,31 @@ document.querySelectorAll('.tfbtn').forEach(x=>x.onclick=()=>{
 });
 document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tab').forEach(y=>y.classList.remove('active')); x.classList.add('active');
+});
+
+// ---- Sinyal/işlem geçmişini yedekleme: veri sadece bu tarayıcıda saklanıyor (sunucuda değil).
+// Cihaz değiştirirseniz ya da tarayıcı verisini temizlerseniz kaybolur — bu yüzden dışa/içe aktarma var.
+document.getElementById('exportTrades').addEventListener('click', e=>{
+ e.preventDefault();
+ const dump={};
+ Object.keys(SYMS).forEach(sym=>{ dump[sym]=loadTradeStore(sym); });
+ const blob=new Blob([JSON.stringify(dump,null,2)], {type:'application/json'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a'); a.href=url; a.download='valens_sinyal_gecmisi_'+new Date().toISOString().slice(0,10)+'.json';
+ a.click(); URL.revokeObjectURL(url);
+});
+document.getElementById('importTrades').addEventListener('change', e=>{
+ const file=e.target.files[0]; if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{
+   try{
+     const dump=JSON.parse(reader.result);
+     Object.keys(dump).forEach(sym=>{ if(SYMS[sym]) saveTradeStore(sym, dump[sym]); });
+     updateWinRateUI();
+     alert('Sinyal geçmişi içe aktarıldı.');
+   }catch(err){ alert('Dosya okunamadı — geçerli bir Valens yedek dosyası olduğundan emin olun.'); }
+ };
+ reader.readAsText(file);
 });
 </script>
 
