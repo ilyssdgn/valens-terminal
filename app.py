@@ -146,9 +146,9 @@ nav{height:54px;display:flex;align-items:center;justify-content:space-between;pa
 .market{min-width:180px;padding:7px 15px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--text);text-align:left;cursor:pointer}
 .market.active{background:rgba(212,175,55,.08);border-bottom:2px solid var(--gold)}
 .market small{display:block;color:var(--muted);font-size:9px;letter-spacing:.8px}.market strong{font:600 13px 'IBM Plex Mono'}.down{color:var(--red)}.up{color:var(--green)}
-.shell{min-height:0;flex:1;display:grid;grid-template-columns:250px minmax(540px,1fr) 285px;overflow:hidden}
+.shell{min-height:0;flex:1;display:grid;grid-template-columns:270px minmax(540px,1fr) 310px;overflow:hidden}
 aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line)}
-.ph{height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line)}
+.ph{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;border-bottom:1px solid var(--line)}
 .ph b{font-size:10px;color:var(--gold);letter-spacing:1.2px}.badge{font:9px 'IBM Plex Mono';color:var(--gold);border:1px solid rgba(212,175,55,.3);padding:2px 6px;border-radius:9px}
 .simwarn{font:8px 'IBM Plex Mono';color:#ffb27a;padding:4px 12px;background:rgba(255,120,60,.08);border-bottom:1px solid var(--line)}
 .netdelta{margin:8px;padding:8px 10px;border-radius:5px;font:700 12px 'IBM Plex Mono';text-align:center;border:1px solid var(--line);background:var(--panel2);letter-spacing:.5px}
@@ -160,7 +160,7 @@ aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px 
 .flow h4{font-size:11px;display:flex;justify-content:space-between}.flow time{font-size:9px;color:var(--muted);font-weight:400}.flow .act{margin:6px 0 4px;font:700 11px 'IBM Plex Mono'}.flow p{font-size:9px;color:var(--muted);line-height:1.55}
 .center{min-width:0;display:flex;flex-direction:column;overflow:auto}
 .decision-desk{display:grid;grid-template-columns:1.22fr 1fr 1fr;gap:8px;padding:9px;background:#07101d;border-bottom:1px solid var(--line);flex-shrink:0}
-.signal-main,.tradecard{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:9px}
+.signal-main,.tradecard{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:11px}
 .signal-main{border-color:rgba(212,175,55,.38);box-shadow:0 0 18px rgba(212,175,55,.08)}
 .kicker{font-size:9px;color:var(--gold);letter-spacing:1px;font-weight:700;display:flex;justify-content:space-between}
 .kicker em{font-style:normal;color:var(--green);font-size:8px}
@@ -173,7 +173,7 @@ aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px 
 .trade-status.armed{background:var(--gold);color:#07101b;box-shadow:0 0 12px rgba(212,175,55,.12)}
 .trade-status.wait{background:rgba(255,255,255,.03);color:var(--muted);border:1px solid var(--line)}
 .tradecard h4{font-size:10px;color:var(--text);margin-bottom:6px}.tradecard .tf{color:var(--gold);font:9px 'IBM Plex Mono'}
-.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}.lev{background:#07101c;padding:5px;border-radius:3px}.lev small{display:block;font-size:8px;color:var(--muted)}.lev b{font:600 10px 'IBM Plex Mono'}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px}.lev{background:#07101c;padding:6px;border-radius:3px}.lev small{display:block;font-size:8px;color:var(--muted)}.lev b{font:600 10.5px 'IBM Plex Mono'}
 .entry{color:var(--blue)}.stop{color:var(--red)}.target{color:var(--green)}
 .pnl{font:8px 'IBM Plex Mono';color:var(--green);margin-top:5px;text-align:center;background:rgba(0,200,150,.07);padding:3px;border-radius:3px}
 .charthead{height:35px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#080f1a;border-bottom:1px solid var(--line);flex-shrink:0}
@@ -196,7 +196,7 @@ iframe{height:100%;width:100%;border:0}
 .analysis .atitle{font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:700;margin-bottom:7px;display:flex;justify-content:space-between}
 .analysis .atitle em{font-style:normal;color:var(--green);font-size:8px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px;margin-bottom:9px}
-.stat{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:6px 7px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:8px 9px}
 .stat small{display:block;font-size:8px;color:var(--muted);letter-spacing:.5px}.stat b{font:600 12px 'IBM Plex Mono'}
 .analysis p{font-size:11px;color:var(--text);line-height:1.6;opacity:.9}
 .upcoming{padding:10px 12px;border-top:1px solid var(--line);background:#07101c}
@@ -207,9 +207,9 @@ iframe{height:100%;width:100%;border:0}
 .newsrow .body p{font-size:9px;color:var(--muted);line-height:1.5;margin-top:3px}
 .newsrow .exp{font-size:9px;color:var(--text);opacity:.85;margin-top:3px}
 .bottomnote{padding:7px 12px;background:#07101c;border-top:1px solid var(--line);font-size:9px;color:var(--muted)}
-.event{margin:9px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);overflow:hidden}
-.eventtop{padding:8px;display:flex;align-items:center;gap:6px;background:rgba(212,175,55,.06);border-bottom:1px solid var(--line)}.eventtop b{font-size:10px}.eventtop time{font-size:9px;color:var(--muted);margin-left:auto}
-.eventbody{padding:8px}.eventbody p{font-size:9px;color:var(--muted);line-height:1.45;margin-bottom:6px}.scenario{font-size:9px;padding:6px;border-left:3px solid;margin-top:5px;line-height:1.45}.bull{border-color:var(--green);background:rgba(0,200,150,.06)}.bear{border-color:var(--red);background:rgba(255,80,109,.06)}
+.event{margin:10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);overflow:hidden}
+.eventtop{padding:9px 10px;display:flex;align-items:center;gap:6px;background:rgba(212,175,55,.06);border-bottom:1px solid var(--line)}.eventtop b{font-size:10.5px}.eventtop time{font-size:9px;color:var(--muted);margin-left:auto}
+.eventbody{padding:10px}.eventbody p{font-size:9.5px;color:var(--muted);line-height:1.55;margin-bottom:7px}.scenario{font-size:9.5px;padding:7px;border-left:3px solid;margin-top:6px;line-height:1.55}.bull{border-color:var(--green);background:rgba(0,200,150,.06)}.bear{border-color:var(--red);background:rgba(255,80,109,.06)}
 .megaalert{margin:0 9px 9px;padding:9px 12px;border-radius:6px;border:1px solid rgba(212,175,55,.5);background:linear-gradient(90deg,rgba(212,175,55,.14),rgba(0,200,150,.08));display:none;align-items:center;gap:10px;animation:alertpulse 1.1s infinite}
 .megaalert.show{display:flex}
 .megaalert b{font:800 12px 'IBM Plex Mono';color:var(--gold);letter-spacing:.4px}
@@ -265,11 +265,6 @@ iframe{height:100%;width:100%;border:0}
           <div style="height:7px;border-radius:4px;background:#07101c;overflow:hidden;border:1px solid var(--line)"><div id="goalBar" style="height:100%;width:0%;background:var(--gold);transition:width .3s"></div></div>
           <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
         </div>
-      </div>
-      <div class="ph"><b data-i18n="trade_log_title">📒 SİNYAL KAR/ZARAR TAKİBİ</b><span class="badge" id="tradeLogBadge">—</span></div>
-      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
-        <div id="tradeLogSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
-        <div id="tradeLogList" style="max-height:230px;overflow:auto"></div>
       </div>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
@@ -370,6 +365,11 @@ iframe{height:100%;width:100%;border:0}
       </article>
       <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="todays_news">GÜNÜN ÖNEMLİ HABERLERİ</b><span class="badge" id="newsBadge">—</span></div>
       <div id="newsEvents"><p style="color:var(--muted);font-size:10px;padding:9px" data-i18n="loading">Yükleniyor…</p></div>
+      <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="trade_log_title">📒 SİNYAL KAR/ZARAR TAKİBİ</b><span class="badge" id="tradeLogBadge">—</span></div>
+      <div style="padding:8px 9px">
+        <div id="tradeLogSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
+        <div id="tradeLogList" style="max-height:230px;overflow:auto"></div>
+      </div>
     </aside>
   </main>
 </div>
@@ -1719,4 +1719,4 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 """
 
 TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON)
-components.html(TERMINAL_HTML, height=1180, scrolling=True)
+components.html(TERMINAL_HTML, height=1550, scrolling=True)
