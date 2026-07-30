@@ -177,6 +177,13 @@ aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px 
 .entry{color:var(--blue)}.stop{color:var(--red)}.target{color:var(--green)}
 .pnl{font:8px 'IBM Plex Mono';color:var(--green);margin-top:5px;text-align:center;background:rgba(0,200,150,.07);padding:3px;border-radius:3px}
 .charthead{height:35px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#080f1a;border-bottom:1px solid var(--line);flex-shrink:0}
+.sessionbar{display:flex;align-items:center;gap:10px;padding:6px 12px;background:#07101c;border-bottom:1px solid var(--line);flex-shrink:0;flex-wrap:wrap;font:10px 'IBM Plex Mono'}
+.sesspill{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted)}
+.sesspill.on{border-color:rgba(0,200,150,.5);color:var(--green);background:rgba(0,200,150,.08)}
+.sesspill .dot2{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.sesspill.on .dot2{background:var(--green);box-shadow:0 0 6px var(--green)}
+.sessCountdown{color:var(--gold);font-weight:700}
+.sessNote{color:var(--muted);margin-left:auto;font-size:9px}
 .charthead b{font:11px 'IBM Plex Mono';color:var(--gold)}.tfbtn{font:10px 'IBM Plex Mono';border:0;background:transparent;color:var(--muted);cursor:pointer;padding:5px}.tfbtn.on{color:var(--gold);border:1px solid rgba(212,175,55,.3);border-radius:3px}
 .chartzone{display:flex;height:330px;flex-shrink:0}
 .volprofile{width:150px;background:#060b14;border-right:1px solid var(--line);position:relative;overflow:hidden}
@@ -307,6 +314,15 @@ iframe{height:100%;width:100%;border:0}
         <button class="tfbtn on" data-int="15">15M</button><button class="tfbtn" data-int="30">30M</button><button class="tfbtn" data-int="60">1H</button><button class="tfbtn" data-int="240">4H</button><button class="tfbtn" data-int="D">1D</button>
       </div>
 
+      <div class="sessionbar" id="sessionBar">
+        <span class="sesspill" id="pillSydney"><i class="dot2"></i> Sydney</span>
+        <span class="sesspill" id="pillTokyo"><i class="dot2"></i> Tokyo</span>
+        <span class="sesspill" id="pillLondon"><i class="dot2"></i> London</span>
+        <span class="sesspill" id="pillNewyork"><i class="dot2"></i> New York</span>
+        <span id="sessCountdown" class="sessCountdown">—</span>
+        <span id="sessNote" class="sessNote">—</span>
+      </div>
+
       <div class="chartzone">
         <div class="volprofile"><div class="vphead" data-i18n="vol_profile">📊 HACİM PROFİLİ</div><div id="vpBars"></div></div>
         <div class="chartwrap">
@@ -424,6 +440,7 @@ const I18N = {
   ruleNfp:'İstihdam verisi', ruleUnrate:'İşsizlik oranı', ruleClaims:'İşsizlik başvuruları', ruleCpi:'Enflasyon (CPI)',
   ruleGdp:'GSYH (GDP)', ruleRetail:'Perakende satışlar', rulePmi:'PMI', ruleRate:'Faiz kararı', ruleTrade:'Dış ticaret dengesi',
   noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir",
+  zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+' PARA BİRİMİ:</b> '+label+' beklentiyi '+beatTxt+' → genellikle '+ccy+' para birimini '+dirTxt+'.'+extra,
   newsScenarioBeat:(label,ccy,extra)=>'<b>▲ BEKLENTİ ÜSTÜ GELİRSE:</b> '+label+' güçlü gelirse, genellikle '+ccy+' para birimi güçlenir'+extra,
@@ -455,6 +472,11 @@ const I18N = {
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
   tradeLogEmpty:'Henüz sonuçlanan bir sinyal yok — bir sinyal TP veya SL\'ye ulaştığında burada listelenecek.',
   tradeLogWin:'✓', tradeLogLoss:'✗',
+  sessClosesIn:(label,time)=>label+' seansı kapanışa: '+time,
+  sessOpensIn:(label,time)=>label+' seansı açılışa: '+time,
+  sessNoneActive:'Şu an aktif ana seans yok (düşük likidite) — spread\'ler genişleyebilir.',
+  sessHighActivity:(list)=>'Bu seansta genellikle en likit: '+list,
+  sessLowActivity:'Bu seansta takip ettiğimiz enstrümanlarda görece düşük aktivite beklenir.',
   riskSummaryLine:(daily,max,target)=>'Günlük limit: <b>$'+daily+'</b> · Maks. kayıp: <b>$'+max+'</b> · Hedef: <b>$'+target+'</b>',
   riskOkBadge:'GÜVENLİ', riskWarnBadge:'DİKKAT', riskBlockBadge:'DURDUR',
   riskOkDetail:(pnl)=>'Bugünkü izlenen net: '+(pnl>=0?'+':'')+'$'+pnl+' — sınırın içinde.',
@@ -522,6 +544,7 @@ const I18N = {
   ruleNfp:'Employment data', ruleUnrate:'Unemployment rate', ruleClaims:'Jobless claims', ruleCpi:'Inflation (CPI)',
   ruleGdp:'GDP', ruleRetail:'Retail sales', rulePmi:'PMI', ruleRate:'Rate decision', ruleTrade:'Trade balance',
   noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required',
+  zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+':</b> '+label+' '+beatTxt+' forecast → typically '+dirTxt+' '+ccy+'.'+extra,
   newsScenarioBeat:(label,ccy,extra)=>'<b>▲ IF ABOVE FORECAST:</b> if '+label+' comes in strong, '+ccy+' typically strengthens'+extra,
@@ -553,6 +576,11 @@ const I18N = {
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
   tradeLogEmpty:'No signal has resolved yet — trades will appear here once TP or SL is reached.',
   tradeLogWin:'✓', tradeLogLoss:'✗',
+  sessClosesIn:(label,time)=>label+' session closes in: '+time,
+  sessOpensIn:(label,time)=>label+' session opens in: '+time,
+  sessNoneActive:'No major session is currently active (low liquidity) — spreads may widen.',
+  sessHighActivity:(list)=>'Typically most liquid this session: '+list,
+  sessLowActivity:'Relatively low activity expected in our tracked instruments this session.',
   riskSummaryLine:(daily,max,target)=>'Daily limit: <b>$'+daily+'</b> · Max loss: <b>$'+max+'</b> · Target: <b>$'+target+'</b>',
   riskOkBadge:'SAFE', riskWarnBadge:'CAUTION', riskBlockBadge:'STOP',
   riskOkDetail:(pnl)=>"Today's tracked net: "+(pnl>=0?'+':'')+'$'+pnl+' — within limit.',
@@ -593,6 +621,56 @@ function clock(){const n=new Date();document.getElementById('clock').textContent
 clock();setInterval(clock,1000);
 applyStaticI18N(); setDates();
 
+// ============ FOREX SEANS SAATİ + GERİ SAYIM ============
+// Standart UTC seans saatleri (yıl boyunca sabit — DST karışıklığını önlemek için UTC kullanılır,
+// bazı seanslar DST'de ~1 saat kayabilir, bu yaklaşık/endüstri-standart değerlerdir).
+const SESSIONS=[
+ {key:'sydney', label:'Sydney', start:22, end:7},
+ {key:'tokyo', label:'Tokyo', start:0, end:9},
+ {key:'london', label:'London', start:8, end:17},
+ {key:'newyork', label:'New York', start:13, end:22},
+];
+// Hangi seansta hangi takip ettiğimiz enstrüman genellikle daha likit/aktif olur (genel piyasa bilgisi).
+const SESSION_ACTIVITY={
+ sydney:   {'OANDA:XAUUSD':0, 'BINANCE:BTCUSDT':1, 'OANDA:EURUSD':0, 'OANDA:SPX500USD':0},
+ tokyo:    {'OANDA:XAUUSD':1, 'BINANCE:BTCUSDT':1, 'OANDA:EURUSD':0, 'OANDA:SPX500USD':0},
+ london:   {'OANDA:XAUUSD':2, 'BINANCE:BTCUSDT':1, 'OANDA:EURUSD':2, 'OANDA:SPX500USD':0},
+ newyork:  {'OANDA:XAUUSD':2, 'BINANCE:BTCUSDT':2, 'OANDA:EURUSD':2, 'OANDA:SPX500USD':2},
+};
+function inSession(h,start,end){ return start<end ? (h>=start&&h<end) : (h>=start||h<end); }
+function hoursUntil(nowH,targetH){ let d=targetH-nowH; while(d<=0)d+=24; return d; }
+function getSessionState(){
+ const n=new Date(), h=n.getUTCHours()+n.getUTCMinutes()/60+n.getUTCSeconds()/3600;
+ const active=SESSIONS.filter(s=>inSession(h,s.start,s.end));
+ let events=[];
+ SESSIONS.forEach(s=>{ events.push({h:s.start,type:'start',s}); events.push({h:s.end,type:'end',s}); });
+ events.forEach(e=>e.until=hoursUntil(h,e.h));
+ events.sort((a,b)=>a.until-b.until);
+ return {active, next:events[0]};
+}
+function fmtHM(hoursFloat){ const totalMin=Math.round(hoursFloat*60); return Math.floor(totalMin/60)+'s '+(totalMin%60)+'dk'; }
+function updateSessionBar(){
+ const st=getSessionState();
+ SESSIONS.forEach(s=>{
+  const el=document.getElementById('pill'+s.key.charAt(0).toUpperCase()+s.key.slice(1));
+  if(el) el.classList.toggle('on', st.active.some(a=>a.key===s.key));
+ });
+ const cdEl=document.getElementById('sessCountdown');
+ if(cdEl){
+  const label=st.next.s.label;
+  cdEl.textContent = (st.next.type==='end'? t('sessClosesIn') : t('sessOpensIn'))(label, fmtHM(st.next.until));
+ }
+ const noteEl=document.getElementById('sessNote');
+ if(noteEl){
+  if(!st.active.length){ noteEl.textContent=t('sessNoneActive'); }
+  else{
+   const scores={}; Object.keys(SYMS).forEach(sym=>{ scores[sym]=Math.max(...st.active.map(a=>(SESSION_ACTIVITY[a.key]||{})[sym]||0)); });
+   const high=Object.keys(scores).filter(sym=>scores[sym]>=2).map(sym=>SYMS[sym].label);
+   noteEl.textContent = high.length ? t('sessHighActivity')(high.join(', ')) : t('sessLowActivity');
+  }
+ }
+}
+
 // contractSize: 1 lot'ta fiyat 1.0 birim hareket ederse oluşan USD kâr/zarar (broker'ınıza göre AYARLAYIN — bunlar tipik sektör varsayımlarıdır, garanti değildir)
 const SYMS={
  'OANDA:XAUUSD':{label:'XAU/USD',title:'XAU/USD · GOLD SPOT',price:4053.98,step:2.5,dec:2,pipVal:1.0,contractSize:100,
@@ -608,6 +686,7 @@ const SYMS={
    sr:[{type:'r',lo:5945,hi:5970,label:'R2 · 5,958'},{type:'r',lo:5905,hi:5925,label:'R1 · 5,915'},{type:'s',lo:5855,hi:5875,label:'S1 · 5,865'},{type:'s',lo:5810,hi:5830,label:'S2 · 5,820'}],
    top:5990,bot:5800, scTP:14, scSL:7, swTP:45, swSL:22}
 };
+updateSessionBar(); setInterval(updateSessionBar,1000); // SYMS tanımlandıktan SONRA çağrılmalı (sessNote SYMS'i kullanıyor)
 let CUR='OANDA:XAUUSD', INT='15';
 
 // O günkü önemli haber yönü (+1 alım / -1 satım / 0 nötr). Haber günü güncelle.
@@ -1185,7 +1264,7 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  LANG = LANG==='tr' ? 'en' : 'tr';
  try{ localStorage.setItem('valens_lang', LANG); }catch(e){}
  applyStaticI18N(); setDates();
- botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI(); updateTradeLogUI();
+ botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI(); updateTradeLogUI(); updateSessionBar();
  if(window.valensRenderCOT) window.valensRenderCOT(CUR);
  if(window.valensRenderNews) window.valensRenderNews();
  if(!isMarketOpen(CUR)) marketClosedUI();
@@ -1384,10 +1463,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  const trendSeries=chart.addLineSeries({color:'#ffcf5c',lineWidth:2,lastValueVisible:false,priceLineVisible:false});
  const chanUp=chart.addLineSeries({color:'rgba(82,169,255,.7)',lineWidth:1,lineStyle:2,lastValueVisible:false,priceLineVisible:false});
  const chanLo=chart.addLineSeries({color:'rgba(82,169,255,.7)',lineWidth:1,lineStyle:2,lastValueVisible:false,priceLineVisible:false});
+ // ATR bazlı volatilite zarfı (Keltner-tarzı) — trend yönüne göre renk değiştirir (TradingView referansınızdaki gibi)
+ const kelUp=chart.addLineSeries({color:'rgba(0,200,150,.55)',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
+ const kelLo=chart.addLineSeries({color:'rgba(0,200,150,.55)',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
  const resize=()=>chart.applyOptions({width:el.clientWidth,height:el.clientHeight});
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
- let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[];
+ let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[];
  const closedEl=document.getElementById('chartClosed');
 
  const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
@@ -1553,6 +1635,60 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   w.forEach((c,i)=>{const v=slope*i+intercept;mid.push({time:c.time,value:+v.toFixed(4)});up.push({time:c.time,value:+(v+maxDev).toFixed(4)});low.push({time:c.time,value:+(v-maxDev).toFixed(4)});});
   trendSeries.setData(mid); chanUp.setData(up); chanLo.setData(low);
  }
+ // ---- ATR bazlı volatilite zarfı (EMA20 ± ATR14*2) — TradingView ekranınızdaki renkli "volatilite bulutu"
+ // konseptinin genel/klasik karşılığı (Keltner Channel). Trend yönüne göre renk değiştirir. ----
+ function drawVolatilityBand(){
+  if(ohlc.length<25){ kelUp.setData([]); kelLo.setData([]); return; }
+  const closes=ohlc.map(c=>c.close), period=20, mult=2, k=2/(period+1);
+  let ema=closes[0]; const emaSeries=[];
+  closes.forEach((c,i)=>{ ema = i? c*k+ema*(1-k) : c; emaSeries.push(ema); });
+  let trs=[0];
+  for(let i=1;i<ohlc.length;i++){
+   const cur=ohlc[i], prev=ohlc[i-1];
+   trs.push(Math.max(cur.high-cur.low,Math.abs(cur.high-prev.close),Math.abs(cur.low-prev.close)));
+  }
+  const up=[], lo=[];
+  for(let i=0;i<ohlc.length;i++){
+   const start=Math.max(0,i-13), slice=trs.slice(start,i+1);
+   const atr=slice.reduce((a,b)=>a+b,0)/slice.length;
+   up.push({time:ohlc[i].time,value:+(emaSeries[i]+atr*mult).toFixed(4)});
+   lo.push({time:ohlc[i].time,value:+(emaSeries[i]-atr*mult).toFixed(4)});
+  }
+  const bullish = closes[closes.length-1] >= emaSeries[emaSeries.length-1];
+  const col = bullish ? 'rgba(0,200,150,.55)' : 'rgba(255,80,109,.55)';
+  kelUp.applyOptions({color:col}); kelLo.applyOptions({color:col});
+  kelUp.setData(up); kelLo.setData(lo);
+ }
+ // ---- Konsolidasyon / hacim birikim bölgesi tespiti — TradingView ekranınızdaki teal kutular gibi
+ // dar-aralıklı, sıkışık fiyat pencerelerini gerçek OHLC'den bulur; bunlar geleceğe dönük S/R adayı olur. ----
+ function detectConsolidationZones(){
+  if(ohlc.length<40) return [];
+  const N=6, atrRef=calcATR(ohlc,14)||( (ohlc[ohlc.length-1].high-ohlc[ohlc.length-1].low)||1 );
+  let raw=[];
+  for(let i=N;i<ohlc.length;i++){
+   const w=ohlc.slice(i-N,i);
+   const hi=Math.max(...w.map(c=>c.high)), lo=Math.min(...w.map(c=>c.low));
+   if((hi-lo) < atrRef*1.2) raw.push({startIdx:i-N, endIdx:i-1, hi, lo});
+  }
+  let merged=[];
+  raw.forEach(z=>{
+   const last=merged[merged.length-1];
+   if(last && z.startIdx<=last.endIdx+1){ last.endIdx=Math.max(last.endIdx,z.endIdx); last.hi=Math.max(last.hi,z.hi); last.lo=Math.min(last.lo,z.lo); }
+   else merged.push(Object.assign({},z));
+  });
+  return merged.filter(z=>(z.endIdx-z.startIdx)>=N-1).slice(-6);
+ }
+ function drawZoneLines(){
+  zoneLines.forEach(l=>cs.removePriceLine(l)); zoneLines=[];
+  const zones=detectConsolidationZones();
+  const last=ohlc[ohlc.length-1]?ohlc[ohlc.length-1].close:0;
+  // sadece fiyata en yakın 2 bölgeyi çiz (grafik kirlenmesin)
+  zones.map(z=>({z,dist:Math.min(Math.abs(last-z.hi),Math.abs(last-z.lo))})).sort((a,b)=>a.dist-b.dist).slice(0,2).forEach(({z})=>{
+   zoneLines.push(cs.createPriceLine({price:z.hi,color:'rgba(20,184,166,.85)',lineWidth:1,lineStyle:3,axisLabelVisible:true,title:t('zoneTop')}));
+   zoneLines.push(cs.createPriceLine({price:z.lo,color:'rgba(20,184,166,.85)',lineWidth:1,lineStyle:3,axisLabelVisible:true,title:t('zoneBottom')}));
+  });
+  return zones;
+ }
  function analyze(){
   if(ohlc.length<20)return;
   e20.setData(emaLine(ohlc,20)); e50.setData(emaLine(ohlc,50));
@@ -1562,6 +1698,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   dynRes=cs.createPriceLine({price:res,color:'#ff506d',lineWidth:1,lineStyle:2,title:'Dyn Resistance'});
   drawFibonacci();
   drawTrendChannel();
+  drawVolatilityBand();
+  const zones=drawZoneLines();
   const pat=pattern(ohlc);
   const lastTime=ohlc[ohlc.length-1].time;
   // Formasyon işaretleri KALICI: tespit edilen her mum formasyonu grafikte kalır, sadece o an
@@ -1592,6 +1730,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     if(distSup<0.003 && distSup<=distRes && Math.abs(0.6)>Math.abs(srBias)){ srBias=0.6; srText=t('srNearDynSupport'); }
     else if(distRes<0.003 && distRes<distSup && Math.abs(-0.6)>Math.abs(srBias)){ srBias=-0.6; srText=t('srNearDynResistance'); }
   }
+  // Konsolidasyon/hacim birikim bölgelerine (gerçek OHLC'den tespit edilen dar-aralık pencereler) yakınlık —
+  // TradingView ekranınızdaki teal kutuların karşılığı, üçüncü bir gerçek S/R kaynağı olarak skora giriyor.
+  (zones||[]).forEach(z=>{
+   const distTop=Math.abs(last-z.hi)/last, distBot=Math.abs(last-z.lo)/last;
+   if(distBot<0.003 && distBot<=distTop && Math.abs(0.55)>Math.abs(srBias)){ srBias=0.55; srText=t('srNearZone'); }
+   else if(distTop<0.003 && distTop<distBot && Math.abs(-0.55)>Math.abs(srBias)){ srBias=-0.55; srText=t('srNearZone'); }
+  });
   // Fibonacci artık BAĞIMSIZ bir yön oyu değil — fiyat aynı anda hem S/R hem bir Fib seviyesindeyse
   // bunu bir "confluence" (üst üste binen destek/direnç) olarak S/R sinyaline teyit ekler.
   let fibBias=0;
@@ -1687,10 +1832,12 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(ws){ws.close();ws=null;} if(tradeWs){tradeWs.close();tradeWs=null;}
   // ---- ESKİ PARİTENİN TÜM ÇİZGİLERİNİ TEMİZLE (eksen takılmasın) ----
   cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
+  kelUp.setData([]); kelLo.setData([]);
   patternMarkers=[]; // farklı enstrümana geçince eski sembolün formasyon geçmişini taşıma
   e20.setData([]); e50.setData([]);
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
+  zoneLines.forEach(l=>cs.removePriceLine(l)); zoneLines=[];
   if(dynSup){cs.removePriceLine(dynSup);dynSup=null;}
   if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
   ohlc=[]; cs.setData([]);
