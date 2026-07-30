@@ -77,7 +77,7 @@ def get_econ_calendar():
         key = ""
     key = key or __import__("os").environ.get("FINNHUB_API_KEY", "")
     if not key:
-        return {"available": False, "events": [], "diag": "no_key"}
+        return {"available": False, "events": [], "reason": "no_key", "diag": "no_key"}
     try:
         today = _dt.date.today()
         r = requests.get(
@@ -113,13 +113,15 @@ def get_econ_calendar():
             })
         out.sort(key=lambda e: e.get("time") or "")
         diag = f"status={status} raw_events={len(raw)} has_calendar_key={has_calendar_key} filtered={len(out)}"
+        if status == 401 or status == 403:
+            return {"available": False, "events": [], "reason": "tier_gated", "diag": diag + " body=" + str(body)[:200]}
         if status != 200:
-            return {"available": False, "events": [], "diag": diag + " body=" + str(body)[:200]}
+            return {"available": False, "events": [], "reason": "error", "diag": diag + " body=" + str(body)[:200]}
         if not has_calendar_key:
-            return {"available": False, "events": [], "diag": diag + " — endpoint erişim/plan sorunu olabilir, body=" + str(body)[:200]}
+            return {"available": False, "events": [], "reason": "tier_gated", "diag": diag + " — endpoint erişim/plan sorunu olabilir, body=" + str(body)[:200]}
         return {"available": True, "events": out[:14], "diag": diag}
     except Exception as e:
-        return {"available": False, "events": [], "diag": "exception: " + str(e)[:200]}
+        return {"available": False, "events": [], "reason": "error", "diag": "exception: " + str(e)[:200]}
 
 ECON_JSON = _json.dumps(get_econ_calendar())
 
@@ -444,6 +446,7 @@ const I18N = {
   aggConfirmNone:'3 MUM ONAY: Yok', aggConfirmYes:(dir)=>'3 MUM ONAY: '+dir+' · Güçlü teyit',
   exportSuccess:null, importSuccess:'Sinyal geçmişi içe aktarıldı.', importFail:'Dosya okunamadı — geçerli bir Valens yedek dosyası olduğundan emin olun.',
   newsApiMissing:'Canlı haber akışı için ücretsiz bir Finnhub API anahtarı gerekiyor (finnhub.io/register, ~1 dk, kart istemez) — Streamlit secrets\'e <code>FINNHUB_API_KEY</code> olarak eklenince bu panel otomatik dolar. Anahtar yokken uydurma haber gösterilmiyor.',
+  newsTierGated:'Anahtarınız geçerli (diğer uç noktalarda çalışıyor) ama bu ekonomik takvim özelliği Finnhub\'ın ÜCRETSİZ planında kapalı — ücretli bir özellik. Bu paneli otomatik doldurmak için ücretli bir Finnhub planı (ya da başka bir ücretli takvim API\'si) gerekir. Bu arada aşağıdaki "EKONOMİK TAKVİM" bölümündeki TradingView widget\'ı zaten gerçek ve ücretsiz — güncel haberler için oraya bakabilirsiniz.',
   newsNoEvents:'Önümüzdeki günler için orta/yüksek etkili planlı haber bulunamadı.', newsNoTemplate:'Bu veri tipi için hazır senaryo şablonu yok — rakamları kendi analizinize göre değerlendirin.',
   newsSame:'Sonuç beklentiyle aynı geldi — belirgin bir yön sinyali yok.',
   newsBeat:'aştı', newsMiss:'ıskaladı', newsHigh:'YÜKSEK', newsMed:'ORTA',
@@ -551,6 +554,7 @@ const I18N = {
   aggConfirmNone:'3-CANDLE CONFIRM: None', aggConfirmYes:(dir)=>'3-CANDLE CONFIRM: '+dir+' · Strong confirmation',
   exportSuccess:null, importSuccess:'Signal history imported.', importFail:'Could not read file — make sure it is a valid Valens backup file.',
   newsApiMissing:'Live news requires a free Finnhub API key (finnhub.io/register, ~1 min, no card needed) — add it as <code>FINNHUB_API_KEY</code> in Streamlit secrets and this panel fills automatically. No made-up news is shown without a key.',
+  newsTierGated:'Your key is valid (it works on other endpoints) but this economic calendar feature is gated behind Finnhub\'s PAID plan — the free tier does not include it. Filling this panel automatically would need a paid Finnhub plan (or another paid calendar API). In the meantime, the "ECONOMIC CALENDAR" section below already shows a real, free, live TradingView widget — check there for current news.',
   newsNoEvents:'No medium/high-impact scheduled news found for the coming days.', newsNoTemplate:'No ready-made scenario template for this data type — evaluate the raw numbers yourself.',
   newsSame:'Result matched expectations — no clear directional signal.',
   newsBeat:'beat', newsMiss:'missed', newsHigh:'HIGH', newsMed:'MEDIUM',
@@ -1413,8 +1417,9 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const box=document.getElementById('newsEvents'), badge=document.getElementById('newsBadge');
   if(!ECON.available){
    badge.textContent=t('apiMissingBadge');
+   const msg = ECON.reason==='tier_gated' ? t('newsTierGated') : t('newsApiMissing');
    const diagLine = ECON.diag ? '<p style="color:var(--muted);font-size:8px;padding:0 9px;font-family:\'IBM Plex Mono\'">diag: '+ECON.diag+'</p>' : '';
-   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px;line-height:1.6">'+t('newsApiMissing')+'</p>'+diagLine;
+   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px;line-height:1.6">'+msg+'</p>'+diagLine;
    return;
   }
   const events=ECON.events||[];
