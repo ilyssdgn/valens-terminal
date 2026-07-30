@@ -77,7 +77,7 @@ def get_econ_calendar():
         key = ""
     key = key or __import__("os").environ.get("FINNHUB_API_KEY", "")
     if not key:
-        return {"available": False, "events": []}
+        return {"available": False, "events": [], "diag": "no_key"}
     try:
         today = _dt.date.today()
         r = requests.get(
@@ -85,7 +85,15 @@ def get_econ_calendar():
             params={"from": today.isoformat(), "to": (today + _dt.timedelta(days=6)).isoformat(), "token": key},
             timeout=8,
         )
-        raw = r.json().get("economicCalendar", []) or []
+        status = r.status_code
+        try:
+            body = r.json()
+        except Exception:
+            body = {}
+        # Finnhub bazen 200 döner ama gövdede hata/erişim mesajı olur (ör. plan bu endpoint'i kapsamıyorsa) —
+        # bu durumda "economicCalendar" anahtarı hiç olmaz. Bunu sessizce "0 haber" ile karıştırmıyoruz.
+        has_calendar_key = isinstance(body, dict) and "economicCalendar" in body
+        raw = (body.get("economicCalendar") or []) if isinstance(body, dict) else []
         wanted = {"US", "EU", "DE", "GB", "JP", "CN", "TR"}
         out = []
         for ev in raw:
@@ -104,9 +112,14 @@ def get_econ_calendar():
                 "unit": ev.get("unit"),
             })
         out.sort(key=lambda e: e.get("time") or "")
-        return {"available": True, "events": out[:14]}
-    except Exception:
-        return {"available": False, "events": []}
+        diag = f"status={status} raw_events={len(raw)} has_calendar_key={has_calendar_key} filtered={len(out)}"
+        if status != 200:
+            return {"available": False, "events": [], "diag": diag + " body=" + str(body)[:200]}
+        if not has_calendar_key:
+            return {"available": False, "events": [], "diag": diag + " — endpoint erişim/plan sorunu olabilir, body=" + str(body)[:200]}
+        return {"available": True, "events": out[:14], "diag": diag}
+    except Exception as e:
+        return {"available": False, "events": [], "diag": "exception: " + str(e)[:200]}
 
 ECON_JSON = _json.dumps(get_econ_calendar())
 
@@ -1400,11 +1413,17 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const box=document.getElementById('newsEvents'), badge=document.getElementById('newsBadge');
   if(!ECON.available){
    badge.textContent=t('apiMissingBadge');
-   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px;line-height:1.6">'+t('newsApiMissing')+'</p>';
+   const diagLine = ECON.diag ? '<p style="color:var(--muted);font-size:8px;padding:0 9px;font-family:\'IBM Plex Mono\'">diag: '+ECON.diag+'</p>' : '';
+   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px;line-height:1.6">'+t('newsApiMissing')+'</p>'+diagLine;
    return;
   }
   const events=ECON.events||[];
-  if(!events.length){ badge.textContent=t('newsCountBadge')(0); box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px">'+t('newsNoEvents')+'</p>'; return; }
+  if(!events.length){
+   badge.textContent=t('newsCountBadge')(0);
+   const diagLine = ECON.diag ? '<p style="color:var(--muted);font-size:8px;padding:0 9px 6px;font-family:\'IBM Plex Mono\'">diag: '+ECON.diag+'</p>' : '';
+   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px">'+t('newsNoEvents')+'</p>'+diagLine;
+   return;
+  }
   badge.textContent=t('newsCountBadge')(events.length);
   let html='';
   events.forEach(ev=>{
