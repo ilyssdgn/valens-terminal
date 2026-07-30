@@ -396,6 +396,25 @@ iframe{height:100%;width:100%;border:0}
         <div class="eventbody" id="cotBody"><p style="color:var(--muted)" data-i18n="cot_loading">COT verisi yükleniyor…</p></div>
       </article>
       <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="todays_news">GÜNÜN ÖNEMLİ HABERLERİ</b><span class="badge" id="newsBadge">—</span></div>
+      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="manualNewsHint">TradingView takviminden 3 yıldızlı haberi buraya girin — senaryo yorumu otomatik üretilir.</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:5px;margin-bottom:5px">
+          <input id="mnEvent" type="text" placeholder="Ör: Fed Interest Rate Decision" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <select id="mnCountry" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+            <option value="US">🇺🇸 US</option><option value="EU">🇪🇺 EU</option><option value="DE">🇩🇪 DE</option>
+            <option value="GB">🇬🇧 GB</option><option value="JP">🇯🇵 JP</option><option value="CN">🇨🇳 CN</option><option value="TR">🇹🇷 TR</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">
+          <input id="mnEstimate" type="text" placeholder="Beklenti" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <input id="mnPrev" type="text" placeholder="Önceki" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <input id="mnActual" type="text" placeholder="Gerçekleşen (varsa)" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+        </div>
+        <div style="display:flex;gap:6px">
+          <button id="mnAdd" style="flex:1;background:var(--gold);color:#07101b;border:0;padding:6px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="manualNewsAdd">+ EKLE</button>
+          <button id="mnClear" style="background:transparent;color:var(--muted);border:1px solid var(--line);padding:6px 9px;border-radius:4px;font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="manualNewsClear">Temizle</button>
+        </div>
+      </div>
       <div id="newsEvents"><p style="color:var(--muted);font-size:10px;padding:9px" data-i18n="loading">Yükleniyor…</p></div>
       <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="trade_log_title">📒 SİNYAL KAR/ZARAR TAKİBİ</b><span class="badge" id="tradeLogBadge">—</span></div>
       <div style="padding:8px 9px">
@@ -447,6 +466,11 @@ const I18N = {
   exportSuccess:null, importSuccess:'Sinyal geçmişi içe aktarıldı.', importFail:'Dosya okunamadı — geçerli bir Valens yedek dosyası olduğundan emin olun.',
   newsApiMissing:'Canlı haber akışı için ücretsiz bir Finnhub API anahtarı gerekiyor (finnhub.io/register, ~1 dk, kart istemez) — Streamlit secrets\'e <code>FINNHUB_API_KEY</code> olarak eklenince bu panel otomatik dolar. Anahtar yokken uydurma haber gösterilmiyor.',
   newsTierGated:'Anahtarınız geçerli (diğer uç noktalarda çalışıyor) ama bu ekonomik takvim özelliği Finnhub\'ın ÜCRETSİZ planında kapalı — ücretli bir özellik. Bu paneli otomatik doldurmak için ücretli bir Finnhub planı (ya da başka bir ücretli takvim API\'si) gerekir. Bu arada aşağıdaki "EKONOMİK TAKVİM" bölümündeki TradingView widget\'ı zaten gerçek ve ücretsiz — güncel haberler için oraya bakabilirsiniz.',
+  manualNewsHint:'TradingView takviminden 3 yıldızlı haberi buraya girin — senaryo yorumu otomatik üretilir.',
+  manualNewsAdd:'+ EKLE', manualNewsClear:'Temizle',
+  manualNewsEmpty:'Henüz haber eklenmedi. TradingView takvimine bakıp yukarıdaki formdan 3 yıldızlı haberleri ekleyin — sistem otomatik senaryo üretecek.',
+  manualNewsNeedName:'Lütfen önce haber adını girin.',
+  manualNewsRemove:'Sil', manualClearConfirm:'Tüm manuel eklenen haberleri silmek istediğinize emin misiniz?',
   newsNoEvents:'Önümüzdeki günler için orta/yüksek etkili planlı haber bulunamadı.', newsNoTemplate:'Bu veri tipi için hazır senaryo şablonu yok — rakamları kendi analizinize göre değerlendirin.',
   newsSame:'Sonuç beklentiyle aynı geldi — belirgin bir yön sinyali yok.',
   newsBeat:'aştı', newsMiss:'ıskaladı', newsHigh:'YÜKSEK', newsMed:'ORTA',
@@ -555,6 +579,11 @@ const I18N = {
   exportSuccess:null, importSuccess:'Signal history imported.', importFail:'Could not read file — make sure it is a valid Valens backup file.',
   newsApiMissing:'Live news requires a free Finnhub API key (finnhub.io/register, ~1 min, no card needed) — add it as <code>FINNHUB_API_KEY</code> in Streamlit secrets and this panel fills automatically. No made-up news is shown without a key.',
   newsTierGated:'Your key is valid (it works on other endpoints) but this economic calendar feature is gated behind Finnhub\'s PAID plan — the free tier does not include it. Filling this panel automatically would need a paid Finnhub plan (or another paid calendar API). In the meantime, the "ECONOMIC CALENDAR" section below already shows a real, free, live TradingView widget — check there for current news.',
+  manualNewsHint:'Enter the 3-star news from the TradingView calendar here — scenario commentary is generated automatically.',
+  manualNewsAdd:'+ ADD', manualNewsClear:'Clear',
+  manualNewsEmpty:'No news added yet. Check the TradingView calendar and add today\'s 3-star events using the form above — the system will generate scenarios automatically.',
+  manualNewsNeedName:'Please enter the event name first.',
+  manualNewsRemove:'Remove', manualClearConfirm:'Remove all manually added news?',
   newsNoEvents:'No medium/high-impact scheduled news found for the coming days.', newsNoTemplate:'No ready-made scenario template for this data type — evaluate the raw numbers yourself.',
   newsSame:'Result matched expectations — no clear directional signal.',
   newsBeat:'beat', newsMiss:'missed', newsHigh:'HIGH', newsMed:'MEDIUM',
@@ -1413,30 +1442,45 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  function impStars(imp){return imp==='high'?('★★★ '+t('newsHigh')):('★★ '+t('newsMed'));}
  function fmtTime(tm){ if(!tm) return '—'; try{ return new Date(tm).toISOString().slice(11,16)+' UTC'; }catch(e){ return tm; } }
 
+ // ---- Manuel haber girişi: TradingView takviminden okuyup buraya girilen 3 yıldızlı haberler.
+ // Aynı senaryo motoru (RULES/classify) bunları da otomatik işler — kaynak farklı, analiz aynı. ----
+ const MANUAL_KEY='valens_manual_news';
+ function loadManualNews(){
+  try{
+   const raw=localStorage.getItem(MANUAL_KEY); let arr=raw?JSON.parse(raw):[];
+   const cutoff=Date.now()-2*86400000; // 2 günden eski girdiler otomatik temizlenir
+   arr=arr.filter(e=>{ const t2=new Date(e.time).getTime(); return isNaN(t2)?true:t2>=cutoff; });
+   return arr;
+  }catch(e){ return []; }
+ }
+ function saveManualNews(arr){ try{ localStorage.setItem(MANUAL_KEY, JSON.stringify(arr)); }catch(e){} }
+ function getAllNewsEvents(){
+  const finnhub = ECON.available ? (ECON.events||[]) : [];
+  const manual = loadManualNews();
+  return finnhub.concat(manual).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+ }
+
  function renderNews(){
   const box=document.getElementById('newsEvents'), badge=document.getElementById('newsBadge');
-  if(!ECON.available){
-   badge.textContent=t('apiMissingBadge');
-   const msg = ECON.reason==='tier_gated' ? t('newsTierGated') : t('newsApiMissing');
-   const diagLine = ECON.diag ? '<p style="color:var(--muted);font-size:8px;padding:0 9px;font-family:\'IBM Plex Mono\'">diag: '+ECON.diag+'</p>' : '';
-   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px;line-height:1.6">'+msg+'</p>'+diagLine;
-   return;
-  }
-  const events=ECON.events||[];
+  const events=getAllNewsEvents();
   if(!events.length){
    badge.textContent=t('newsCountBadge')(0);
-   const diagLine = ECON.diag ? '<p style="color:var(--muted);font-size:8px;padding:0 9px 6px;font-family:\'IBM Plex Mono\'">diag: '+ECON.diag+'</p>' : '';
-   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px">'+t('newsNoEvents')+'</p>'+diagLine;
+   let extra='';
+   if(!ECON.available){
+    extra='<p style="color:var(--muted);font-size:9px;padding:0 9px 6px;line-height:1.5">'+(ECON.reason==='tier_gated'?t('newsTierGated'):'')+'</p>';
+   }
+   box.innerHTML='<p style="color:var(--muted);font-size:10px;padding:9px">'+t('manualNewsEmpty')+'</p>'+extra;
    return;
   }
   badge.textContent=t('newsCountBadge')(events.length);
   let html='';
-  events.forEach(ev=>{
+  events.forEach((ev,idx)=>{
    const rule=classify(ev.event);
    const label=rule?t(rule.labelKey):null;
    const isRate = rule && rule.labelKey==='ruleRate';
    const released = ev.actual!==null && ev.actual!==undefined && ev.actual!=='';
-   html+='<article class="event"><div class="eventtop">'+countryFlag(ev.country)+' <b>'+(ev.event||t('defaultEventName'))+'<span class="imp">'+impStars(ev.impact)+'</span></b><time>'+fmtTime(ev.time)+'</time></div><div class="eventbody">';
+   const removeBtn = ev.manual ? '<a href="#" class="mnRemove" data-idx="'+idx+'" style="color:var(--red);font-size:8px;margin-left:6px;text-decoration:none">✕ '+t('manualNewsRemove')+'</a>' : '';
+   html+='<article class="event"><div class="eventtop">'+countryFlag(ev.country)+' <b>'+(ev.event||t('defaultEventName'))+'<span class="imp">'+impStars(ev.impact)+'</span></b><time>'+fmtTime(ev.time)+removeBtn+'</time></div><div class="eventbody">';
    html+='<p>'+t('newsExpectLbl')+': <strong>'+(ev.estimate??'—')+'</strong> · '+t('newsPrevLbl')+': '+(ev.prev??'—')+(released?(' · '+t('newsActualLbl')+': <strong>'+ev.actual+'</strong>'):'')+'</p>';
    if(isRate){
     // Faiz kararları için basit "beklenti üstü/altı" mantığı YANILTICI olabilir: karar genelde piyasa
@@ -1463,12 +1507,21 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    html+='</div></article>';
   });
   box.innerHTML=html;
+  box.querySelectorAll('.mnRemove').forEach(a=>a.addEventListener('click', e=>{
+   e.preventDefault();
+   const idx=parseInt(a.dataset.idx,10);
+   const all=getAllNewsEvents(); const target=all[idx];
+   let manual=loadManualNews();
+   manual=manual.filter(m=>!(m.time===target.time && m.event===target.event));
+   saveManualNews(manual);
+   renderNews(); computeNewsBias();
+  }));
  }
  window.valensRenderNews = renderNews;
 
  function computeNewsBias(){
   const bias={}, detail={}, todayStr=new Date().toISOString().slice(0,10);
-  (ECON.events||[]).forEach(ev=>{
+  getAllNewsEvents().forEach(ev=>{
    if(!ev.time || !ev.time.startsWith(todayStr)) return; // sadece BUGÜN gerçekleşen/gerçekleşecek haberler
    const released = ev.actual!==null && ev.actual!==undefined && ev.actual!=='';
    if(!released) return; // gerçekleşmemiş haberin yönünü önceden bilemeyiz — tahmin uydurmuyoruz
@@ -1486,6 +1539,37 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   Object.keys(bias).forEach(sym=>{ bias[sym]=Math.max(-1,Math.min(1,bias[sym])); });
   window.valensNewsBias=bias; window.valensNewsDetail=detail;
  }
+ window.valensComputeNewsBias = computeNewsBias;
+
+ // ---- Formdan ekleme/temizleme ----
+ (function wireManualNewsForm(){
+  const addBtn=document.getElementById('mnAdd'), clearBtn=document.getElementById('mnClear');
+  if(!addBtn) return;
+  addBtn.addEventListener('click', ()=>{
+   const nameEl=document.getElementById('mnEvent');
+   const name=(nameEl.value||'').trim();
+   if(!name){ alert(t('manualNewsNeedName')); return; }
+   const ev={
+    time: new Date().toISOString(),
+    country: document.getElementById('mnCountry').value,
+    event: name,
+    impact: 'high',
+    estimate: document.getElementById('mnEstimate').value || null,
+    prev: document.getElementById('mnPrev').value || null,
+    actual: document.getElementById('mnActual').value || null,
+    manual: true
+   };
+   const arr=loadManualNews(); arr.push(ev); saveManualNews(arr);
+   ['mnEvent','mnEstimate','mnPrev','mnActual'].forEach(id=>document.getElementById(id).value='');
+   renderNews(); computeNewsBias();
+  });
+  clearBtn.addEventListener('click', ()=>{
+   if(!confirm(t('manualClearConfirm'))) return;
+   saveManualNews([]);
+   renderNews(); computeNewsBias();
+  });
+ })();
+
 
  renderNews();
  computeNewsBias();
