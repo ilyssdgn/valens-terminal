@@ -288,6 +288,7 @@ iframe{height:100%;width:100%;border:0}
           <div class="signalrow"><div class="sigtxt" id="sigTxt">—</div><div class="conf" id="sigConf">—</div></div>
           <div class="why" id="sigWhy" data-i18n="why_placeholder">Bot indikatörleri okuyor…</div>
           <div class="trigger wait" id="trigger">◇ GÖZLEM — Emir eşiği %87</div>
+          <div id="strategyTagLine" style="font-size:9px;color:var(--gold);margin-top:5px;display:none"></div>
           <div class="winrate" id="winRate" data-i18n="winrate_placeholder">Geçmiş sinyal takibi: veri birikiyor…</div>
           <div style="margin-top:5px;display:flex;gap:8px">
             <a href="#" id="exportTrades" style="font:9px 'IBM Plex Mono';color:var(--blue);text-decoration:none" data-i18n="export_btn">⬇ Geçmişi Dışa Aktar (.json)</a>
@@ -441,6 +442,8 @@ const I18N = {
   ruleGdp:'GSYH (GDP)', ruleRetail:'Perakende satışlar', rulePmi:'PMI', ruleRate:'Faiz kararı', ruleTrade:'Dış ticaret dengesi',
   noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir",
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
+  tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
+  strategyTagPrefix:'📐 Eşleşen strateji kalıbı: ',
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+' PARA BİRİMİ:</b> '+label+' beklentiyi '+beatTxt+' → genellikle '+ccy+' para birimini '+dirTxt+'.'+extra,
   newsScenarioBeat:(label,ccy,extra)=>'<b>▲ BEKLENTİ ÜSTÜ GELİRSE:</b> '+label+' güçlü gelirse, genellikle '+ccy+' para birimi güçlenir'+extra,
@@ -545,6 +548,8 @@ const I18N = {
   ruleGdp:'GDP', ruleRetail:'Retail sales', rulePmi:'PMI', ruleRate:'Rate decision', ruleTrade:'Trade balance',
   noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required',
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
+  tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
+  strategyTagPrefix:'📐 Matching strategy pattern: ',
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+':</b> '+label+' '+beatTxt+' forecast → typically '+dirTxt+' '+ccy+'.'+extra,
   newsScenarioBeat:(label,ccy,extra)=>'<b>▲ IF ABOVE FORECAST:</b> if '+label+' comes in strong, '+ccy+' typically strengthens'+extra,
@@ -1037,6 +1042,7 @@ function marketClosedUI(){
  ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
  const sc=document.getElementById('scStatus');sc.className='trade-status wait';sc.textContent=t('market_closed');
  document.getElementById('megaAlert').classList.remove('show');
+ const stEl=document.getElementById('strategyTagLine'); if(stEl){stEl.style.display='none';stEl.textContent='';}
 }
 
 function noLiveDataUI(reason){
@@ -1048,6 +1054,7 @@ function noLiveDataUI(reason){
  const sc=document.getElementById('scStatus');
  ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
  document.getElementById('megaAlert').classList.remove('show');
+ { const stEl=document.getElementById('strategyTagLine'); if(stEl){stEl.style.display='none';stEl.textContent='';} }
  if(reason==='feed-none'){
    document.getElementById('sigTxt').textContent=t('noDataStatus');
    document.getElementById('sigTxt').style.color='var(--muted)';
@@ -1138,6 +1145,14 @@ function botTick(){
 
  const sigWhyEl=document.getElementById('sigWhy');
  if(sigWhyEl) sigWhyEl.innerHTML = conflicted ? '<span style="color:#ffb27a">'+t('conflictWarning')+'</span>' : '';
+
+ const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum')};
+ const matchedTags=(cr.strategyTags||[]).filter(tg=>rawDir!==0 && tg.dir===rawDir).map(tg=>tagLabels[tg.key]).filter(Boolean);
+ const tagEl=document.getElementById('strategyTagLine');
+ if(tagEl){
+  if(matchedTags.length){ tagEl.style.display='block'; tagEl.textContent=t('strategyTagPrefix')+matchedTags.join(' · '); }
+  else { tagEl.style.display='none'; tagEl.textContent=''; }
+ }
 
  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
  document.getElementById('sigTxt').textContent=sigText;
@@ -1600,6 +1615,45 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(bear&&p.close>p.open&&c.close<p.open&&c.open>p.close)return{n:'Bear Engulf',d:'bear'};
   return null;
  }
+ // ---- ÜÇ ADLANDIRILMIŞ, İYİ BELGELENMİŞ SCALPING KALIBI ----
+ // "5dk/15dk scalping" türünde YouTube'da neredeyse evrensel öğretilen üç standart teknik:
+ // (1) hızlı EMA kesişimi + MACD/RSI teyidi, (2) seans açılışı aralık kırılımı (ORB),
+ // (3) ardışık aynı yönlü mum + kırılım momentumu. Skoru bunlar DEĞİL, mevcut 15-oy sistemi belirliyor —
+ // bunlar sadece "bu sinyal hangi bilinen kalıba uyuyor" diye ETİKETLEME amaçlıdır.
+ function detectORB(a){
+  const opens=[8,13]; // London, New York açılışı (UTC)
+  const lastTime=a[a.length-1].time;
+  const now=new Date(lastTime*1000);
+  for(const openHour of opens){
+   const sessionOpen=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),openHour,0,0)/1000;
+   if(lastTime<sessionOpen) continue;
+   const sessionCandles=a.filter(c=>c.time>=sessionOpen);
+   if(sessionCandles.length<4 || sessionCandles.length>20) continue;
+   const rangeCandles=sessionCandles.slice(0,3);
+   const hi=Math.max(...rangeCandles.map(c=>c.high)), lo=Math.min(...rangeCandles.map(c=>c.low));
+   const lastC=sessionCandles[sessionCandles.length-1];
+   if(lastC.close>hi) return {key:'orb', dir:1};
+   if(lastC.close<lo) return {key:'orb', dir:-1};
+  }
+  return null;
+ }
+ function detectStrategyTags(a, ind){
+  const tags=[];
+  if(a.length<10) return tags;
+  // (1) EMA9/21 momentum kesişimi + MACD + RSI filtresi
+  if(ind.ema9>ind.ema21 && ind.macd>0 && ind.rsi>45 && ind.rsi<70) tags.push({key:'emaCross', dir:1});
+  else if(ind.ema9<ind.ema21 && ind.macd<0 && ind.rsi<55 && ind.rsi>30) tags.push({key:'emaCross', dir:-1});
+  // (2) Açılış aralığı kırılımı (ORB)
+  const orb=detectORB(a); if(orb) tags.push(orb);
+  // (3) Ardışık N mum + kırılım momentumu
+  const N=3;
+  if(a.length>=N+1){
+   const recent=a.slice(-N-1,-1), curr=a[a.length-1];
+   if(recent.every(c=>c.close>c.open) && curr.high>Math.max(...recent.map(c=>c.high))) tags.push({key:'momentum', dir:1});
+   else if(recent.every(c=>c.close<c.open) && curr.low<Math.min(...recent.map(c=>c.low))) tags.push({key:'momentum', dir:-1});
+  }
+  return tags;
+ }
  function drawSRLines(){
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   const cfg=SYMS[curSym]; if(!cfg) return;
@@ -1750,6 +1804,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   // ---- GERÇEK İNDİKATÖRLER: gerçek OHLC'den hesaplanır (rastgele değil) ----
   const rsiReal=calcRSIReal(closes,14);
   const macdReal=(emaValue(closes.slice(-40),12)||last)-(emaValue(closes.slice(-60),26)||last);
+  const ema9Real=emaValue(closes.slice(-30),9)||last;
+  const ema21Real=emaValue(closes.slice(-50),21)||last;
   const ema50Real=emaValue(closes.slice(-90),50)||last;
   const ema200Real=emaValue(closes,200)||last;
   const bollPctReal=calcBollPct(closes,20);
@@ -1761,12 +1817,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const cciReal=calcCCI(ohlc,20);
   const psarReal=calcPSAR(ohlc);
   const pivotsReal=calcPivots(ohlc);
+  const strategyTags=detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real});
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
     pattern: pat?(pat.d==='bull'?1:pat.d==='bear'?-1:0):0,
     patternName: pat?pat.n:'',
-    srBias, srText, fibBias,
+    srBias, srText, fibBias, strategyTags,
     hasLiveData:true,
     indicators:{
       rsi: rsiReal!==null?rsiReal:50,
