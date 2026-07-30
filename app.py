@@ -444,6 +444,7 @@ const I18N = {
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
   strategyTagPrefix:'📐 Eşleşen strateji kalıbı: ',
+  rateDecisionNote:"⚠ Faiz kararlarında \"beklenti üstü/altı\" mantığı yanıltıcı olabilir: piyasa kararı zaten büyük ölçüde önceden fiyatlar (ör. CME FedWatch olasılıkları). Asıl fiyatı oynatan genelde üç şey: (1) sonucun piyasanın fiyatladığı OLASILIKLA örtüşüp örtüşmediği — beklenen bir 'sabit tutma' bile önceden fiyatlanan bir 'artış riski' kalkınca rahatlama yükselişi yaratabilir, (2) komitedeki muhalif oy dağılımı (şahin/güvercin), (3) açıklama metni ve basın toplantısının TONU. Bunların hiçbirini actual/forecast rakamından otomatik okuyamayız — bu yüzden burada yön tahmini VERMİYORUZ, sadece bunu bilin diye not düşüyoruz.",
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+' PARA BİRİMİ:</b> '+label+' beklentiyi '+beatTxt+' → genellikle '+ccy+' para birimini '+dirTxt+'.'+extra,
   newsScenarioBeat:(label,ccy,extra)=>'<b>▲ BEKLENTİ ÜSTÜ GELİRSE:</b> '+label+' güçlü gelirse, genellikle '+ccy+' para birimi güçlenir'+extra,
@@ -550,6 +551,7 @@ const I18N = {
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
   strategyTagPrefix:'📐 Matching strategy pattern: ',
+  rateDecisionNote:"⚠ For rate decisions, simple \"beat/miss forecast\" logic can be misleading: the market has usually already priced in the odds of the decision (e.g. CME FedWatch probabilities). What actually moves price is typically: (1) whether the outcome matches the priced-in PROBABILITY — even an expected 'hold' can trigger a relief rally if it removes a priced-in hike risk, (2) the committee's dissent/vote split (hawkish vs dovish), (3) the tone of the statement and press conference. None of this can be read automatically from the actual/forecast numbers alone — so we deliberately do NOT generate a directional call here, just this note.",
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+':</b> '+label+' '+beatTxt+' forecast → typically '+dirTxt+' '+ccy+'.'+extra,
   newsScenarioBeat:(label,ccy,extra)=>'<b>▲ IF ABOVE FORECAST:</b> if '+label+' comes in strong, '+ccy+' typically strengthens'+extra,
@@ -1408,10 +1410,18 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   events.forEach(ev=>{
    const rule=classify(ev.event);
    const label=rule?t(rule.labelKey):null;
+   const isRate = rule && rule.labelKey==='ruleRate';
    const released = ev.actual!==null && ev.actual!==undefined && ev.actual!=='';
    html+='<article class="event"><div class="eventtop">'+countryFlag(ev.country)+' <b>'+(ev.event||t('defaultEventName'))+'<span class="imp">'+impStars(ev.impact)+'</span></b><time>'+fmtTime(ev.time)+'</time></div><div class="eventbody">';
    html+='<p>'+t('newsExpectLbl')+': <strong>'+(ev.estimate??'—')+'</strong> · '+t('newsPrevLbl')+': '+(ev.prev??'—')+(released?(' · '+t('newsActualLbl')+': <strong>'+ev.actual+'</strong>'):'')+'</p>';
-   if(!rule){
+   if(isRate){
+    // Faiz kararları için basit "beklenti üstü/altı" mantığı YANILTICI olabilir: karar genelde piyasa
+    // tarafından zaten büyük ölçüde fiyatlanmıştır (ör. CME FedWatch olasılıkları). Asıl fiyatı hareket
+    // ettiren şey çoğu zaman rakamın kendisi değil; (1) piyasanın önceden fiyatladığı olasılıkla ne kadar
+    // örtüştüğü, (2) komite oylamasındaki muhalefet/şahin-güvercin dağılımı, (3) açıklama metninin ve
+    // basın toplantısının TONU'dur — bunların hiçbiri actual/forecast rakamından okunamaz.
+    html+='<p style="font-size:9px;color:var(--muted)">'+t('rateDecisionNote')+'</p>';
+   } else if(!rule){
     html+='<p style="font-size:9px;color:var(--muted)">'+t('newsNoTemplate')+'</p>';
    } else if(released){
     const est=parseFloat(ev.estimate), act=parseFloat(ev.actual);
