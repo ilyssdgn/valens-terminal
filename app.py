@@ -484,6 +484,8 @@ const I18N = {
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
   tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
+  tagRsiDivergence:'RSI Uyumsuzluğu (Divergence)', tagBollSqueeze:'Bollinger Sıkışması + Kırılımı',
+  tagEmaPullback:"EMA21'e Geri Çekilme (Trend Devamı)", tagInsideBar:'İç Mum (Inside Bar) Kırılımı',
   strategyTagPrefix:'📐 Eşleşen strateji kalıbı: ',
   rateDecisionNote:"⚠ Faiz kararlarında \"beklenti üstü/altı\" mantığı yanıltıcı olabilir: piyasa kararı zaten büyük ölçüde önceden fiyatlar (ör. CME FedWatch olasılıkları). Asıl fiyatı oynatan genelde üç şey: (1) sonucun piyasanın fiyatladığı OLASILIKLA örtüşüp örtüşmediği — beklenen bir 'sabit tutma' bile önceden fiyatlanan bir 'artış riski' kalkınca rahatlama yükselişi yaratabilir, (2) komitedeki muhalif oy dağılımı (şahin/güvercin), (3) açıklama metni ve basın toplantısının TONU. Bunların hiçbirini actual/forecast rakamından otomatik okuyamayız — bu yüzden burada yön tahmini VERMİYORUZ, sadece bunu bilin diye not düşüyoruz.",
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
@@ -598,6 +600,8 @@ const I18N = {
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
   tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
+  tagRsiDivergence:'RSI Divergence', tagBollSqueeze:'Bollinger Squeeze Breakout',
+  tagEmaPullback:'EMA21 Pullback (Trend Continuation)', tagInsideBar:'Inside Bar Breakout',
   strategyTagPrefix:'📐 Matching strategy pattern: ',
   rateDecisionNote:"⚠ For rate decisions, simple \"beat/miss forecast\" logic can be misleading: the market has usually already priced in the odds of the decision (e.g. CME FedWatch probabilities). What actually moves price is typically: (1) whether the outcome matches the priced-in PROBABILITY — even an expected 'hold' can trigger a relief rally if it removes a priced-in hike risk, (2) the committee's dissent/vote split (hawkish vs dovish), (3) the tone of the statement and press conference. None of this can be read automatically from the actual/forecast numbers alone — so we deliberately do NOT generate a directional call here, just this note.",
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
@@ -1196,7 +1200,8 @@ function botTick(){
  const sigWhyEl=document.getElementById('sigWhy');
  if(sigWhyEl) sigWhyEl.innerHTML = conflicted ? '<span style="color:#ffb27a">'+t('conflictWarning')+'</span>' : '';
 
- const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep')};
+ const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep'),
+  rsiDivergence:t('tagRsiDivergence'), bollSqueeze:t('tagBollSqueeze'), emaPullback:t('tagEmaPullback'), insideBar:t('tagInsideBar')};
  const matchedTags=(cr.strategyTags||[]).filter(tg=>rawDir!==0 && tg.dir===rawDir).map(tg=>tagLabels[tg.key]).filter(Boolean);
  const tagEl=document.getElementById('strategyTagLine');
  if(tagEl){
@@ -1757,6 +1762,83 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   return null;
  }
+ // ---- (5) RSI UYUMSUZLUĞU: fiyat yeni bir dip/tepe yaparken RSI onu teyit etmiyorsa momentum
+ // zayıflıyor demektir — klasik dönüş sinyali. Gerçek RSI serisinden (tek değer değil) hesaplanır. ----
+ function calcRSISeries(closes, period){
+  const out=new Array(closes.length).fill(null);
+  for(let i=period;i<closes.length;i++){
+   let gains=0, losses=0;
+   for(let j=i-period+1;j<=i;j++){ const d=closes[j]-closes[j-1]; if(d>=0)gains+=d; else losses-=d; }
+   const avgGain=gains/period, avgLoss=losses/period;
+   out[i]= avgLoss===0?100:100-100/(1+avgGain/avgLoss);
+  }
+  return out;
+ }
+ function detectRSIDivergence(a, rsiSeries){
+  if(a.length<30) return null;
+  const N=10;
+  const recentWin=a.slice(-N), priorWin=a.slice(-2*N,-N);
+  const rsiRecent=rsiSeries.slice(-N), rsiPrior=rsiSeries.slice(-2*N,-N);
+  if(priorWin.length<N||recentWin.length<N) return null;
+  const idxMax=(arr,key)=>arr.reduce((best,c,i)=>c[key]>arr[best][key]?i:best,0);
+  const idxMin=(arr,key)=>arr.reduce((best,c,i)=>c[key]<arr[best][key]?i:best,0);
+  const rHiIdx=idxMax(recentWin,'high'), pHiIdx=idxMax(priorWin,'high');
+  const rsiAtRHi=rsiRecent[rHiIdx], rsiAtPHi=rsiPrior[pHiIdx];
+  if(recentWin[rHiIdx].high>priorWin[pHiIdx].high && rsiAtRHi!=null && rsiAtPHi!=null && rsiAtRHi<rsiAtPHi && rsiAtRHi>55) return {key:'rsiDivergence', dir:-1};
+  const rLoIdx=idxMin(recentWin,'low'), pLoIdx=idxMin(priorWin,'low');
+  const rsiAtRLo=rsiRecent[rLoIdx], rsiAtPLo=rsiPrior[pLoIdx];
+  if(recentWin[rLoIdx].low<priorWin[pLoIdx].low && rsiAtRLo!=null && rsiAtPLo!=null && rsiAtRLo>rsiAtPLo && rsiAtRLo<45) return {key:'rsiDivergence', dir:1};
+  return null;
+ }
+ // ---- (6) BOLLINGER SIKIŞMASI + KIRILIMI: bant genişliği çok daralınca ("sıkışma") volatilite
+ // birikir; ardından genişleme başlayan mumun yönü kırılım sinyali sayılır. ----
+ function detectBollSqueeze(a, closes){
+  const period=20, lookback=20;
+  if(closes.length<period+lookback) return null;
+  function widthAt(idx){
+   if(idx<period-1) return null;
+   const w=closes.slice(idx-period+1,idx+1), sma=w.reduce((a2,b)=>a2+b,0)/period;
+   const sd=Math.sqrt(w.reduce((a2,b)=>a2+(b-sma)**2,0)/period);
+   return sma?(4*sd)/sma:null;
+  }
+  const widths=[]; for(let i=closes.length-lookback-1;i<closes.length;i++) widths.push(widthAt(i));
+  const valid=widths.filter(w=>w!=null);
+  if(valid.length<lookback) return null;
+  const currentW=valid[valid.length-1], prevW=valid[valid.length-2];
+  const minW=Math.min(...valid.slice(0,-1));
+  const wasSqueezed = prevW<=minW*1.05, nowExpanding = currentW>prevW*1.15;
+  if(!wasSqueezed||!nowExpanding) return null;
+  const curr=a[a.length-1];
+  if(curr.close>curr.open) return {key:'bollSqueeze', dir:1};
+  if(curr.close<curr.open) return {key:'bollSqueeze', dir:-1};
+  return null;
+ }
+ // ---- (7) EMA'YA GERİ ÇEKİLME (trend devamı): EMA21 eğimi net bir yöndeyken fiyat kısa süreliğine
+ // EMA'ya dokunup tekrar trend yönünde kapanırsa — "trendde ucuza alım/pahalıya satım" klasiği. ----
+ function detectEmaPullback(a, ema21Series){
+  if(a.length<15 || !ema21Series || ema21Series.length<10) return null;
+  const n=ema21Series.length, slope=ema21Series[n-1]-ema21Series[n-10];
+  const curr=a[a.length-1], prev=a[a.length-2], emaCurr=ema21Series[n-1];
+  if(slope>0){
+   const touched = prev.low<=emaCurr*1.0015 && prev.low>=emaCurr*0.993;
+   if(touched && curr.close>curr.open && curr.close>emaCurr) return {key:'emaPullback', dir:1};
+  } else if(slope<0){
+   const touched = prev.high>=emaCurr*0.9985 && prev.high<=emaCurr*1.007;
+   if(touched && curr.close<curr.open && curr.close<emaCurr) return {key:'emaPullback', dir:-1};
+  }
+  return null;
+ }
+ // ---- (8) İÇ MUM (INSIDE BAR) KIRILIMI: bir mumun tamamı bir öncekinin içinde kalırsa (sıkışma),
+ // sonraki mum bu aralığın dışına kırılırsa yön sinyali sayılır. ----
+ function detectInsideBarBreakout(a){
+  if(a.length<3) return null;
+  const curr=a[a.length-1], inside=a[a.length-2], mother=a[a.length-3];
+  const isInside = inside.high<=mother.high && inside.low>=mother.low;
+  if(!isInside) return null;
+  if(curr.close>inside.high) return {key:'insideBar', dir:1};
+  if(curr.close<inside.low) return {key:'insideBar', dir:-1};
+  return null;
+ }
  function detectLiquiditySweep(a, ema200, vwap){
   // "Likidite Süpürme Dönüşü": 200 EMA yön filtresi + yakın bir swing high/low'un süpürülüp (sweep)
   // kapanışın geri içeri dönmesi ("trick move") + VWAP reddi — hepsi AYNI ANDA gerçekleşmeli.
@@ -1793,6 +1875,17 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   // (4) Likidite süpürme dönüşü (200 EMA + swing sweep + VWAP reddi)
   const sweep=detectLiquiditySweep(a, ind.ema200, ind.vwap); if(sweep) tags.push(sweep);
+  // (5) RSI uyumsuzluğu
+  const closes=a.map(c=>c.close);
+  const rsiSeries=calcRSISeries(closes,14);
+  const rsiDiv=detectRSIDivergence(a, rsiSeries); if(rsiDiv) tags.push(rsiDiv);
+  // (6) Bollinger sıkışması + kırılımı
+  const squeeze=detectBollSqueeze(a, closes); if(squeeze) tags.push(squeeze);
+  // (7) EMA21'e geri çekilme (trend devamı)
+  const ema21Series=emaLine(a,21).map(p=>p.value);
+  const pullback=detectEmaPullback(a, ema21Series); if(pullback) tags.push(pullback);
+  // (8) İç mum (inside bar) kırılımı
+  const insideBar=detectInsideBarBreakout(a); if(insideBar) tags.push(insideBar);
   return tags;
  }
  function drawSRLines(){
