@@ -483,6 +483,7 @@ const I18N = {
   noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir",
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
+  tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
   strategyTagPrefix:'📐 Eşleşen strateji kalıbı: ',
   rateDecisionNote:"⚠ Faiz kararlarında \"beklenti üstü/altı\" mantığı yanıltıcı olabilir: piyasa kararı zaten büyük ölçüde önceden fiyatlar (ör. CME FedWatch olasılıkları). Asıl fiyatı oynatan genelde üç şey: (1) sonucun piyasanın fiyatladığı OLASILIKLA örtüşüp örtüşmediği — beklenen bir 'sabit tutma' bile önceden fiyatlanan bir 'artış riski' kalkınca rahatlama yükselişi yaratabilir, (2) komitedeki muhalif oy dağılımı (şahin/güvercin), (3) açıklama metni ve basın toplantısının TONU. Bunların hiçbirini actual/forecast rakamından otomatik okuyamayız — bu yüzden burada yön tahmini VERMİYORUZ, sadece bunu bilin diye not düşüyoruz.",
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
@@ -596,6 +597,7 @@ const I18N = {
   noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required',
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
+  tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
   strategyTagPrefix:'📐 Matching strategy pattern: ',
   rateDecisionNote:"⚠ For rate decisions, simple \"beat/miss forecast\" logic can be misleading: the market has usually already priced in the odds of the decision (e.g. CME FedWatch probabilities). What actually moves price is typically: (1) whether the outcome matches the priced-in PROBABILITY — even an expected 'hold' can trigger a relief rally if it removes a priced-in hike risk, (2) the committee's dissent/vote split (hawkish vs dovish), (3) the tone of the statement and press conference. None of this can be read automatically from the actual/forecast numbers alone — so we deliberately do NOT generate a directional call here, just this note.",
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
@@ -1194,7 +1196,7 @@ function botTick(){
  const sigWhyEl=document.getElementById('sigWhy');
  if(sigWhyEl) sigWhyEl.innerHTML = conflicted ? '<span style="color:#ffb27a">'+t('conflictWarning')+'</span>' : '';
 
- const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum')};
+ const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep')};
  const matchedTags=(cr.strategyTags||[]).filter(tg=>rawDir!==0 && tg.dir===rawDir).map(tg=>tagLabels[tg.key]).filter(Boolean);
  const tagEl=document.getElementById('strategyTagLine');
  if(tagEl){
@@ -1755,6 +1757,25 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   return null;
  }
+ function detectLiquiditySweep(a, ema200, vwap){
+  // "Likidite Süpürme Dönüşü": 200 EMA yön filtresi + yakın bir swing high/low'un süpürülüp (sweep)
+  // kapanışın geri içeri dönmesi ("trick move") + VWAP reddi — hepsi AYNI ANDA gerçekleşmeli.
+  if(a.length<12 || ema200==null || vwap==null) return null;
+  const curr=a[a.length-1];
+  const bias = curr.close>ema200 ? 1 : curr.close<ema200 ? -1 : 0;
+  if(bias===0) return null;
+  const priorWindow=a.slice(-12,-1); // "eski high/low" referansı, şu anki mum hariç
+  if(bias>0){
+   // BUY: yakın bir swing LOW süpürülür, sonra VWAP üzerine geri döner
+   const localLow=Math.min(...priorWindow.map(c=>c.low));
+   if(curr.low<localLow && curr.close>localLow && curr.low<vwap && curr.close>vwap) return {key:'liquiditySweep', dir:1};
+  } else {
+   // SELL: yakın bir swing HIGH süpürülür, sonra VWAP altına geri döner
+   const localHigh=Math.max(...priorWindow.map(c=>c.high));
+   if(curr.high>localHigh && curr.close<localHigh && curr.high>vwap && curr.close<vwap) return {key:'liquiditySweep', dir:-1};
+  }
+  return null;
+ }
  function detectStrategyTags(a, ind){
   const tags=[];
   if(a.length<10) return tags;
@@ -1770,6 +1791,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    if(recent.every(c=>c.close>c.open) && curr.high>Math.max(...recent.map(c=>c.high))) tags.push({key:'momentum', dir:1});
    else if(recent.every(c=>c.close<c.open) && curr.low<Math.min(...recent.map(c=>c.low))) tags.push({key:'momentum', dir:-1});
   }
+  // (4) Likidite süpürme dönüşü (200 EMA + swing sweep + VWAP reddi)
+  const sweep=detectLiquiditySweep(a, ind.ema200, ind.vwap); if(sweep) tags.push(sweep);
   return tags;
  }
  function drawSRLines(){
@@ -1935,7 +1958,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const cciReal=calcCCI(ohlc,20);
   const psarReal=calcPSAR(ohlc);
   const pivotsReal=calcPivots(ohlc);
-  const strategyTags=detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real});
+  const strategyTags=detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema200:ema200Real, vwap:vwapReal});
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
