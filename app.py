@@ -489,6 +489,11 @@ const I18N = {
   candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
   winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
   noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
+  catUp:'YÜKSELİŞ', catDown:'DÜŞÜŞ', catNeutral:'NÖTR', catNoData:'aktif sinyal yok',
+  catFull:'TAM DESTEKLİYOR', catNone:'ZIT YÖNDE', catPartial:'KISMEN DESTEKLİYOR',
+  catIndicators:'📊 İNDİKATÖRLER', catActiveOf:'aktif /', catStrategies:'📐 STRATEJİLER',
+  catNoStrategies:'Şu an ateşlenen bir strateji kalıbı yok', catChart:'📈 GRAFİK YORUMU (mum + trend + S/R + Fib)',
+  catVerdict:'NET KARAR', catConfidence:'güven', catNoVerdictYet:'henüz net bir karar yok',
   strategyTagPrefix:'📐 Bu karara katkıda bulunan strateji kalıpları: ',
   rateDecisionNote:"⚠ Faiz kararlarında \"beklenti üstü/altı\" mantığı yanıltıcı olabilir: piyasa kararı zaten büyük ölçüde önceden fiyatlar (ör. CME FedWatch olasılıkları). Asıl fiyatı oynatan genelde üç şey: (1) sonucun piyasanın fiyatladığı OLASILIKLA örtüşüp örtüşmediği — beklenen bir 'sabit tutma' bile önceden fiyatlanan bir 'artış riski' kalkınca rahatlama yükselişi yaratabilir, (2) komitedeki muhalif oy dağılımı (şahin/güvercin), (3) açıklama metni ve basın toplantısının TONU. Bunların hiçbirini actual/forecast rakamından otomatik okuyamayız — bu yüzden burada yön tahmini VERMİYORUZ, sadece bunu bilin diye not düşüyoruz.",
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
@@ -608,6 +613,11 @@ const I18N = {
   candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
   winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
   noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
+  catUp:'UP', catDown:'DOWN', catNeutral:'NEUTRAL', catNoData:'no active signal',
+  catFull:'FULLY SUPPORTS', catNone:'OPPOSES', catPartial:'PARTIALLY SUPPORTS',
+  catIndicators:'📊 INDICATORS', catActiveOf:'active of', catStrategies:'📐 STRATEGIES',
+  catNoStrategies:'No strategy pattern is firing right now', catChart:'📈 CHART READING (candles + trend + S/R + Fib)',
+  catVerdict:'FINAL VERDICT', catConfidence:'confidence', catNoVerdictYet:'no clear verdict yet',
   strategyTagPrefix:'📐 Strategy patterns that contributed to this call: ',
   rateDecisionNote:"⚠ For rate decisions, simple \"beat/miss forecast\" logic can be misleading: the market has usually already priced in the odds of the decision (e.g. CME FedWatch probabilities). What actually moves price is typically: (1) whether the outcome matches the priced-in PROBABILITY — even an expected 'hold' can trigger a relief rally if it removes a priced-in hike risk, (2) the committee's dissent/vote split (hawkish vs dovish), (3) the tone of the statement and press conference. None of this can be read automatically from the actual/forecast numbers alone — so we deliberately do NOT generate a directional call here, just this note.",
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
@@ -754,12 +764,14 @@ const SYMS={
 updateSessionBar(); setInterval(updateSessionBar,1000); // SYMS tanımlandıktan SONRA çağrılmalı (sessNote SYMS'i kullanıyor)
 let CUR='OANDA:XAUUSD', INT='15';
 
-// O günkü önemli haber yönü (+1 alım / -1 satım / 0 nötr). Haber günü güncelle.
+// O günkü önemli haber yönü — SADECE gerçek canlı veri (Finnhub) ya da manuel panel girdisi yoksa
+// devreye giren yedek değerdir. Nötr (0) bırakılır: rastgele tahmin edilmiş bir yön, en yüksek ağırlıklı
+// (1.0) oy olarak sessizce her sinyale sızmasın diye kasıtlı olarak sabit bir yön VERİLMEZ.
 const NEWS_BIAS={
- 'OANDA:XAUUSD': -0.5,
- 'BINANCE:BTCUSDT': +0.3,
- 'OANDA:EURUSD': -0.3,
- 'OANDA:SPX500USD': +0.4
+ 'OANDA:XAUUSD': 0,
+ 'BINANCE:BTCUSDT': 0,
+ 'OANDA:EURUSD': 0,
+ 'OANDA:SPX500USD': 0
 };
 // Grafik motorunun canlı okuması buraya yazılır (trend/pattern/S-R/fib + gerçek indikatörler)
 window.valensChartRead={};
@@ -1151,8 +1163,8 @@ function botTick(){
  // her indikatör kendi yönünü "oy" olarak verir (-1/0/+1) — klasik "Çoklu Gösterge Konfluensi" adayı için kullanılır
  const votes={
   rsi: rsi>55?1:rsi<45?-1:0,
-  macd: macd>0?1:-1,
-  ema: ema50>ema200?1:-1,
+  macd: Math.abs(macd)<0.01*atr?0:(macd>0?1:-1),
+  ema: Math.abs(ema50-ema200)<0.0005*ema200?0:(ema50>ema200?1:-1),
   boll: bollPct>75?-1:bollPct<25?1:0,
   stoch: stoch>80?-1:stoch<20?1:0,
   adx: adx>25?(macd>0?1:-1):0,
@@ -1160,7 +1172,7 @@ function botTick(){
   // CCI: RSI/Stoch/Williams %R ile TUTARLI olacak şekilde mean-reversion (aşırı satım/alım dönüş) yorumu kullanılır.
   cci: cci>100?-1:cci<-100?1:0,
   psar: (psar&&psar.isUp)?1:-1,
-  vwap: last>vwap?1:-1,
+  vwap: Math.abs(last-vwap)<0.0005*vwap?0:(last>vwap?1:-1),
   trend: cr.trend||0,
   pattern: cr.pattern||0,
   sr: typeof cr.srBias==='number'?Math.sign(cr.srBias):0,
@@ -1259,13 +1271,48 @@ function botTick(){
  set('iPsar', (psar?(psar.isUp?t('psarUpLbl'):t('psarDownLbl')):'—'), psar?(psar.isUp?1:-1):0);
  set('iPivot', pivots?('P '+fmt(pivots.pp)+' / R1 '+fmt(pivots.r1)+' / S1 '+fmt(pivots.s1)):'—', 0);
 
+ // ---- Kategori kategori özet: indikatörler / stratejiler / grafik yorumu, kazanan yönü destekliyor mu? ----
+ function buildCategoryBreakdown(){
+  const winDir = rawDir;
+  const dirLabel = d => d>0?t('catUp'):d<0?t('catDown'):t('catNeutral');
+  function stateBadge(agree,total){
+   if(winDir===0) return '<span style="color:var(--muted)">'+t('catNoVerdictYet')+'</span>';
+   if(total===0) return '<span style="color:var(--muted)">'+t('catNoData')+'</span>';
+   if(agree===total) return '<span style="color:var(--green)">✓ '+t('catFull')+'</span>';
+   if(agree===0) return '<span style="color:var(--red)">✗ '+t('catNone')+'</span>';
+   return '<span style="color:var(--gold)">◐ '+t('catPartial')+' ('+agree+'/'+total+')</span>';
+  }
+  // Kategori 1: İndikatörler (10 klasik osilatör/MA)
+  const indKeys=['rsi','macd','ema','boll','stoch','adx','wr','cci','psar','vwap'];
+  const indActive=indKeys.filter(k=>votes[k]!==0);
+  const indAgree=winDir!==0?indActive.filter(k=>votes[k]===winDir).length:0;
+  const indLevels='RSI '+rsi.toFixed(1)+' · MACD '+(macd>=0?'+':'')+macd.toFixed(2)+' · EMA '+(ema50>ema200?'Golden ▲':'Death ▼')+' · Boll %'+bollPct.toFixed(0)+' · Stoch '+stoch.toFixed(1)+' · ADX '+adx.toFixed(1);
+  // Kategori 2: Stratejiler (8 adlandırılmış kalıp, confluence hariç)
+  const stratCands=candidates.filter(c=>c.key!=='confluence');
+  const stratAgree=winDir!==0?stratCands.filter(c=>c.dir===winDir).length:0;
+  const stratList=stratCands.length?stratCands.map(c=>c.label+' ('+(c.dir>0?'▲':'▼')+' %'+c.confidence+')').join(', '):t('catNoStrategies');
+  // Kategori 3: Grafik yorumu (trend/mum formasyonu/S-R/Fib)
+  const chartKeys=['trend','pattern','sr','fib'];
+  const chartActive=chartKeys.filter(k=>votes[k]!==0);
+  const chartAgree=winDir!==0?chartActive.filter(k=>votes[k]===winDir).length:0;
+  const chartParts=[]; if(cr.trend) chartParts.push(cr.trend>0?t('trendUp'):t('trendDown')); if(cr.patternName) chartParts.push(cr.patternName); if(cr.srText) chartParts.push(cr.srText);
+  const chartLevels=chartParts.length?chartParts.join(' · '):t('catNeutral');
+
+  let html='<div style="margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);font-size:10px;line-height:1.75">';
+  html+='<div><b style="color:var(--gold)">'+t('catIndicators')+'</b> — '+indLevels+'<br>'+indActive.length+' '+t('catActiveOf')+' '+indKeys.length+' · '+stateBadge(indAgree,indActive.length)+'</div>';
+  html+='<div style="margin-top:7px"><b style="color:var(--gold)">'+t('catStrategies')+'</b> — '+stratList+(stratCands.length?('<br>'+stateBadge(stratAgree,stratCands.length)):'')+'</div>';
+  html+='<div style="margin-top:7px"><b style="color:var(--gold)">'+t('catChart')+'</b> — '+chartLevels+'<br>'+stateBadge(chartAgree,chartActive.length)+'</div>';
+  html+='<div style="margin-top:9px;padding-top:7px;border-top:1px solid var(--line);font-size:12px"><b>'+t('catVerdict')+': <span style="color:'+sigColor+'">'+sigText+'</span></b> — %'+conf+' '+t('catConfidence')+(best?(' · '+best.label):'')+'</div>';
+  html+='</div>';
+  return html;
+ }
  document.getElementById('anText').innerHTML = t('anText')({
   label:cfg.label, rsi:rsi.toFixed(1), macdPos:macd>0, emaGolden:ema50>ema200, atr:fmt(atr), vwapAbove:last>vwap,
   williamsR:williamsR.toFixed(1), cci:cci.toFixed(1), psarUp:psar&&psar.isUp, trend:cr.trend||0,
   patternName:cr.patternName, srText:cr.srText,
   newsLive:liveNewsBias!==null, newsDetail:(window.valensNewsDetail&&window.valensNewsDetail[CUR]||[]).slice(0,2).join(', ')||t('newsData'),
   newsBias:effectiveNewsBias, sigColor, sigText, conf, agreeCount, totalVotes
- });
+ }) + buildCategoryBreakdown();
 
  const tg=document.getElementById('trigger');
  if(armed){tg.className='trigger armed';tg.textContent=t('armedTrigger')(rawDir>0?'BUY':'SELL',conf);}
