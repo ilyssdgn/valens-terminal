@@ -486,6 +486,9 @@ const I18N = {
   tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
   tagRsiDivergence:'RSI Uyumsuzluğu (Divergence)', tagBollSqueeze:'Bollinger Sıkışması + Kırılımı',
   tagEmaPullback:"EMA21'e Geri Çekilme (Trend Devamı)", tagInsideBar:'İç Mum (Inside Bar) Kırılımı',
+  candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
+  winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
+  noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
   strategyTagPrefix:'📐 Bu karara katkıda bulunan strateji kalıpları: ',
   rateDecisionNote:"⚠ Faiz kararlarında \"beklenti üstü/altı\" mantığı yanıltıcı olabilir: piyasa kararı zaten büyük ölçüde önceden fiyatlar (ör. CME FedWatch olasılıkları). Asıl fiyatı oynatan genelde üç şey: (1) sonucun piyasanın fiyatladığı OLASILIKLA örtüşüp örtüşmediği — beklenen bir 'sabit tutma' bile önceden fiyatlanan bir 'artış riski' kalkınca rahatlama yükselişi yaratabilir, (2) komitedeki muhalif oy dağılımı (şahin/güvercin), (3) açıklama metni ve basın toplantısının TONU. Bunların hiçbirini actual/forecast rakamından otomatik okuyamayız — bu yüzden burada yön tahmini VERMİYORUZ, sadece bunu bilin diye not düşüyoruz.",
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
@@ -501,7 +504,7 @@ const I18N = {
   srNearSupport:l=>'desteğe yakın ('+l+')', srNearResistance:l=>'dirence yakın ('+l+')',
   srNearDynSupport:'dinamik desteğe (Dyn Support) yakın', srNearDynResistance:'dinamik dirence (Dyn Resistance) yakın',
   confluenceSuffix:' + Fib seviyesi confluence',
-  conflictWarning:'⚠ KARIŞIK SİNYAL: Destek/direnç ve osilatörler (öncü) bir yönü, trend göstergeleri (MACD/EMA/VWAP — gecikmeli) ters yönü işaret ediyor. Bu genelde bir DÖNÜŞ BÖLGESİ olabilir — sistem burada normalden daha fazla mutabakat istiyor.',
+  conflictWarning:'⚠ KARIŞIK SİNYAL: başka bir strateji/analiz kazanan adayın TERS yönünde de güçlü bir sinyal veriyor. En iyi seçeneği yine de gösteriyoruz, ama bu bölgede görüşler bölünmüş — dikkatli olun.',
   conflictBadge:'⚠ KARIŞIK SİNYAL — dönüş bölgesi olabilir',
   noLastSignal:'Henüz bu seviyede sinyal verilmedi.',
   lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
@@ -602,6 +605,9 @@ const I18N = {
   tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
   tagRsiDivergence:'RSI Divergence', tagBollSqueeze:'Bollinger Squeeze Breakout',
   tagEmaPullback:'EMA21 Pullback (Trend Continuation)', tagInsideBar:'Inside Bar Breakout',
+  candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
+  winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
+  noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
   strategyTagPrefix:'📐 Strategy patterns that contributed to this call: ',
   rateDecisionNote:"⚠ For rate decisions, simple \"beat/miss forecast\" logic can be misleading: the market has usually already priced in the odds of the decision (e.g. CME FedWatch probabilities). What actually moves price is typically: (1) whether the outcome matches the priced-in PROBABILITY — even an expected 'hold' can trigger a relief rally if it removes a priced-in hike risk, (2) the committee's dissent/vote split (hawkish vs dovish), (3) the tone of the statement and press conference. None of this can be read automatically from the actual/forecast numbers alone — so we deliberately do NOT generate a directional call here, just this note.",
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
@@ -617,7 +623,7 @@ const I18N = {
   srNearSupport:l=>'near support ('+l+')', srNearResistance:l=>'near resistance ('+l+')',
   srNearDynSupport:'near dynamic support (Dyn Support)', srNearDynResistance:'near dynamic resistance (Dyn Resistance)',
   confluenceSuffix:' + Fib level confluence',
-  conflictWarning:'⚠ MIXED SIGNAL: support/resistance and oscillators (leading) point one way, trend indicators (MACD/EMA/VWAP — lagging) point the other way. This is often a REVERSAL ZONE — the system requires higher-than-normal agreement here.',
+  conflictWarning:'⚠ MIXED SIGNAL: another strategy/analysis is giving a strong signal in the OPPOSITE direction from the winning candidate. We still show the best option, but opinion is split here — be careful.',
   conflictBadge:'⚠ MIXED SIGNAL — possible reversal zone',
   noLastSignal:'No signal has been given at this level yet.',
   lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
@@ -1142,10 +1148,7 @@ function botTick(){
  const liveNewsBias = (window.valensNewsBias && typeof window.valensNewsBias[CUR]==='number') ? window.valensNewsBias[CUR] : null;
  const effectiveNewsBias = liveNewsBias!==null ? liveNewsBias : (NEWS_BIAS[CUR]||0);
 
- // her indikatör kendi yönünü "oy" olarak verir (-1/0/+1) — hem skora hem de "kaç indikatör aynı yönde?" sayacına girer
- // Adlandırılmış strateji kalıpları (EMA kesişimi, ORB, momentum, likidite süpürme, RSI uyumsuzluğu,
- // Bollinger sıkışması, EMA pullback, iç mum) artık SADECE etiket değil — gerçek oy olarak skora giriyor.
- const tagMap={}; (cr.strategyTags||[]).forEach(tg=>{ tagMap[tg.key]=tg.dir; });
+ // her indikatör kendi yönünü "oy" olarak verir (-1/0/+1) — klasik "Çoklu Gösterge Konfluensi" adayı için kullanılır
  const votes={
   rsi: rsi>55?1:rsi<45?-1:0,
   macd: macd>0?1:-1,
@@ -1155,8 +1158,6 @@ function botTick(){
   adx: adx>25?(macd>0?1:-1):0,
   wr: williamsR<-80?1:williamsR>-20?-1:0,
   // CCI: RSI/Stoch/Williams %R ile TUTARLI olacak şekilde mean-reversion (aşırı satım/alım dönüş) yorumu kullanılır.
-  // Not: CCI trend-takip (momentum devamı) olarak da yorumlanabilir — ama bu sistemdeki DİĞER tüm osilatörler
-  // mean-reversion mantığıyla çalıştığı için CCI'ı farklı bir felsefeyle bırakmak iç tutarsızlıktı; düzeltildi.
   cci: cci>100?-1:cci<-100?1:0,
   psar: (psar&&psar.isUp)?1:-1,
   vwap: last>vwap?1:-1,
@@ -1164,45 +1165,55 @@ function botTick(){
   pattern: cr.pattern||0,
   sr: typeof cr.srBias==='number'?Math.sign(cr.srBias):0,
   fib: typeof cr.fibBias==='number'?Math.sign(cr.fibBias):0,
-  news: Math.sign(effectiveNewsBias),
-  emaCross: tagMap.emaCross||0,
-  orb: tagMap.orb||0,
-  momentum: tagMap.momentum||0,
-  liquiditySweep: tagMap.liquiditySweep||0,
-  rsiDivergence: tagMap.rsiDivergence||0,
-  bollSqueeze: tagMap.bollSqueeze||0,
-  emaPullback: tagMap.emaPullback||0,
-  insideBar: tagMap.insideBar||0
+  news: Math.sign(effectiveNewsBias)
  };
- const weights={rsi:.5,macd:.6,ema:.5,boll:.3,stoch:.3,adx:.2,wr:.35,cci:.35,psar:.4,vwap:.25,trend:.6,pattern:.5,sr:1,fib:.4,news:1,
-  emaCross:.5,orb:.6,momentum:.4,liquiditySweep:.7,rsiDivergence:.6,bollSqueeze:.5,emaPullback:.45,insideBar:.35};
- let score=0;
- Object.keys(votes).forEach(k=>score+=votes[k]*(weights[k]||0));
+ const weights={rsi:.5,macd:.6,ema:.5,boll:.3,stoch:.3,adx:.2,wr:.35,cci:.35,psar:.4,vwap:.25,trend:.6,pattern:.5,sr:1,fib:.4,news:1};
+ let confluenceScore=0;
+ Object.keys(votes).forEach(k=>confluenceScore+=votes[k]*(weights[k]||0));
+ const totalBaseVotes=Object.keys(votes).length; // 15
+ const confluenceConf=Math.min(97,Math.max(50,Math.round(50+Math.abs(confluenceScore)*13)));
+ const confluenceDir=confluenceScore>0.6?1:confluenceScore<-0.6?-1:0;
+ const confluenceAgree=confluenceDir!==0?Object.values(votes).filter(v=>v===confluenceDir).length:0;
 
- // ---- ÖNCÜ (reversal: RSI/Boll/Stoch/WR/CCI/pattern/S-R/Fib/likidite süpürme/RSI uyumsuzluğu) vs GECİKMELİ
- // (trend-takip: MACD/EMA/VWAP/trend/ADX/PSAR/EMA kesişimi/ORB/momentum/Bollinger sıkışması/EMA pullback/iç mum)
- // göstergeler GÜÇLÜ şekilde ters yöndeyse, bu genelde tam bir DÖNÜŞ BÖLGESİNDE olunduğu anlamına gelir —
- // mekanik oy çoğunluğu böyle anlarda en az güvenilir olur. Bu durumu şeffaf şekilde işaretliyoruz ve
- // tetiklenmek için normalden daha yüksek mutabakat istiyoruz.
- const leadingKeys=['rsi','boll','stoch','wr','cci','pattern','sr','fib','liquiditySweep','rsiDivergence'];
- const laggingKeys=['macd','ema','vwap','trend','adx','psar','emaCross','orb','momentum','bollSqueeze','emaPullback','insideBar'];
- let leadingScore=0, laggingScore=0;
- leadingKeys.forEach(k=>leadingScore+=votes[k]*(weights[k]||0));
- laggingKeys.forEach(k=>laggingScore+=votes[k]*(weights[k]||0));
- const conflicted = (leadingScore>0.8 && laggingScore<-0.8) || (leadingScore<-0.8 && laggingScore>0.8);
+ const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep'),
+  rsiDivergence:t('tagRsiDivergence'), bollSqueeze:t('tagBollSqueeze'), emaPullback:t('tagEmaPullback'), insideBar:t('tagInsideBar')};
 
- const conf=Math.min(97,Math.max(50,Math.round(50+Math.abs(score)*13)));
+ // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
+ // Önceki tasarım: 23 şeyin TEK harmanlanmış skoruna bakılıyordu — güçlü ama tek bir kalıp (ör. temiz bir
+ // likidite süpürmesi), ilgisiz bir gösterge (CCI, ADX vb.) katılmadığı için boğulabiliyordu. Şimdi: HER
+ // strateji kendi tam koşulunu (kendi iç mantığında zaten TÜM şartları AND ile) sağladığında bağımsız bir
+ // "aday" olur, kendi temel güvenine sahiptir; diğer göstergeler de aynı yöndeyse ek güven puanı alır.
+ // O an en güçlü/en tam aday NİHAİ karar olur — genel bir "23'ün X'i aynı yönde olsun" şartı YOK artık.
+ const STRATEGY_BASE_CONF={emaCross:72, orb:70, momentum:70, liquiditySweep:82, rsiDivergence:78, bollSqueeze:75, emaPullback:74, insideBar:68};
+ function confirmBoost(dir){
+  const agreeing=Object.keys(votes).filter(k=>votes[k]===dir).length;
+  return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
+ }
+ let candidates=[];
+ if(confluenceDir!==0){
+  candidates.push({key:'confluence', dir:confluenceDir, confidence:confluenceConf, label:t('candidateConfluence')});
+ }
+ (cr.strategyTags||[]).forEach(tag=>{
+  const base=STRATEGY_BASE_CONF[tag.key]||70;
+  const confidence=Math.min(97, base+confirmBoost(tag.dir));
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label:tagLabels[tag.key]});
+ });
+
+ let best=null;
+ candidates.forEach(c=>{ if(!best || c.confidence>best.confidence) best=c; });
+
+ const rawDir = best ? best.dir : 0;
+ const conf = best ? best.confidence : 50;
  const THRESHOLD=87;
 
- let rawDir=0;
- if(score>0.6)rawDir=1; else if(score<-0.6)rawDir=-1; else rawDir=0;
+ // Şeffaflık: kazanan adayın TERS yönünde, ona yakın güvende başka bir aday varsa "karışık" işaretle —
+ // ama yine de EN İYİ seçeneği veriyoruz, sadece bunun tartışmalı olabileceğini açıkça belirtiyoruz.
+ const opposing = best ? candidates.filter(c=>c.dir===-best.dir && c.confidence>=(best.confidence-15)) : [];
+ const conflicted = best!==null && opposing.length>0;
 
- // ---- SIKILAŞTIRILMIŞ TETİKLEME: sadece güven eşiği değil, indikatörlerin GERÇEKTEN çoğunluğu aynı yönde olmalı ----
- // Karışık/dönüş bölgesi sinyali varsa mutabakat çıtası %60'tan %75'e çıkar.
- const agreeCount = rawDir!==0 ? Object.values(votes).filter(v=>v===rawDir).length : 0;
- const totalVotes = Object.keys(votes).length; // 15
- const requiredAgree = Math.ceil(totalVotes*(conflicted?0.75:0.6));
- const technicallyArmed = conf>=THRESHOLD && rawDir!==0 && agreeCount>=requiredAgree;
+ const agreeCount = best ? candidates.filter(c=>c.dir===best.dir).length : 0;
+ const totalVotes = candidates.length;
+ const technicallyArmed = best!==null && conf>=THRESHOLD;
  const riskBlocked = isRiskBlocked();
  const armed = technicallyArmed && !riskBlocked;
 
@@ -1211,15 +1222,20 @@ function botTick(){
  if(armed){sigText=rawDir>0?'▲ BUY':'▼ SELL';sigColor=rawDir>0?'var(--green)':'var(--red)';}
 
  const sigWhyEl=document.getElementById('sigWhy');
- if(sigWhyEl) sigWhyEl.innerHTML = conflicted ? '<span style="color:#ffb27a">'+t('conflictWarning')+'</span>' : '';
+ if(sigWhyEl){
+  let whyHtml = best ? t('winningCandidateLine')(best.label, conf) : t('noCandidateLine');
+  if(conflicted) whyHtml += ' <span style="color:#ffb27a">'+t('conflictWarning')+'</span>';
+  sigWhyEl.innerHTML = whyHtml;
+ }
 
- const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep'),
-  rsiDivergence:t('tagRsiDivergence'), bollSqueeze:t('tagBollSqueeze'), emaPullback:t('tagEmaPullback'), insideBar:t('tagInsideBar')};
- const matchedTags=(cr.strategyTags||[]).filter(tg=>rawDir!==0 && tg.dir===rawDir).map(tg=>tagLabels[tg.key]).filter(Boolean);
  const tagEl=document.getElementById('strategyTagLine');
  if(tagEl){
-  if(matchedTags.length){ tagEl.style.display='block'; tagEl.textContent=t('strategyTagPrefix')+matchedTags.join(' · '); }
-  else { tagEl.style.display='none'; tagEl.textContent=''; }
+  if(candidates.length){
+   const parts=candidates.slice().sort((a,b)=>b.confidence-a.confidence).map(c=>
+    (c===best?'<b style="color:'+(c.dir>0?'var(--green)':'var(--red)')+'">':'')+c.label+' ('+c.confidence+'%)'+(c===best?'</b>':'')
+   );
+   tagEl.style.display='block'; tagEl.innerHTML=t('strategyTagPrefix')+parts.join(' · ');
+  } else { tagEl.style.display='none'; tagEl.textContent=''; }
  }
 
  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
