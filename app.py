@@ -440,11 +440,11 @@ const I18N = {
   export_btn:'⬇ Geçmişi Dışa Aktar (.json)', import_btn:'⬆ İçe Aktar',
   scalp_plan:'SCALP PLAN', swing_plan:'SWING PLAN', entry_lbl:'GİRİŞ', stop_lbl:'STOP',
   vol_profile:'📊 HACİM PROFİLİ', market_closed:'● PİYASA KAPALI', weekend_msg:'Hafta sonu — canlı veri akışı yok',
-  analysis_title_pre:'📊 CANLI GRAFİK ANALİZİ ·', analysis_title_post:'· 12 GERÇEK İNDİKATÖR + GRAFİK + HABER',
+  analysis_title_pre:'📊 CANLI GRAFİK ANALİZİ ·', analysis_title_post:'· 12 İNDİKATÖR + 8 STRATEJİ + GRAFİK + HABER',
   updating:'● GÜNCELLENİYOR', analysis_starting:'Analiz motoru başlatılıyor…',
   econ_calendar_title:'🗓️ EKONOMİK TAKVİM · BUGÜN + YAKLAŞAN (CANLI)',
   tv_source_note:"Kaynak: TradingView resmi Economic Calendar widget'ı (ücretsiz, gömme amaçlı sağlanır) · canlı ve otomatik güncellenir.",
-  bottomnote:'AL/SAT sinyali; 12 gerçek indikatör (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + grafik çizimleri (trend/kanal/Fibonacci/S-R/mum formasyonu) + o günkü haber yönü (manuel/canlı) kombine edilerek üretilir. Stop/hedef mesafeleri gerçek ATR volatilitesine göre dinamik hesaplanır. Grafik verisi Binance canlı feed\'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. "Geçmiş başarı oranı" gerçekten üretilen sinyallerin TP/SL\'ye önce ulaşma sonucundan hesaplanır — sabit/iddia edilen bir doğruluk yüzdesi değildir.',
+  bottomnote:'AL/SAT sinyali; 12 gerçek indikatör (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + grafik çizimleri (trend/kanal/Fibonacci/S-R/mum formasyonu) + 8 adlandırılmış strateji kalıbı (EMA kesişimi, ORB, momentum, likidite süpürme, RSI uyumsuzluğu, Bollinger sıkışması, EMA pullback, iç mum) + o günkü haber yönü (manuel/canlı) — HEPSİ TEK bir ağırlıklı skora kombine edilerek üretilir. Stop/hedef mesafeleri gerçek ATR volatilitesine göre dinamik hesaplanır. Grafik verisi Binance canlı feed\'inden gelir (XAU→PAXG proxy). COT verisi CFTC resmi kaynağından çekilir. "Geçmiş başarı oranı" gerçekten üretilen sinyallerin TP/SL\'ye önce ulaşma sonucundan hesaplanır — sabit/iddia edilen bir doğruluk yüzdesi değildir.',
   macro_event_analysis:'MACRO EVENT ANALYSIS', cot_report:'COT RAPORU · Kurumsal Pozisyon', cot_loading:'COT verisi yükleniyor…',
   todays_news:'GÜNÜN ÖNEMLİ HABERLERİ', loading:'Yükleniyor…',
   tab_terminal:'TERMINAL', tab_portfolio:'PORTFOLIO', tab_research:'RESEARCH', tab_settings:'SETTINGS', tab_account:'ACCOUNT',
@@ -486,7 +486,7 @@ const I18N = {
   tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
   tagRsiDivergence:'RSI Uyumsuzluğu (Divergence)', tagBollSqueeze:'Bollinger Sıkışması + Kırılımı',
   tagEmaPullback:"EMA21'e Geri Çekilme (Trend Devamı)", tagInsideBar:'İç Mum (Inside Bar) Kırılımı',
-  strategyTagPrefix:'📐 Eşleşen strateji kalıbı: ',
+  strategyTagPrefix:'📐 Bu karara katkıda bulunan strateji kalıpları: ',
   rateDecisionNote:"⚠ Faiz kararlarında \"beklenti üstü/altı\" mantığı yanıltıcı olabilir: piyasa kararı zaten büyük ölçüde önceden fiyatlar (ör. CME FedWatch olasılıkları). Asıl fiyatı oynatan genelde üç şey: (1) sonucun piyasanın fiyatladığı OLASILIKLA örtüşüp örtüşmediği — beklenen bir 'sabit tutma' bile önceden fiyatlanan bir 'artış riski' kalkınca rahatlama yükselişi yaratabilir, (2) komitedeki muhalif oy dağılımı (şahin/güvercin), (3) açıklama metni ve basın toplantısının TONU. Bunların hiçbirini actual/forecast rakamından otomatik okuyamayız — bu yüzden burada yön tahmini VERMİYORUZ, sadece bunu bilin diye not düşüyoruz.",
   newsExpectLbl:'Beklenti', newsPrevLbl:'Önceki', newsActualLbl:'Gerçekleşen',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+' PARA BİRİMİ:</b> '+label+' beklentiyi '+beatTxt+' → genellikle '+ccy+' para birimini '+dirTxt+'.'+extra,
@@ -530,7 +530,7 @@ const I18N = {
   riskWarnDetail:(pnl,pct)=>'⚠ Bugünkü kayıp günlük limitin %'+pct+'\'ine ulaştı ('+pnl+'$) — dikkatli olun.',
   riskBlockDetail:(pnl)=>'🛑 Bugünkü kayıp güvenlik eşiğini aştı ($'+pnl+') — yeni işlem ARANMIYOR. Yarın sıfırlanır.',
   riskBlockedStatus:'🛑 GÜNLÜK RİSK SINIRI — yeni sinyal durduruldu',
-  anText: p => 'Bot 12 indikatörü '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> canlı hesaplıyor. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
+  anText: p => 'Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
    ', EMA 50/'+(p.emaGolden?'200 üzeri':'200 altı')+', ATR <b>'+p.atr+'</b> (volatilite), fiyat VWAP\'ın '+(p.vwapAbove?'üzerinde':'altında')+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR '+(p.psarUp?'yükseliş':'düşüş')+' yönünde. '+
    'Grafik: '+(p.trend>0?'yükselen trend':p.trend<0?'düşen trend':'yatay')+
@@ -556,11 +556,11 @@ const I18N = {
   export_btn:'⬇ Export History (.json)', import_btn:'⬆ Import',
   scalp_plan:'SCALP PLAN', swing_plan:'SWING PLAN', entry_lbl:'ENTRY', stop_lbl:'STOP',
   vol_profile:'📊 VOLUME PROFILE', market_closed:'● MARKET CLOSED', weekend_msg:'Weekend — no live data feed',
-  analysis_title_pre:'📊 LIVE CHART ANALYSIS ·', analysis_title_post:'· 12 REAL INDICATORS + CHART + NEWS',
+  analysis_title_pre:'📊 LIVE CHART ANALYSIS ·', analysis_title_post:'· 12 INDICATORS + 8 STRATEGIES + CHART + NEWS',
   updating:'● UPDATING', analysis_starting:'Starting analysis engine…',
   econ_calendar_title:'🗓️ ECONOMIC CALENDAR · TODAY + UPCOMING (LIVE)',
   tv_source_note:"Source: TradingView's official Economic Calendar widget (free, provided for embedding) · updates live and automatically.",
-  bottomnote:'The BUY/SELL signal is produced by combining 12 real indicators (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + chart drawings (trend/channel/Fibonacci/S-R/candle pattern) + the day\'s news direction (manual/live). Stop/target distances are dynamically sized from real ATR volatility. Chart data comes from Binance\'s live feed (XAU→PAXG proxy). COT data comes from the official CFTC source. The "historical win rate" is computed from whether real generated signals actually reached TP or SL first — it is not a fixed or claimed accuracy figure.',
+  bottomnote:'The BUY/SELL signal is produced by combining 12 real indicators (RSI, MACD, EMA50/200, Bollinger, Stochastic, ADX, ATR, VWAP, Williams %R, CCI, Parabolic SAR, Pivot) + chart drawings (trend/channel/Fibonacci/S-R/candle pattern) + 8 named strategy patterns (EMA cross, ORB, momentum, liquidity sweep, RSI divergence, Bollinger squeeze, EMA pullback, inside bar) + the day\'s news direction (manual/live) — ALL combined into ONE weighted score. Stop/target distances are dynamically sized from real ATR volatility. Chart data comes from Binance\'s live feed (XAU→PAXG proxy). COT data comes from the official CFTC source. The "historical win rate" is computed from whether real generated signals actually reached TP or SL first — it is not a fixed or claimed accuracy figure.',
   macro_event_analysis:'MACRO EVENT ANALYSIS', cot_report:'COT REPORT · Institutional Positioning', cot_loading:'Loading COT data…',
   todays_news:"TODAY'S KEY NEWS", loading:'Loading…',
   tab_terminal:'TERMINAL', tab_portfolio:'PORTFOLIO', tab_research:'RESEARCH', tab_settings:'SETTINGS', tab_account:'ACCOUNT',
@@ -602,7 +602,7 @@ const I18N = {
   tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
   tagRsiDivergence:'RSI Divergence', tagBollSqueeze:'Bollinger Squeeze Breakout',
   tagEmaPullback:'EMA21 Pullback (Trend Continuation)', tagInsideBar:'Inside Bar Breakout',
-  strategyTagPrefix:'📐 Matching strategy pattern: ',
+  strategyTagPrefix:'📐 Strategy patterns that contributed to this call: ',
   rateDecisionNote:"⚠ For rate decisions, simple \"beat/miss forecast\" logic can be misleading: the market has usually already priced in the odds of the decision (e.g. CME FedWatch probabilities). What actually moves price is typically: (1) whether the outcome matches the priced-in PROBABILITY — even an expected 'hold' can trigger a relief rally if it removes a priced-in hike risk, (2) the committee's dissent/vote split (hawkish vs dovish), (3) the tone of the statement and press conference. None of this can be read automatically from the actual/forecast numbers alone — so we deliberately do NOT generate a directional call here, just this note.",
   newsExpectLbl:'Forecast', newsPrevLbl:'Previous', newsActualLbl:'Actual',
   newsCcyResult:(dir,ccy,label,beatTxt,dirTxt,extra)=>'<b>'+dir+' '+ccy+':</b> '+label+' '+beatTxt+' forecast → typically '+dirTxt+' '+ccy+'.'+extra,
@@ -646,7 +646,7 @@ const I18N = {
   riskWarnDetail:(pnl,pct)=>"⚠ Today's loss has reached "+pct+'% of the daily limit ($'+pnl+') — be careful.',
   riskBlockDetail:(pnl)=>"🛑 Today's loss has crossed the safety threshold ($"+pnl+') — no new trades are being armed. Resets tomorrow.',
   riskBlockedStatus:'🛑 DAILY RISK LIMIT — new signals paused',
-  anText: p => 'The bot computes 12 indicators for '+p.label+' live from <b>real Binance OHLC data</b>. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
+  anText: p => 'The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
    ', EMA 50/'+(p.emaGolden?'above 200':'below 200')+', ATR <b>'+p.atr+'</b> (volatility), price is '+(p.vwapAbove?'above':'below')+' VWAP'+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR pointing '+(p.psarUp?'up':'down')+'. '+
    'Chart: '+(p.trend>0?'uptrend':p.trend<0?'downtrend':'sideways')+
@@ -1143,6 +1143,9 @@ function botTick(){
  const effectiveNewsBias = liveNewsBias!==null ? liveNewsBias : (NEWS_BIAS[CUR]||0);
 
  // her indikatör kendi yönünü "oy" olarak verir (-1/0/+1) — hem skora hem de "kaç indikatör aynı yönde?" sayacına girer
+ // Adlandırılmış strateji kalıpları (EMA kesişimi, ORB, momentum, likidite süpürme, RSI uyumsuzluğu,
+ // Bollinger sıkışması, EMA pullback, iç mum) artık SADECE etiket değil — gerçek oy olarak skora giriyor.
+ const tagMap={}; (cr.strategyTags||[]).forEach(tg=>{ tagMap[tg.key]=tg.dir; });
  const votes={
   rsi: rsi>55?1:rsi<45?-1:0,
   macd: macd>0?1:-1,
@@ -1161,18 +1164,28 @@ function botTick(){
   pattern: cr.pattern||0,
   sr: typeof cr.srBias==='number'?Math.sign(cr.srBias):0,
   fib: typeof cr.fibBias==='number'?Math.sign(cr.fibBias):0,
-  news: Math.sign(effectiveNewsBias)
+  news: Math.sign(effectiveNewsBias),
+  emaCross: tagMap.emaCross||0,
+  orb: tagMap.orb||0,
+  momentum: tagMap.momentum||0,
+  liquiditySweep: tagMap.liquiditySweep||0,
+  rsiDivergence: tagMap.rsiDivergence||0,
+  bollSqueeze: tagMap.bollSqueeze||0,
+  emaPullback: tagMap.emaPullback||0,
+  insideBar: tagMap.insideBar||0
  };
- const weights={rsi:.5,macd:.6,ema:.5,boll:.3,stoch:.3,adx:.2,wr:.35,cci:.35,psar:.4,vwap:.25,trend:.6,pattern:.5,sr:1,fib:.4,news:1};
+ const weights={rsi:.5,macd:.6,ema:.5,boll:.3,stoch:.3,adx:.2,wr:.35,cci:.35,psar:.4,vwap:.25,trend:.6,pattern:.5,sr:1,fib:.4,news:1,
+  emaCross:.5,orb:.6,momentum:.4,liquiditySweep:.7,rsiDivergence:.6,bollSqueeze:.5,emaPullback:.45,insideBar:.35};
  let score=0;
  Object.keys(votes).forEach(k=>score+=votes[k]*(weights[k]||0));
 
- // ---- ÖNCÜ (reversal: RSI/Boll/Stoch/WR/CCI/PSAR/pattern/S-R/Fib) vs GECİKMELİ (trend: MACD/EMA/VWAP/trend/ADX)
+ // ---- ÖNCÜ (reversal: RSI/Boll/Stoch/WR/CCI/pattern/S-R/Fib/likidite süpürme/RSI uyumsuzluğu) vs GECİKMELİ
+ // (trend-takip: MACD/EMA/VWAP/trend/ADX/PSAR/EMA kesişimi/ORB/momentum/Bollinger sıkışması/EMA pullback/iç mum)
  // göstergeler GÜÇLÜ şekilde ters yöndeyse, bu genelde tam bir DÖNÜŞ BÖLGESİNDE olunduğu anlamına gelir —
  // mekanik oy çoğunluğu böyle anlarda en az güvenilir olur. Bu durumu şeffaf şekilde işaretliyoruz ve
  // tetiklenmek için normalden daha yüksek mutabakat istiyoruz.
- const leadingKeys=['rsi','boll','stoch','wr','cci','pattern','sr','fib'];
- const laggingKeys=['macd','ema','vwap','trend','adx','psar'];
+ const leadingKeys=['rsi','boll','stoch','wr','cci','pattern','sr','fib','liquiditySweep','rsiDivergence'];
+ const laggingKeys=['macd','ema','vwap','trend','adx','psar','emaCross','orb','momentum','bollSqueeze','emaPullback','insideBar'];
  let leadingScore=0, laggingScore=0;
  leadingKeys.forEach(k=>leadingScore+=votes[k]*(weights[k]||0));
  laggingKeys.forEach(k=>laggingScore+=votes[k]*(weights[k]||0));
