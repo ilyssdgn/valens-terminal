@@ -537,13 +537,14 @@ const I18N = {
   sessNoneActive:'Şu an aktif ana seans yok (düşük likidite) — spread\'ler genişleyebilir.',
   sessHighActivity:(list)=>'Bu seansta genellikle en likit: '+list,
   sessLowActivity:'Bu seansta takip ettiğimiz enstrümanlarda görece düşük aktivite beklenir.',
+  proxyStillMoving:(label)=>'⚠ Gerçek '+label+' piyasası kapalı (hafta sonu/seans dışı) — bu grafik 7/24 açık bir kripto proxy\'sinden geliyor, o yüzden hareket etmeye devam ediyor. Sinyal ÜRETİLMİYOR.',
   riskSummaryLine:(daily,max,target)=>'Günlük limit: <b>$'+daily+'</b> · Maks. kayıp: <b>$'+max+'</b> · Hedef: <b>$'+target+'</b>',
   riskOkBadge:'GÜVENLİ', riskWarnBadge:'DİKKAT', riskBlockBadge:'DURDUR',
   riskOkDetail:(pnl)=>'Bugünkü izlenen net: '+(pnl>=0?'+':'')+'$'+pnl+' — sınırın içinde.',
   riskWarnDetail:(pnl,pct)=>'⚠ Bugünkü kayıp günlük limitin %'+pct+'\'ine ulaştı ('+pnl+'$) — dikkatli olun.',
   riskBlockDetail:(pnl)=>'🛑 Bugünkü kayıp güvenlik eşiğini aştı ($'+pnl+') — yeni işlem ARANMIYOR. Yarın sıfırlanır.',
   riskBlockedStatus:'🛑 GÜNLÜK RİSK SINIRI — yeni sinyal durduruldu',
-  anText: p => 'Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
+  anText: p => (p.totalVotes>0 ? ('Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor.') : ('Bot şu an '+p.label+' üzerinde net bir yön bulamıyor — göstergeler/stratejiler birbiriyle çelişiyor ya da hiçbiri belirgin değil (aşağıdaki kategori dökümüne bakın).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
    ', EMA 50/'+(p.emaGolden?'200 üzeri':'200 altı')+', ATR <b>'+p.atr+'</b> (volatilite), fiyat VWAP\'ın '+(p.vwapAbove?'üzerinde':'altında')+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR '+(p.psarUp?'yükseliş':'düşüş')+' yönünde. '+
    'Grafik: '+(p.trend>0?'yükselen trend':p.trend<0?'düşen trend':'yatay')+
@@ -665,13 +666,14 @@ const I18N = {
   sessNoneActive:'No major session is currently active (low liquidity) — spreads may widen.',
   sessHighActivity:(list)=>'Typically most liquid this session: '+list,
   sessLowActivity:'Relatively low activity expected in our tracked instruments this session.',
+  proxyStillMoving:(label)=>'⚠ The real '+label+' market is closed (weekend/off-session) — this chart comes from a 24/7 crypto proxy, so it keeps moving. No signal is being produced.',
   riskSummaryLine:(daily,max,target)=>'Daily limit: <b>$'+daily+'</b> · Max loss: <b>$'+max+'</b> · Target: <b>$'+target+'</b>',
   riskOkBadge:'SAFE', riskWarnBadge:'CAUTION', riskBlockBadge:'STOP',
   riskOkDetail:(pnl)=>"Today's tracked net: "+(pnl>=0?'+':'')+'$'+pnl+' — within limit.',
   riskWarnDetail:(pnl,pct)=>"⚠ Today's loss has reached "+pct+'% of the daily limit ($'+pnl+') — be careful.',
   riskBlockDetail:(pnl)=>"🛑 Today's loss has crossed the safety threshold ($"+pnl+') — no new trades are being armed. Resets tomorrow.',
   riskBlockedStatus:'🛑 DAILY RISK LIMIT — new signals paused',
-  anText: p => 'The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score. RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
+  anText: p => (p.totalVotes>0 ? ('The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score.') : ('The bot cannot find a clear direction for '+p.label+' right now — indicators/strategies conflict or none are decisive (see the category breakdown below).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
    ', EMA 50/'+(p.emaGolden?'above 200':'below 200')+', ATR <b>'+p.atr+'</b> (volatility), price is '+(p.vwapAbove?'above':'below')+' VWAP'+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR pointing '+(p.psarUp?'up':'down')+'. '+
    'Chart: '+(p.trend>0?'uptrend':p.trend<0?'downtrend':'sideways')+
@@ -746,7 +748,10 @@ function updateSessionBar(){
  }
  const noteEl=document.getElementById('sessNote');
  if(noteEl){
-  if(!st.active.length){ noteEl.textContent=t('sessNoneActive'); }
+  if(CUR!=='BINANCE:BTCUSDT' && typeof isMarketOpen==='function' && !isMarketOpen(CUR)){
+   const label=(typeof SYMS!=='undefined' && SYMS[CUR])?SYMS[CUR].label:CUR;
+   noteEl.innerHTML='<span style="color:var(--red)">'+t('proxyStillMoving')(label)+'</span>';
+  } else if(!st.active.length){ noteEl.textContent=t('sessNoneActive'); }
   else{
    const scores={}; Object.keys(SYMS).forEach(sym=>{ scores[sym]=Math.max(...st.active.map(a=>(SESSION_ACTIVITY[a.key]||{})[sym]||0)); });
    const high=Object.keys(scores).filter(sym=>scores[sym]>=2).map(sym=>SYMS[sym].label);
@@ -770,8 +775,8 @@ const SYMS={
    sr:[{type:'r',lo:5945,hi:5970,label:'R2 · 5,958'},{type:'r',lo:5905,hi:5925,label:'R1 · 5,915'},{type:'s',lo:5855,hi:5875,label:'S1 · 5,865'},{type:'s',lo:5810,hi:5830,label:'S2 · 5,820'}],
    top:5990,bot:5800, scTP:14, scSL:7, swTP:45, swSL:22}
 };
-updateSessionBar(); setInterval(updateSessionBar,1000); // SYMS tanımlandıktan SONRA çağrılmalı (sessNote SYMS'i kullanıyor)
 let CUR='OANDA:XAUUSD', INT='15';
+updateSessionBar(); setInterval(updateSessionBar,1000); // CUR/SYMS tanımlandıktan SONRA çağrılmalı
 
 // O günkü önemli haber yönü — SADECE gerçek canlı veri (Finnhub) ya da manuel panel girdisi yoksa
 // devreye giren yedek değerdir. Nötr (0) bırakılır: rastgele tahmin edilmiş bir yön, en yüksek ağırlıklı
@@ -1190,7 +1195,12 @@ function botTick(){
   fib: typeof cr.fibBias==='number'?Math.sign(cr.fibBias):0,
   news: Math.sign(effectiveNewsBias)
  };
- const weights={rsi:.5,macd:.6,ema:.5,boll:.3,stoch:.3,adx:.2,wr:.35,cci:.35,psar:.4,vwap:.25,trend:.6,pattern:.5,sr:1,fib:.4,news:1};
+ // Destek/direnç sinyali, ADX GÜÇLÜ bir trend teyit ediyorsa ve o trendin TERSİNE bir "sekme" öneriyorsa
+ // daha düşük ağırlıklı sayılır — güçlü bir trende karşı gelen destek/direnç sekmeleri, gerçek piyasada
+ // trend yönündeki kadar güvenilir değildir ("trend is your friend"). ADX zayıfsa (net bir trend yoksa,
+ // ki bu ekran görüntünüzdeki durumdu: ADX 10.8) bu indirim uygulanmaz, tam ağırlık kalır.
+ const srTrendStrong = adx>25 && cr.trend && votes.sr!==0 && votes.sr!==cr.trend;
+ const weights={rsi:.5,macd:.6,ema:.5,boll:.3,stoch:.3,adx:.2,wr:.35,cci:.35,psar:.4,vwap:.25,trend:.6,pattern:.5,sr:srTrendStrong?0.5:1,fib:.4,news:1};
  let confluenceScore=0;
  Object.keys(votes).forEach(k=>confluenceScore+=votes[k]*(weights[k]||0));
  const totalBaseVotes=Object.keys(votes).length; // 15
