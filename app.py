@@ -949,7 +949,7 @@ function isMarketOpen(sym){
    const m=h*60+d.getUTCMinutes(); return m>=870 && m<=1260;
  }
  if(day===6)return false;
- if(day===0 && h<23)return false;
+ if(day===0 && h<22)return false;
  if(day===5 && h>=22)return false;
  return true;
 }
