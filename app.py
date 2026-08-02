@@ -125,6 +125,74 @@ def get_econ_calendar():
 
 ECON_JSON = _json.dumps(get_econ_calendar())
 
+# ============ SOSYAL MEDYA / REDDIT DUYARLILIĞI ============
+# Not: 2026 itibarıyla Reddit'in ücretsiz API kaydı eskisi kadar anlık değil (bazı kaynaklara göre
+# manuel onay birkaç hafta sürebiliyor) ve X/Twitter'ın ücretsiz bir arama API'si yok. Discord/Telegram
+# gibi kapalı sohbet gruplarını KAZIMIYORUZ (izin/ToS sorunu). Bu yüzden burada SADECE resmi, anahtar
+# gerektiren Reddit API'si var — anahtar yoksa panel dürüstçe boş kalır, uydurma "sosyal medya duyarlılığı"
+# göstermez. Basit anahtar-kelime tabanlı bir sayım yapılır (gelişmiş NLP DEĞİLDİR, şeffaf bir tahmin).
+@st.cache_data(ttl=1800)
+def get_reddit_sentiment():
+    cid = csecret = ""
+    try:
+        cid = st.secrets.get("REDDIT_CLIENT_ID", "")
+        csecret = st.secrets.get("REDDIT_CLIENT_SECRET", "")
+    except Exception:
+        pass
+    cid = cid or __import__("os").environ.get("REDDIT_CLIENT_ID", "")
+    csecret = csecret or __import__("os").environ.get("REDDIT_CLIENT_SECRET", "")
+    if not cid or not csecret:
+        return {"available": False, "posts": [], "reason": "no_key", "diag": "no_key"}
+    try:
+        headers = {"User-Agent": "ValensWealthTerminal/1.0 (by /u/valenswealth)"}
+        tok_r = requests.post(
+            "https://www.reddit.com/api/v1/access_token",
+            auth=(cid, csecret), data={"grant_type": "client_credentials"},
+            headers=headers, timeout=8,
+        )
+        tok_status = tok_r.status_code
+        try:
+            tok_json = tok_r.json()
+        except Exception:
+            tok_json = {}
+        token = tok_json.get("access_token")
+        if not token:
+            return {"available": False, "posts": [], "reason": "auth_failed", "diag": f"token_status={tok_status} body={str(tok_json)[:150]}"}
+        headers["Authorization"] = f"Bearer {token}"
+        BULL_WORDS = ["bullish", "buy the dip", " long ", "breakout", "rally", "moon", "higher", "calls"]
+        BEAR_WORDS = ["bearish", " short ", "breakdown", "dump", "crash", "lower", "puts", "sell off"]
+        posts_out = []
+        for sub in ["Gold", "Forex", "XAUUSD", "Daytrading"]:
+            r = requests.get(
+                f"https://oauth.reddit.com/r/{sub}/search",
+                params={"q": "gold OR XAUUSD OR XAU/USD", "restrict_sr": "on", "sort": "new", "limit": 8, "t": "week"},
+                headers=headers, timeout=8,
+            )
+            if r.status_code != 200:
+                continue
+            try:
+                children = r.json().get("data", {}).get("children", [])
+            except Exception:
+                children = []
+            for item in children:
+                d = item.get("data", {})
+                title = d.get("title") or ""
+                text = (title + " " + (d.get("selftext") or "")).lower()
+                bull = sum(1 for w in BULL_WORDS if w in text)
+                bear = sum(1 for w in BEAR_WORDS if w in text)
+                posts_out.append({
+                    "sub": sub, "title": title[:140], "score": d.get("score", 0),
+                    "comments": d.get("num_comments", 0), "created": d.get("created_utc"),
+                    "url": "https://reddit.com" + (d.get("permalink") or ""),
+                    "bull": bull, "bear": bear,
+                })
+        posts_out.sort(key=lambda p: p.get("created") or 0, reverse=True)
+        return {"available": True, "posts": posts_out[:20], "diag": f"status={tok_status} posts={len(posts_out)}"}
+    except Exception as e:
+        return {"available": False, "posts": [], "reason": "error", "diag": "exception: " + str(e)[:200]}
+
+REDDIT_JSON = _json.dumps(get_reddit_sentiment())
+
 TERMINAL_HTML = r"""
 <!DOCTYPE html>
 <html lang="tr">
@@ -422,6 +490,8 @@ iframe{height:100%;width:100%;border:0}
         <div id="tradeLogSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
         <div id="tradeLogList" style="max-height:230px;overflow:auto"></div>
       </div>
+      <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="reddit_title">💬 SOSYAL MEDYA (Reddit)</b><span class="badge" id="redditBadge">—</span></div>
+      <div id="redditPanel" style="padding:8px 9px;max-height:220px;overflow:auto"><p style="color:var(--muted);font-size:10px" data-i18n="loading">Yükleniyor…</p></div>
     </aside>
   </main>
 </div>
@@ -472,6 +542,11 @@ const I18N = {
   manualNewsEmpty:'Henüz haber eklenmedi. TradingView takvimine bakıp yukarıdaki formdan 3 yıldızlı haberleri ekleyin — sistem otomatik senaryo üretecek.',
   manualNewsNeedName:'Lütfen önce haber adını girin.',
   manualNewsRemove:'Sil', manualClearConfirm:'Tüm manuel eklenen haberleri silmek istediğinize emin misiniz?',
+  reddit_title:'💬 SOSYAL MEDYA (Reddit)',
+  redditNoKey:'Reddit duyarlılığı için ücretsiz bir Reddit API anahtarı gerekiyor (reddit.com/prefs/apps). Not: 2026 itibarıyla Reddit\'in ücretsiz erişimi eskisi kadar anlık değil — bazı durumlarda kayıt onayı birkaç hafta sürebiliyor. Anahtar yokken uydurma duyarlılık gösterilmiyor. Discord/Telegram gibi kapalı sohbet gruplarını ve X/Twitter\'ı (ücretsiz API yok) taramıyoruz.',
+  redditAuthFailed:'Reddit anahtarınızla kimlik doğrulama başarısız oldu — client ID/secret\'ı kontrol edin.',
+  redditEmpty:'Son bir haftada ilgili subreddit\'lerde altın/XAUUSD hakkında gönderi bulunamadı.',
+  redditSentimentLine:(bull,bear)=>'Basit anahtar-kelime taraması (gelişmiş NLP değildir): <span style="color:var(--green)">▲ '+bull+' yükseliş ifadesi</span> · <span style="color:var(--red)">▼ '+bear+' düşüş ifadesi</span>',
   newsNoEvents:'Önümüzdeki günler için orta/yüksek etkili planlı haber bulunamadı.', newsNoTemplate:'Bu veri tipi için hazır senaryo şablonu yok — rakamları kendi analizinize göre değerlendirin.',
   newsSame:'Sonuç beklentiyle aynı geldi — belirgin bir yön sinyali yok.',
   newsBeat:'aştı', newsMiss:'ıskaladı', newsHigh:'YÜKSEK', newsMed:'ORTA',
@@ -483,10 +558,13 @@ const I18N = {
   ruleGdp:'GSYH (GDP)', ruleRetail:'Perakende satışlar', rulePmi:'PMI', ruleRate:'Faiz kararı', ruleTrade:'Dış ticaret dengesi',
   noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir",
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
+  mainResistance:'Ana Direnç (1H)', mainSupport:'Ana Destek (1H)', srNearMainSupport:'ana desteğe (1H) yakın', srNearMainResistance:'ana dirence (1H) yakın',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
   tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
   tagRsiDivergence:'RSI Uyumsuzluğu (Divergence)', tagBollSqueeze:'Bollinger Sıkışması + Kırılımı',
   tagEmaPullback:"EMA21'e Geri Çekilme (Trend Devamı)", tagInsideBar:'İç Mum (Inside Bar) Kırılımı',
+  tagFvgRetest:'Fair Value Gap Retest (ICT)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Döngüsü (Accumulation-Manipulation-Distribution)',
+  tagValuationZone:'Değerleme Ekstremi + Bölge Confluence', tagMacdZeroCross:'MACD Sıfır Çizgisi Kesişimi',
   candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
   winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
   noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
@@ -601,6 +679,11 @@ const I18N = {
   manualNewsEmpty:'No news added yet. Check the TradingView calendar and add today\'s 3-star events using the form above — the system will generate scenarios automatically.',
   manualNewsNeedName:'Please enter the event name first.',
   manualNewsRemove:'Remove', manualClearConfirm:'Remove all manually added news?',
+  reddit_title:'💬 SOCIAL MEDIA (Reddit)',
+  redditNoKey:'Reddit sentiment needs a free Reddit API key (reddit.com/prefs/apps). Note: as of 2026 Reddit\'s free access is no longer instant — registration approval can reportedly take a few weeks in some cases. No made-up sentiment is shown without a key. We do not scrape closed chat groups (Discord/Telegram) or X/Twitter (no free API).',
+  redditAuthFailed:'Authentication with your Reddit key failed — check your client ID/secret.',
+  redditEmpty:'No gold/XAUUSD-related posts found in the tracked subreddits in the last week.',
+  redditSentimentLine:(bull,bear)=>'Simple keyword scan (not advanced NLP): <span style="color:var(--green)">▲ '+bull+' bullish mentions</span> · <span style="color:var(--red)">▼ '+bear+' bearish mentions</span>',
   newsNoEvents:'No medium/high-impact scheduled news found for the coming days.', newsNoTemplate:'No ready-made scenario template for this data type — evaluate the raw numbers yourself.',
   newsSame:'Result matched expectations — no clear directional signal.',
   newsBeat:'beat', newsMiss:'missed', newsHigh:'HIGH', newsMed:'MEDIUM',
@@ -612,10 +695,13 @@ const I18N = {
   ruleGdp:'GDP', ruleRetail:'Retail sales', rulePmi:'PMI', ruleRate:'Rate decision', ruleTrade:'Trade balance',
   noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required',
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
+  mainResistance:'Main Resistance (1H)', mainSupport:'Main Support (1H)', srNearMainSupport:'near main support (1H)', srNearMainResistance:'near main resistance (1H)',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
   tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
   tagRsiDivergence:'RSI Divergence', tagBollSqueeze:'Bollinger Squeeze Breakout',
   tagEmaPullback:'EMA21 Pullback (Trend Continuation)', tagInsideBar:'Inside Bar Breakout',
+  tagFvgRetest:'Fair Value Gap Retest (ICT)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Cycle (Accumulation-Manipulation-Distribution)',
+  tagValuationZone:'Valuation Extreme + Zone Confluence', tagMacdZeroCross:'MACD Zero-Line Cross',
   candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
   winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
   noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
@@ -1209,7 +1295,8 @@ function botTick(){
  const confluenceAgree=confluenceDir!==0?Object.values(votes).filter(v=>v===confluenceDir).length:0;
 
  const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep'),
-  rsiDivergence:t('tagRsiDivergence'), bollSqueeze:t('tagBollSqueeze'), emaPullback:t('tagEmaPullback'), insideBar:t('tagInsideBar')};
+  rsiDivergence:t('tagRsiDivergence'), bollSqueeze:t('tagBollSqueeze'), emaPullback:t('tagEmaPullback'), insideBar:t('tagInsideBar'),
+  fvgRetest:t('tagFvgRetest'), ifvg:t('tagIfvg'), amdCycle:t('tagAmdCycle'), valuationZone:t('tagValuationZone'), macdZeroCross:t('tagMacdZeroCross')};
 
  // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
  // Önceki tasarım: 23 şeyin TEK harmanlanmış skoruna bakılıyordu — güçlü ama tek bir kalıp (ör. temiz bir
@@ -1217,7 +1304,8 @@ function botTick(){
  // strateji kendi tam koşulunu (kendi iç mantığında zaten TÜM şartları AND ile) sağladığında bağımsız bir
  // "aday" olur, kendi temel güvenine sahiptir; diğer göstergeler de aynı yöndeyse ek güven puanı alır.
  // O an en güçlü/en tam aday NİHAİ karar olur — genel bir "23'ün X'i aynı yönde olsun" şartı YOK artık.
- const STRATEGY_BASE_CONF={emaCross:72, orb:70, momentum:70, liquiditySweep:82, rsiDivergence:78, bollSqueeze:75, emaPullback:74, insideBar:68};
+ const STRATEGY_BASE_CONF={emaCross:72, orb:70, momentum:70, liquiditySweep:82, rsiDivergence:78, bollSqueeze:75, emaPullback:74, insideBar:68,
+  fvgRetest:76, ifvg:77, amdCycle:85, valuationZone:73, macdZeroCross:66};
  function confirmBoost(dir){
   const agreeing=Object.keys(votes).filter(k=>votes[k]===dir).length;
   return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
@@ -1448,6 +1536,7 @@ document.querySelectorAll('.market').forEach(x=>x.onclick=()=>{
 document.querySelectorAll('.tfbtn').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tfbtn').forEach(y=>y.classList.remove('on'));
  x.classList.add('on'); INT=x.dataset.int; loadChart(); updateAggUI();
+ if(window.valensSetInterval) window.valensSetInterval();
 });
 document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tab').forEach(y=>y.classList.remove('active')); x.classList.add('active');
@@ -1460,6 +1549,7 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI(); updateTradeLogUI(); updateSessionBar();
  if(window.valensRenderCOT) window.valensRenderCOT(CUR);
  if(window.valensRenderNews) window.valensRenderNews();
+ if(window.valensRenderReddit) window.valensRenderReddit();
  if(!isMarketOpen(CUR)) marketClosedUI();
 });
 
@@ -1707,11 +1797,55 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 </script>
 
 <script>
+/* ============ SOSYAL MEDYA / REDDIT DUYARLILIĞI ============ */
+(function(){
+ const REDDIT = __REDDIT_DATA__; // {available, posts:[{sub,title,score,comments,created,url,bull,bear}], reason, diag}
+ function timeAgo(unixSec){
+  if(!unixSec) return '—';
+  const mins=Math.floor((Date.now()/1000-unixSec)/60);
+  if(mins<60) return mins+'dk';
+  if(mins<1440) return Math.floor(mins/60)+'sa';
+  return Math.floor(mins/1440)+'g';
+ }
+ function renderReddit(){
+  const box=document.getElementById('redditPanel'), badge=document.getElementById('redditBadge');
+  if(!box||!badge) return;
+  if(!REDDIT.available){
+   badge.textContent=t('apiMissingBadge');
+   const msg = REDDIT.reason==='auth_failed' ? t('redditAuthFailed') : t('redditNoKey');
+   const diagLine = REDDIT.diag ? '<p style="color:var(--muted);font-size:8px;font-family:\'IBM Plex Mono\'">diag: '+REDDIT.diag+'</p>' : '';
+   box.innerHTML='<p style="color:var(--muted);font-size:10px;line-height:1.6">'+msg+'</p>'+diagLine;
+   return;
+  }
+  const posts=REDDIT.posts||[];
+  if(!posts.length){ badge.textContent='0'; box.innerHTML='<p style="color:var(--muted);font-size:10px">'+t('redditEmpty')+'</p>'; return; }
+  let bullTotal=0, bearTotal=0;
+  posts.forEach(p=>{ bullTotal+=p.bull||0; bearTotal+=p.bear||0; });
+  badge.textContent=posts.length+'';
+  let html='<div style="font-size:9px;color:var(--muted);margin-bottom:7px;line-height:1.5">'+t('redditSentimentLine')(bullTotal,bearTotal)+'</div>';
+  posts.slice(0,10).forEach(p=>{
+   html+='<div style="padding:5px 0;border-bottom:1px solid var(--line);font-size:9px">'+
+    '<a href="'+p.url+'" target="_blank" style="color:var(--text);text-decoration:none">'+p.title+'</a>'+
+    '<div style="color:var(--muted);margin-top:2px">r/'+p.sub+' · ▲'+(p.score||0)+' · 💬'+(p.comments||0)+' · '+timeAgo(p.created)+
+    (p.bull>p.bear?' · <span style="color:var(--green)">▲ bullish ton</span>':p.bear>p.bull?' · <span style="color:var(--red)">▼ bearish ton</span>':'')+'</div></div>';
+  });
+  box.innerHTML=html;
+ }
+ window.valensRenderReddit=renderReddit;
+ renderReddit();
+})();
+</script>
+
+<script>
 /* ============ VALENS CANLI GRAFİK + OTOMATİK ÇİZİM MOTORU + GERÇEK İNDİKATÖR HESABI ============ */
 (function(){
  const el=document.getElementById('valensChart');
  if(!el||!window.LightweightCharts)return;
  const MAP={'OANDA:XAUUSD':'PAXGUSDT','BINANCE:BTCUSDT':'BTCUSDT','OANDA:EURUSD':'EURUSDT','OANDA:SPX500USD':null};
+ // Zaman dilimi butonu değeri -> gerçek Binance kline aralığı. Önceden bu eşleme YOKTU, interval her
+ // zaman sabit "15m" kalıyordu — hangi butona basılırsa basılsın veri hiç değişmiyordu.
+ const INTERVAL_MAP={'15':'15m','30':'30m','60':'1h','240':'4h','D':'1d'};
+ function currentBinInterval(){ return INTERVAL_MAP[(typeof INT!=='undefined'?INT:'15')] || '15m'; }
 
  const chart=LightweightCharts.createChart(el,{
   layout:{background:{color:'transparent'},textColor:'#8090a6',fontFamily:'IBM Plex Mono'},
@@ -1733,6 +1867,9 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
  let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[];
+ // "Ana destek/direnç" HER ZAMAN 1 saatlik mumlardan hesaplanır (kullanıcı hangi zaman dilimini
+ // izlerse izlesin) — "scalp" destek/direnç ise o an izlenen aralığın kendi dinamik S/R'ıdır.
+ let mainSR={sup:null,res:null}, mainSRLines=[];
  const closedEl=document.getElementById('chartClosed');
 
  const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
@@ -1962,6 +2099,71 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(curr.close<inside.low) return {key:'insideBar', dir:-1};
   return null;
  }
+ // ---- FAIR VALUE GAP (FVG) — ICT tanımı: 3 mumluk yapı, 1. mumun high/low'u ile 3. mumun low/high'ı
+ // arasında boşluk (2. mum "displacement/güçlü hareket" mumu). Fiyat bu boşluğa geri dönüp (retest)
+ // tepki verirse (dolmadan reddedilirse) bu klasik bir giriş noktasıdır. ----
+ function findFVGs(a, lookback){
+  const w=a.slice(-lookback-2,-1); let fvgs=[];
+  for(let i=1;i<w.length-1;i++){
+   const c1=w[i-1], c3=w[i+1];
+   if(c1.high<c3.low) fvgs.push({dir:1, top:c3.low, bottom:c1.high});
+   else if(c1.low>c3.high) fvgs.push({dir:-1, top:c1.low, bottom:c3.high});
+  }
+  return fvgs;
+ }
+ function detectFVGRetest(a){
+  if(a.length<25) return null;
+  const fvgs=findFVGs(a,20), curr=a[a.length-1];
+  for(let i=fvgs.length-1;i>=0;i--){
+   const f=fvgs[i];
+   if(f.dir>0 && curr.low<=f.top && curr.close>f.bottom && curr.close>curr.open) return {key:'fvgRetest', dir:1};
+   if(f.dir<0 && curr.high>=f.bottom && curr.close<f.top && curr.close<curr.open) return {key:'fvgRetest', dir:-1};
+  }
+  return null;
+ }
+ // ---- INVERSE FVG (IFVG) — bir FVG, fiyatın onu TAM GÖVDE KAPANIŞIYLA (sadece fitil değil) geçmesiyle
+ // "bozulur" ve kutup değiştirir: bullish FVG bozulursa bearish IFVG (SAT), tersi de BUY olur. ----
+ function detectIFVG(a){
+  if(a.length<25) return null;
+  const fvgs=findFVGs(a,20), curr=a[a.length-1];
+  for(let i=fvgs.length-1;i>=0;i--){
+   const f=fvgs[i];
+   if(f.dir>0 && curr.close<f.bottom) return {key:'ifvg', dir:-1};
+   if(f.dir<0 && curr.close>f.top) return {key:'ifvg', dir:1};
+  }
+  return null;
+ }
+ // ---- AMD DÖNGÜSÜ (Accumulation-Manipulation-Distribution) — ICT'nin temel piyasa döngüsü kavramı.
+ // Zaten var olan iki gerçek tespiti SIRALI olarak birleştirir: konsolidasyon bölgesi (accumulation) +
+ // o bölgenin sınırının süpürülmesi (manipulation, likidite süpürmesi) + güçlü yönlü kopuş (distribution).
+ // Üçü BİRDEN gerçekleştiğinde ateşlenir — bu yüzden en yüksek temel güvene sahip kalıptır. ----
+ function detectAMDCycle(a, zones, ema200, vwap){
+  const sweep=detectLiquiditySweep(a, ema200, vwap);
+  if(!sweep || !zones || !zones.length) return null;
+  const curr=a[a.length-1];
+  const nearZone=zones.some(z => (curr.close<=z.hi*1.006 && curr.close>=z.lo*0.994));
+  return nearZone ? {key:'amdCycle', dir:sweep.dir} : null;
+ }
+ // ---- DEĞERLEME EKSTREMİ + BÖLGE CONFLUENCE — "gold ucuz mu pahalı mı" + bir arz/talep bölgesinde
+ // olması ikisi birden gerekir (Bollinger %B'yi değerleme ekstremi, S/R yakınlığını bölge olarak kullanır). ----
+ function detectValuationZoneConfluence(bollPct, srBias){
+  if(bollPct>80 && srBias<0) return {key:'valuationZone', dir:-1};
+  if(bollPct<20 && srBias>0) return {key:'valuationZone', dir:1};
+  return null;
+ }
+ // ---- MACD SIFIR ÇİZGİSİ KESİŞİMİ — MACD çizgisinin sıfırı yukarı/aşağı kesmesi, sinyal çizgisi
+ // kesişiminden farklı, daha geniş bir momentum dönüşü sinyalidir. Gerçek MACD SERİSİNDEN hesaplanır. ----
+ function calcMACDSeries(a){
+  const ema12=emaLine(a,12).map(p=>p.value), ema26=emaLine(a,26).map(p=>p.value);
+  return ema12.map((v,i)=>v-(ema26[i]!=null?ema26[i]:v));
+ }
+ function detectMacdZeroCross(macdSeries){
+  if(!macdSeries||macdSeries.length<2) return null;
+  const prev=macdSeries[macdSeries.length-2], curr=macdSeries[macdSeries.length-1];
+  if(prev<=0 && curr>0) return {key:'macdZeroCross', dir:1};
+  if(prev>=0 && curr<0) return {key:'macdZeroCross', dir:-1};
+  return null;
+ }
  function detectLiquiditySweep(a, ema200, vwap){
   // "Likidite Süpürme Dönüşü": 200 EMA yön filtresi + yakın bir swing high/low'un süpürülüp (sweep)
   // kapanışın geri içeri dönmesi ("trick move") + VWAP reddi — hepsi AYNI ANDA gerçekleşmeli.
@@ -2009,6 +2211,17 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const pullback=detectEmaPullback(a, ema21Series); if(pullback) tags.push(pullback);
   // (8) İç mum (inside bar) kırılımı
   const insideBar=detectInsideBarBreakout(a); if(insideBar) tags.push(insideBar);
+  // (9) Fair Value Gap retest
+  const fvgR=detectFVGRetest(a); if(fvgR) tags.push(fvgR);
+  // (10) Inverse Fair Value Gap
+  const ifvg=detectIFVG(a); if(ifvg) tags.push(ifvg);
+  // (11) AMD Döngüsü (accumulation + manipulation + distribution)
+  const amd=detectAMDCycle(a, ind.zones, ind.ema200, ind.vwap); if(amd) tags.push(amd);
+  // (12) Değerleme ekstremi + bölge confluence
+  const valZone=detectValuationZoneConfluence(ind.bollPct, ind.srBias); if(valZone) tags.push(valZone);
+  // (13) MACD sıfır çizgisi kesişimi
+  const macdSeries=calcMACDSeries(a);
+  const macdCross=detectMacdZeroCross(macdSeries); if(macdCross) tags.push(macdCross);
   return tags;
  }
  function drawSRLines(){
@@ -2018,6 +2231,26 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const px=(s.lo+s.hi)/2, isRes=s.type==='r';
    srLines.push(cs.createPriceLine({price:px,color:isRes?'#ff506d':'#00c896',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:s.label}));
   });
+ }
+ // ---- ANA DESTEK/DİRENÇ: her zaman 1 saatlik mumlardan, o an izlenen zaman diliminden BAĞIMSIZ ----
+ // "Ana destek direnç noktaları 1 saatlikten alınıyor" — kullanıcı 15dk'da bakarken bile bu arka planda
+ // 1 saatlik veriden hesaplanır ve grafiğe kalın turuncu çizgilerle işaretlenir.
+ async function fetchMainSR(sym){
+  const bs=MAP[sym]; if(!bs){ mainSR={sup:null,res:null}; return; }
+  try{
+   const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1h&limit=100`);
+   const d=await r.json();
+   if(!Array.isArray(d)||!d.length) return;
+   const highs=d.map(k=>+k[2]), lows=d.map(k=>+k[3]);
+   mainSR={sup:Math.min(...lows), res:Math.max(...highs)};
+   if(sym===curSym) drawMainSRLines();
+  }catch(e){ /* sessizce yoksay — bu ikincil bir veri kaynağı, ana grafiği bozmasın */ }
+ }
+ function drawMainSRLines(){
+  mainSRLines.forEach(l=>cs.removePriceLine(l)); mainSRLines=[];
+  if(mainSR.sup==null||mainSR.res==null) return;
+  mainSRLines.push(cs.createPriceLine({price:mainSR.res,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainResistance')}));
+  mainSRLines.push(cs.createPriceLine({price:mainSR.sup,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainSupport')}));
  }
  function drawFibonacci(){
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
@@ -2133,9 +2366,16 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(cfg){cfg.sr.forEach(s=>{const mid=(s.lo+s.hi)/2,dist=Math.abs(last-mid)/last;
     if(dist<0.004){ if(s.type==='s'){srBias=0.5;srText=t('srNearSupport')(s.label);}
                     else{srBias=-0.5;srText=t('srNearResistance')(s.label);} }});}
-  // Dinamik Dyn Support/Resistance'a (grafikte çizilen, son 60 mumdan hesaplanan gerçek çizgi) yakınlık da
-  // hesaba katılır — önceden SADECE statik/sabit seviyeler kontrol ediliyordu, grafikte görünen asıl
-  // confluence (Dyn Support/Resistance) skorlamaya hiç girmiyordu.
+  // ANA destek/direnç (1 saatlik, o an izlenen zaman diliminden BAĞIMSIZ) — en yüksek öncelikli S/R
+  // kaynağıdır ("ana destek direnç noktaları 1 saatlikten alınıyor"). Şu an izlenen aralığın kendi
+  // dinamik S/R'ı ("scalp" S/R) aşağıda ayrıca hesaba katılır, ama ana 1H seviyesi öncelik kazanır.
+  if(mainSR && mainSR.sup!=null && mainSR.res!=null){
+    const distMainSup=Math.abs(last-mainSR.sup)/last, distMainRes=Math.abs(last-mainSR.res)/last;
+    if(distMainSup<0.004 && distMainSup<=distMainRes && Math.abs(0.7)>Math.abs(srBias)){ srBias=0.7; srText=t('srNearMainSupport'); }
+    else if(distMainRes<0.004 && distMainRes<distMainSup && Math.abs(-0.7)>Math.abs(srBias)){ srBias=-0.7; srText=t('srNearMainResistance'); }
+  }
+  // Dinamik Dyn Support/Resistance'a (grafikte çizilen, son 60 mumdan hesaplanan gerçek çizgi — "scalp" S/R,
+  // şu an izlenen zaman dilimine özel) yakınlık da hesaba katılır.
   if(typeof sup==='number' && typeof res==='number' && isFinite(sup) && isFinite(res)){
     const distSup=Math.abs(last-sup)/last, distRes=Math.abs(last-res)/last;
     if(distSup<0.003 && distSup<=distRes && Math.abs(0.6)>Math.abs(srBias)){ srBias=0.6; srText=t('srNearDynSupport'); }
@@ -2174,7 +2414,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const cciReal=calcCCI(ohlc,20);
   const psarReal=calcPSAR(ohlc);
   const pivotsReal=calcPivots(ohlc);
-  const strategyTags=detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema200:ema200Real, vwap:vwapReal});
+  const strategyTags=detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias});
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
@@ -2200,24 +2440,47 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     }
   };
  }
- async function loadHistory(){
+ // ---- Grafik verisi önbelleği: terminali her açtığınızda WebSocket'in yeniden bağlanmasını beklemeden
+ // ÖNCEKİ oturumdan kalma veriyi anında gösterir, sonra taze veriyle günceller. ----
+ function ohlcCacheKey(sym,intv){ return 'valens_ohlc_'+sym.replace(/[:\/]/g,'_')+'_'+intv; }
+ function saveOhlcCache(sym,intv,data){
+  try{ localStorage.setItem(ohlcCacheKey(sym,intv), JSON.stringify({ts:Date.now(), data:data.slice(-1000)})); }catch(e){}
+ }
+ function loadOhlcCache(sym,intv){
   try{
-   const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${binSym}&interval=15m&limit=200`);
+   const raw=localStorage.getItem(ohlcCacheKey(sym,intv)); if(!raw) return null;
+   const parsed=JSON.parse(raw);
+   if(Date.now()-parsed.ts > 24*3600*1000) return null; // 24 saatten eski önbellek kullanılmaz
+   return parsed.data;
+  }catch(e){ return null; }
+ }
+ async function loadHistory(){
+  const intv=currentBinInterval();
+  // Önce önbellekten (varsa) anında göster — kullanıcı sayfayı her açtığında boş grafik görmesin
+  const cached=loadOhlcCache(curSym,intv);
+  if(cached && cached.length){ ohlc=cached; cs.setData(ohlc); chart.timeScale().fitContent(); analyze(); }
+  try{
+   // Binance REST API'de tek istekte alınabilecek azami mum sayısı 1000'dir — önceki 200 limiti
+   // gereksiz yere veriyi kısıtlıyordu (15dk'da sadece ~50 saat; 1000 ile ~10 gün).
+   const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${binSym}&interval=${intv}&limit=1000`);
    const d=await r.json();
    if(!Array.isArray(d))throw new Error('no data');
    ohlc=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
    cs.setData(ohlc); chart.timeScale().fitContent(); analyze();
+   saveOhlcCache(curSym,intv,ohlc);
   }catch(e){console.error('history err',e);}
  }
  function connect(){
   if(ws){ws.close();ws=null;}
-  ws=new WebSocket(`wss://stream.binance.com:9443/ws/${binSym.toLowerCase()}@kline_15m`);
+  const intv=currentBinInterval();
+  ws=new WebSocket(`wss://stream.binance.com:9443/ws/${binSym.toLowerCase()}@kline_${intv}`);
   ws.onmessage=ev=>{
    const k=JSON.parse(ev.data).k;
    const bar={time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};
    const last=ohlc[ohlc.length-1];
-   if(last&&last.time===bar.time)ohlc[ohlc.length-1]=bar; else{ohlc.push(bar);if(ohlc.length>300)ohlc.shift();}
+   if(last&&last.time===bar.time)ohlc[ohlc.length-1]=bar; else{ohlc.push(bar);if(ohlc.length>1000)ohlc.shift();}
    cs.update(bar); analyze();
+   if(k.x) saveOhlcCache(curSym,intv,ohlc); // sadece mum KAPANDIĞINDA önbelleği güncelle (her tick'te yazmaya gerek yok)
   };
  }
  function connectTrades(){
@@ -2252,6 +2515,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
   zoneLines.forEach(l=>cs.removePriceLine(l)); zoneLines=[];
+  mainSRLines.forEach(l=>cs.removePriceLine(l)); mainSRLines=[]; mainSR={sup:null,res:null};
   if(dynSup){cs.removePriceLine(dynSup);dynSup=null;}
   if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
   ohlc=[]; cs.setData([]);
@@ -2264,6 +2528,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   window.valensChartRead={};
   closedEl.style.display='none';
+  fetchMainSR(sym);
   loadHistory().then(()=>{
     drawSRLines(); connect(); connectTrades();
     // ---- EKSENİ YENİ FİYATA OTURT ----
@@ -2272,6 +2537,29 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   });
   setTimeout(resize,120);
  };
+ setInterval(()=>{ if(curSym && binSym) fetchMainSR(curSym); }, 5*60*1000); // ana S/R'ı 5 dakikada bir tazele
+ // ---- Zaman dilimi (15M/30M/1H/4H/1D) değiştiğinde GERÇEKTEN yeni aralıkta veri çeker ----
+ // Önceden zaman dilimi butonları sadece başlık yazısını değiştiriyordu, veri her zaman 15m kalıyordu.
+ window.valensSetInterval=function(){
+  if(!binSym) return; // canlı veri akışı olmayan enstrüman (ör. SPX500) — yapacak bir şey yok
+  if(ws){ws.close();ws=null;} if(tradeWs){tradeWs.close();tradeWs=null;}
+  cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
+  kelUp.setData([]); kelLo.setData([]);
+  patternMarkers=[];
+  e20.setData([]); e50.setData([]);
+  srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
+  fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
+  zoneLines.forEach(l=>cs.removePriceLine(l)); zoneLines=[];
+  if(dynSup){cs.removePriceLine(dynSup);dynSup=null;}
+  if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
+  ohlc=[]; cs.setData([]);
+  window.valensChartRead={};
+  loadHistory().then(()=>{
+   drawSRLines(); connect(); connectTrades();
+   chart.priceScale('right').applyOptions({autoScale:true});
+   chart.timeScale().fitContent();
+  });
+ };
  window.valensSetSymbol(CUR);
 })();
 </script>
@@ -2279,5 +2567,5 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 </html>
 """
 
-TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON)
+TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON).replace("__REDDIT_DATA__", REDDIT_JSON)
 components.html(TERMINAL_HTML, height=1550, scrolling=True)
