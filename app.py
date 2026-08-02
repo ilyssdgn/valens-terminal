@@ -125,73 +125,79 @@ def get_econ_calendar():
 
 ECON_JSON = _json.dumps(get_econ_calendar())
 
-# ============ SOSYAL MEDYA / REDDIT DUYARLILIĞI ============
-# Not: 2026 itibarıyla Reddit'in ücretsiz API kaydı eskisi kadar anlık değil (bazı kaynaklara göre
-# manuel onay birkaç hafta sürebiliyor) ve X/Twitter'ın ücretsiz bir arama API'si yok. Discord/Telegram
-# gibi kapalı sohbet gruplarını KAZIMIYORUZ (izin/ToS sorunu). Bu yüzden burada SADECE resmi, anahtar
-# gerektiren Reddit API'si var — anahtar yoksa panel dürüstçe boş kalır, uydurma "sosyal medya duyarlılığı"
-# göstermez. Basit anahtar-kelime tabanlı bir sayım yapılır (gelişmiş NLP DEĞİLDİR, şeffaf bir tahmin).
-@st.cache_data(ttl=1800)
-def get_reddit_sentiment():
-    cid = csecret = ""
+# ============ AI HABER ARAŞTIRMASI (Anthropic API + gerçek web araması) ============
+# Kullanıcı bir haber konusu girdiğinde (ör. "Faiz kararı"), Claude'u GERÇEK web arama aracıyla
+# çağırıp güncel internet verisine dayanan olası senaryolar üretir. Kesin tahmin İSTEMİYORUZ —
+# modelden bilinçli olarak "olası senaryolar" istiyoruz, "şu kesin olacak" değil.
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_ai_news_scenario(topic, instrument_label):
+    key = ""
     try:
-        cid = st.secrets.get("REDDIT_CLIENT_ID", "")
-        csecret = st.secrets.get("REDDIT_CLIENT_SECRET", "")
+        key = st.secrets.get("ANTHROPIC_API_KEY", "")
     except Exception:
         pass
-    cid = cid or __import__("os").environ.get("REDDIT_CLIENT_ID", "")
-    csecret = csecret or __import__("os").environ.get("REDDIT_CLIENT_SECRET", "")
-    if not cid or not csecret:
-        return {"available": False, "posts": [], "reason": "no_key", "diag": "no_key"}
+    key = key or __import__("os").environ.get("ANTHROPIC_API_KEY", "")
+    if not key or not topic:
+        return {"available": False, "reason": "no_key", "diag": "no_key", "topic": topic}
     try:
-        headers = {"User-Agent": "ValensWealthTerminal/1.0 (by /u/valenswealth)"}
-        tok_r = requests.post(
-            "https://www.reddit.com/api/v1/access_token",
-            auth=(cid, csecret), data={"grant_type": "client_credentials"},
-            headers=headers, timeout=8,
+        prompt = (
+            f"Sen kurumsal bir makro-piyasa analistisin. Konu: \"{topic}\". "
+            f"Bu konuyla ilgili GÜNCEL gelişmeleri web aramasıyla bul (tarih, kaynak belirt). "
+            f"Sonra {instrument_label} için 2-3 KISA olası senaryo yaz, 'Eğer X olursa → genellikle Y beklenir' "
+            f"formatında. KESİN TAHMİN YAPMA — sadece bilinen ilişkileri ve güncel bağlamı özetle. "
+            f"En fazla 180 kelime, Türkçe, madde işaretli."
         )
-        tok_status = tok_r.status_code
-        try:
-            tok_json = tok_r.json()
-        except Exception:
-            tok_json = {}
-        token = tok_json.get("access_token")
-        if not token:
-            return {"available": False, "posts": [], "reason": "auth_failed", "diag": f"token_status={tok_status} body={str(tok_json)[:150]}"}
-        headers["Authorization"] = f"Bearer {token}"
-        BULL_WORDS = ["bullish", "buy the dip", " long ", "breakout", "rally", "moon", "higher", "calls"]
-        BEAR_WORDS = ["bearish", " short ", "breakdown", "dump", "crash", "lower", "puts", "sell off"]
-        posts_out = []
-        for sub in ["Gold", "Forex", "XAUUSD", "Daytrading"]:
-            r = requests.get(
-                f"https://oauth.reddit.com/r/{sub}/search",
-                params={"q": "gold OR XAUUSD OR XAU/USD", "restrict_sr": "on", "sort": "new", "limit": 8, "t": "week"},
-                headers=headers, timeout=8,
-            )
-            if r.status_code != 200:
-                continue
-            try:
-                children = r.json().get("data", {}).get("children", [])
-            except Exception:
-                children = []
-            for item in children:
-                d = item.get("data", {})
-                title = d.get("title") or ""
-                text = (title + " " + (d.get("selftext") or "")).lower()
-                bull = sum(1 for w in BULL_WORDS if w in text)
-                bear = sum(1 for w in BEAR_WORDS if w in text)
-                posts_out.append({
-                    "sub": sub, "title": title[:140], "score": d.get("score", 0),
-                    "comments": d.get("num_comments", 0), "created": d.get("created_utc"),
-                    "url": "https://reddit.com" + (d.get("permalink") or ""),
-                    "bull": bull, "bear": bear,
-                })
-        posts_out.sort(key=lambda p: p.get("created") or 0, reverse=True)
-        return {"available": True, "posts": posts_out[:20], "diag": f"status={tok_status} posts={len(posts_out)}"}
+        r = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-sonnet-4-6",
+                "max_tokens": 700,
+                "messages": [{"role": "user", "content": prompt}],
+                "tools": [{"type": "web_search_20250305", "name": "web_search"}],
+            },
+            timeout=45,
+        )
+        status = r.status_code
+        if status != 200:
+            return {"available": False, "reason": "api_error", "diag": f"status={status} body={str(r.text)[:200]}", "topic": topic}
+        data = r.json()
+        text_parts = [b.get("text", "") for b in data.get("content", []) if isinstance(b, dict) and b.get("type") == "text"]
+        text = "\n".join([t for t in text_parts if t]).strip()
+        if not text:
+            return {"available": False, "reason": "empty", "diag": "no text in response", "topic": topic}
+        return {"available": True, "text": text, "topic": topic, "diag": f"status={status}"}
     except Exception as e:
-        return {"available": False, "posts": [], "reason": "error", "diag": "exception: " + str(e)[:200]}
+        return {"available": False, "reason": "error", "diag": "exception: " + str(e)[:200], "topic": topic}
 
-REDDIT_JSON = _json.dumps(get_reddit_sentiment())
+# Kullanıcının Streamlit'te (JS panelinin DIŞINDA, gerçek bir Streamlit widget'ında) girdiği konu.
+# JS içindeki manuel haber formu bunu TETİKLEYEMEZ (components.html tek yönlüdür, Python'a geri
+# veri gönderemez) — bu yüzden bu ayrı, gerçek bir Streamlit girişi olarak var.
+if "ai_news_topic" not in st.session_state:
+    st.session_state.ai_news_topic = ""
+with st.expander("🔍 AI ile Haber Araştır (Claude + gerçek web araması, ücretli API)", expanded=False):
+    st.caption("Not: Bu, JS panelindeki hızlı/kural-tabanlı manuel haber girişinden FARKLI bir araçtır — burada gerçekten internet taranır. Her sorgu Anthropic hesabınızda küçük bir ücrete tabidir (Anthropic Console'da fiyatlandırmaya bakın).")
+    topic_input = st.text_input("Haber konusu (ör. 'Fed faiz kararı', 'ECB toplantısı')", key="ai_news_topic_input")
+    if st.button("Araştır") and topic_input.strip():
+        st.session_state.ai_news_topic = topic_input.strip()
+    if st.session_state.ai_news_topic:
+        with st.spinner("Claude web'de araştırıyor…"):
+            _ai_result = get_ai_news_scenario(st.session_state.ai_news_topic, "XAU/USD ve genel piyasalar")
+        if _ai_result.get("available"):
+            st.markdown(f"**{_ai_result['topic']}**")
+            st.markdown(_ai_result["text"])
+        else:
+            _reason = _ai_result.get("reason")
+            if _reason == "no_key":
+                st.info("Bunu kullanmak için Streamlit secrets'e `ANTHROPIC_API_KEY` eklemeniz gerekiyor (console.anthropic.com üzerinden alınır, ücretlidir).")
+            else:
+                st.warning(f"Araştırma başarısız oldu — diag: {_ai_result.get('diag')}")
+
+AI_NEWS_JSON = _json.dumps(get_ai_news_scenario(st.session_state.ai_news_topic, "XAU/USD ve genel piyasalar") if st.session_state.ai_news_topic else {"available": False, "reason": "no_topic", "topic": ""})
 
 TERMINAL_HTML = r"""
 <!DOCTYPE html>
@@ -356,6 +362,40 @@ iframe{height:100%;width:100%;border:0}
           <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
         </div>
       </div>
+      <div class="ph"><b data-i18n="teach_title">🎓 MANUEL ÖĞRETİM (kalıp hafızası)</b><span class="badge" id="teachBadge">—</span></div>
+      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="teachHint">Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+          <select id="tDir" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+            <option value="1" data-i18n-opt="teachBuy">AL (BUY)</option><option value="-1" data-i18n-opt="teachSell">SAT (SELL)</option>
+          </select>
+          <select id="tZone" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+            <option value="support" data-i18n-opt="teachSupport">Destekte</option><option value="resistance" data-i18n-opt="teachResistance">Dirençte</option><option value="none" data-i18n-opt="teachNoZone">Bölge Yok</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+          <select id="tRsi" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+            <option value="oversold" data-i18n-opt="teachOversold">RSI Aşırı Satım</option><option value="neutral" data-i18n-opt="teachNeutralRsi">RSI Nötr</option><option value="overbought" data-i18n-opt="teachOverbought">RSI Aşırı Alım</option>
+          </select>
+          <select id="tFib" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+            <option value="none" data-i18n-opt="teachNoFib">Fib Yok</option><option value="shallow" data-i18n-opt="teachFibShallow">Fib 0-38.2</option><option value="golden" data-i18n-opt="teachFibGolden">Fib 50-61.8 (Altın)</option><option value="deep" data-i18n-opt="teachFibDeep">Fib 78.6+</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
+          <select id="tPattern" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+            <option value="none">Mum: Yok</option><option value="Hammer">Hammer</option><option value="Shooting Star">Shooting Star</option><option value="Doji">Doji</option><option value="Bull Engulf">Bull Engulf</option><option value="Bear Engulf">Bear Engulf</option>
+          </select>
+          <select id="tOutcome" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+            <option value="success" data-i18n-opt="teachSuccess">✓ Başarılı Oldu</option><option value="fail" data-i18n-opt="teachFail">✗ Başarısız Oldu</option>
+          </select>
+        </div>
+        <input id="tNote" type="text" placeholder="Not (opsiyonel, sadece referans)" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono';margin-bottom:6px">
+        <div style="display:flex;gap:6px">
+          <button id="tAdd" style="flex:1;background:var(--gold);color:#07101b;border:0;padding:6px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="teachAdd">+ KAYDET</button>
+          <button id="tShowLearned" style="background:transparent;color:var(--gold);border:1px solid var(--line);padding:6px 9px;border-radius:4px;font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="teachShowLearned">Öğrenilenler</button>
+        </div>
+        <div id="learnedPatternsBox" style="display:none;margin-top:8px;max-height:180px;overflow:auto;font-size:9px"></div>
+      </div>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
       <div class="netdelta" id="netDelta">NET DELTA: — </div>
@@ -490,8 +530,8 @@ iframe{height:100%;width:100%;border:0}
         <div id="tradeLogSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
         <div id="tradeLogList" style="max-height:230px;overflow:auto"></div>
       </div>
-      <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="reddit_title">💬 SOSYAL MEDYA (Reddit)</b><span class="badge" id="redditBadge">—</span></div>
-      <div id="redditPanel" style="padding:8px 9px;max-height:220px;overflow:auto"><p style="color:var(--muted);font-size:10px" data-i18n="loading">Yükleniyor…</p></div>
+      <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="ai_news_title">🔍 AI HABER ARAŞTIRMASI</b><span class="badge" id="aiNewsBadge">—</span></div>
+      <div id="aiNewsPanel" style="padding:8px 9px;max-height:220px;overflow:auto"><p style="color:var(--muted);font-size:10px" data-i18n="aiNewsHint">Yukarıdaki (sayfanın üstündeki) "AI ile Haber Araştır" kutusuna bir konu yazıp Araştır'a basın — sonuç burada görünecek.</p></div>
     </aside>
   </main>
 </div>
@@ -542,11 +582,23 @@ const I18N = {
   manualNewsEmpty:'Henüz haber eklenmedi. TradingView takvimine bakıp yukarıdaki formdan 3 yıldızlı haberleri ekleyin — sistem otomatik senaryo üretecek.',
   manualNewsNeedName:'Lütfen önce haber adını girin.',
   manualNewsRemove:'Sil', manualClearConfirm:'Tüm manuel eklenen haberleri silmek istediğinize emin misiniz?',
-  reddit_title:'💬 SOSYAL MEDYA (Reddit)',
-  redditNoKey:'Reddit duyarlılığı için ücretsiz bir Reddit API anahtarı gerekiyor (reddit.com/prefs/apps). Not: 2026 itibarıyla Reddit\'in ücretsiz erişimi eskisi kadar anlık değil — bazı durumlarda kayıt onayı birkaç hafta sürebiliyor. Anahtar yokken uydurma duyarlılık gösterilmiyor. Discord/Telegram gibi kapalı sohbet gruplarını ve X/Twitter\'ı (ücretsiz API yok) taramıyoruz.',
-  redditAuthFailed:'Reddit anahtarınızla kimlik doğrulama başarısız oldu — client ID/secret\'ı kontrol edin.',
-  redditEmpty:'Son bir haftada ilgili subreddit\'lerde altın/XAUUSD hakkında gönderi bulunamadı.',
-  redditSentimentLine:(bull,bear)=>'Basit anahtar-kelime taraması (gelişmiş NLP değildir): <span style="color:var(--green)">▲ '+bull+' yükseliş ifadesi</span> · <span style="color:var(--red)">▼ '+bear+' düşüş ifadesi</span>',
+  ai_news_title:'🔍 AI HABER ARAŞTIRMASI',
+  aiNewsHint:'Yukarıdaki (sayfanın üstündeki) "AI ile Haber Araştır" kutusuna bir konu yazıp Araştır\'a basın — sonuç burada görünecek.',
+  aiNewsNoKey:'Bunun için Streamlit secrets\'e <code>ANTHROPIC_API_KEY</code> eklemeniz gerekiyor (console.anthropic.com — ücretlidir, her sorgu küçük bir maliyete tabidir).',
+  aiNewsError:(diag)=>'Araştırma başarısız oldu. diag: '+diag,
+  teach_title:'🎓 MANUEL ÖĞRETİM (kalıp hafızası)',
+  teachHint:"Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.",
+  teachBuy:'AL (BUY)', teachSell:'SAT (SELL)', teachSupport:'Destekte', teachResistance:'Dirençte', teachNoZone:'Bölge Yok',
+  teachOversold:'RSI Aşırı Satım', teachNeutralRsi:'RSI Nötr', teachOverbought:'RSI Aşırı Alım',
+  teachNoFib:'Fib Yok', teachFibShallow:'Fib 0-38.2', teachFibGolden:'Fib 50-61.8 (Altın)', teachFibDeep:'Fib 78.6+',
+  teachSuccess:'✓ Başarılı Oldu', teachFail:'✗ Başarısız Oldu', teachAdd:'+ KAYDET', teachShowLearned:'Öğrenilenler',
+  teachSaved:'Kaydedildi.', teachLearnedEmpty:'Henüz öğrenilmiş bir kalıp yok — aynı koşul kombinasyonu en az 3 kez başarılı (başarısızlığın en az 2 katı) olursa burada görünecek.',
+  teachLearnedTitle:(n)=>n+' öğrenilmiş kalıp:',
+  teachPatternDesc:(dir,zone,rsi,fib,pattern)=>(dir>0?'AL':'SAT')+' · '+zone+' · '+rsi+' · '+fib+' · '+pattern,
+  teachStrategyLabel:(desc)=>'Öğrenilen Kalıp: '+desc,
+  zoneSupport:'Destekte', zoneResistance:'Dirençte', zoneNone:'Bölge Yok',
+  rsiOversold:'RSI Aşırı Satım', rsiNeutral:'RSI Nötr', rsiOverbought:'RSI Aşırı Alım',
+  fibNone:'Fib Yok', fibShallow:'Fib 0-38.2', fibGolden:'Fib 50-61.8', fibDeep:'Fib 78.6+', patternNone:'Mum Yok',
   newsNoEvents:'Önümüzdeki günler için orta/yüksek etkili planlı haber bulunamadı.', newsNoTemplate:'Bu veri tipi için hazır senaryo şablonu yok — rakamları kendi analizinize göre değerlendirin.',
   newsSame:'Sonuç beklentiyle aynı geldi — belirgin bir yön sinyali yok.',
   newsBeat:'aştı', newsMiss:'ıskaladı', newsHigh:'YÜKSEK', newsMed:'ORTA',
@@ -679,11 +731,23 @@ const I18N = {
   manualNewsEmpty:'No news added yet. Check the TradingView calendar and add today\'s 3-star events using the form above — the system will generate scenarios automatically.',
   manualNewsNeedName:'Please enter the event name first.',
   manualNewsRemove:'Remove', manualClearConfirm:'Remove all manually added news?',
-  reddit_title:'💬 SOCIAL MEDIA (Reddit)',
-  redditNoKey:'Reddit sentiment needs a free Reddit API key (reddit.com/prefs/apps). Note: as of 2026 Reddit\'s free access is no longer instant — registration approval can reportedly take a few weeks in some cases. No made-up sentiment is shown without a key. We do not scrape closed chat groups (Discord/Telegram) or X/Twitter (no free API).',
-  redditAuthFailed:'Authentication with your Reddit key failed — check your client ID/secret.',
-  redditEmpty:'No gold/XAUUSD-related posts found in the tracked subreddits in the last week.',
-  redditSentimentLine:(bull,bear)=>'Simple keyword scan (not advanced NLP): <span style="color:var(--green)">▲ '+bull+' bullish mentions</span> · <span style="color:var(--red)">▼ '+bear+' bearish mentions</span>',
+  ai_news_title:'🔍 AI NEWS RESEARCH',
+  aiNewsHint:'Type a topic in the "AI Research News" box above (top of page) and click Research — the result will appear here.',
+  aiNewsNoKey:'This needs an <code>ANTHROPIC_API_KEY</code> in Streamlit secrets (console.anthropic.com — paid, each query has a small cost).',
+  aiNewsError:(diag)=>'Research failed. diag: '+diag,
+  teach_title:'🎓 MANUAL TEACHING (pattern memory)',
+  teachHint:'Log a setup you saw (direction + conditions + outcome). If the same combination of conditions succeeds a few times, the system automatically adds it to its own strategy memory.',
+  teachBuy:'BUY', teachSell:'SELL', teachSupport:'At Support', teachResistance:'At Resistance', teachNoZone:'No Zone',
+  teachOversold:'RSI Oversold', teachNeutralRsi:'RSI Neutral', teachOverbought:'RSI Overbought',
+  teachNoFib:'No Fib', teachFibShallow:'Fib 0-38.2', teachFibGolden:'Fib 50-61.8 (Golden)', teachFibDeep:'Fib 78.6+',
+  teachSuccess:'✓ Succeeded', teachFail:'✗ Failed', teachAdd:'+ SAVE', teachShowLearned:'Learned',
+  teachSaved:'Saved.', teachLearnedEmpty:'No learned pattern yet — once the same condition combination succeeds at least 3 times (at least 2x more than it fails), it will appear here.',
+  teachLearnedTitle:(n)=>n+' learned pattern(s):',
+  teachPatternDesc:(dir,zone,rsi,fib,pattern)=>(dir>0?'BUY':'SELL')+' · '+zone+' · '+rsi+' · '+fib+' · '+pattern,
+  teachStrategyLabel:(desc)=>'Learned Pattern: '+desc,
+  zoneSupport:'At Support', zoneResistance:'At Resistance', zoneNone:'No Zone',
+  rsiOversold:'RSI Oversold', rsiNeutral:'RSI Neutral', rsiOverbought:'RSI Overbought',
+  fibNone:'No Fib', fibShallow:'Fib 0-38.2', fibGolden:'Fib 50-61.8', fibDeep:'Fib 78.6+', patternNone:'No Candle',
   newsNoEvents:'No medium/high-impact scheduled news found for the coming days.', newsNoTemplate:'No ready-made scenario template for this data type — evaluate the raw numbers yourself.',
   newsSame:'Result matched expectations — no clear directional signal.',
   newsBeat:'beat', newsMiss:'missed', newsHigh:'HIGH', newsMed:'MEDIUM',
@@ -781,6 +845,7 @@ const I18N = {
 function t(key){ const v=(I18N[LANG]&&I18N[LANG][key]); return v!==undefined? v : I18N.tr[key]; }
 function applyStaticI18N(){
  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.getAttribute('data-i18n')); });
+ document.querySelectorAll('[data-i18n-opt]').forEach(el=>{ el.textContent=t(el.getAttribute('data-i18n-opt')); });
  document.documentElement.lang=LANG;
  const btn=document.getElementById('langToggle'); if(btn) btn.textContent = LANG==='tr'?'EN':'TR';
 }
@@ -1201,6 +1266,97 @@ function updateTradeLogUI(){
   }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
 }
 
+// ============ MANUEL ÖĞRETİM: KULLANICI KAYITLARINDAN GERÇEK KALIP ÇIKARIMI ============
+// Bu "kara kutu" bir yapay zeka DEĞİLDİR — şeffaf bir kural türetme sistemidir: kullanıcı bir setup'ı
+// (yön + gerçek, zaten hesaplanan koşullar: bölge/RSI durumu/Fib bölgesi/mum formasyonu) ve sonucunu
+// (başarılı/başarısız) girer. AYNI koşul kombinasyonu yeterince (3+) başarılı olursa, sistem bunu
+// gelecekte KENDİ bağımsız aday stratejisi olarak tanır (diğer 13 kalıp gibi).
+const TEACH_KEY='valens_manual_teach';
+function loadManualTeach(){ try{ const raw=localStorage.getItem(TEACH_KEY); return raw?JSON.parse(raw):[]; }catch(e){ return []; } }
+function saveManualTeach(arr){ try{ localStorage.setItem(TEACH_KEY, JSON.stringify(arr)); }catch(e){} }
+function comboKey(e){ return [e.dir,e.zone,e.rsi,e.fib,e.pattern].join('|'); }
+function getLearnedPatterns(){
+  const entries=loadManualTeach();
+  const groups={};
+  entries.forEach(e=>{
+    const k=comboKey(e);
+    if(!groups[k]) groups[k]={dir:e.dir, zone:e.zone, rsi:e.rsi, fib:e.fib, pattern:e.pattern, success:0, fail:0};
+    if(e.outcome==='success') groups[k].success++; else groups[k].fail++;
+  });
+  return Object.values(groups).filter(g=>g.success>=3 && g.success>=g.fail*2);
+}
+function patternDescLabel(g){
+  const zoneLbl={support:t('zoneSupport'),resistance:t('zoneResistance'),none:t('zoneNone')}[g.zone]||g.zone;
+  const rsiLbl={oversold:t('rsiOversold'),neutral:t('rsiNeutral'),overbought:t('rsiOverbought')}[g.rsi]||g.rsi;
+  const fibLbl={none:t('fibNone'),shallow:t('fibShallow'),golden:t('fibGolden'),deep:t('fibDeep')}[g.fib]||g.fib;
+  const patLbl = g.pattern==='none' ? t('patternNone') : g.pattern;
+  return t('teachPatternDesc')(g.dir, zoneLbl, rsiLbl, fibLbl, patLbl);
+}
+// Şu anki piyasa durumunu, öğretim formundakiyle AYNI kovalarla (bucket) etiketler — eşleştirme
+// bu yüzden mekanik ve dürüsttür (metin ayrıştırma değil, aynı gerçek sayılardan gelir).
+function currentConditionBuckets(rsi, cr){
+  const rsiB = rsi<30?'oversold':rsi>70?'overbought':'neutral';
+  const zoneB = (typeof cr.srBias==='number' && cr.srBias>0.3)?'support':(typeof cr.srBias==='number' && cr.srBias<-0.3)?'resistance':'none';
+  const fibB = cr.fibZone || 'none';
+  const patB = cr.patternName || 'none';
+  return {rsi:rsiB, zone:zoneB, fib:fibB, pattern:patB};
+}
+function detectLearnedPatternMatches(rsi, cr){
+  const learned=getLearnedPatterns();
+  if(!learned.length) return [];
+  const cur=currentConditionBuckets(rsi, cr);
+  const matches=[];
+  learned.forEach((g,idx)=>{
+    if(g.zone===cur.zone && g.rsi===cur.rsi && g.fib===cur.fib && g.pattern===cur.pattern && (g.zone!=='none'||g.rsi!=='neutral'||g.fib!=='none'||g.pattern!=='none')){
+      matches.push({key:'learned_'+idx, dir:g.dir, label:t('teachStrategyLabel')(patternDescLabel(g)), successRate:g.success/(g.success+g.fail)});
+    }
+  });
+  return matches;
+}
+function updateTeachUI(){
+  const badge=document.getElementById('teachBadge');
+  if(badge) badge.textContent=getLearnedPatterns().length+'';
+}
+function renderLearnedPatternsBox(){
+  const box=document.getElementById('learnedPatternsBox'); if(!box) return;
+  const learned=getLearnedPatterns();
+  if(!learned.length){ box.innerHTML='<p style="color:var(--muted);padding:6px 0">'+t('teachLearnedEmpty')+'</p>'; return; }
+  let html='<p style="color:var(--gold);padding:4px 0">'+t('teachLearnedTitle')(learned.length)+'</p>';
+  learned.forEach(g=>{
+   html+='<div style="padding:4px 0;border-bottom:1px solid var(--line);color:var(--text)">'+
+    (g.dir>0?'<span style="color:var(--green)">▲</span>':'<span style="color:var(--red)">▼</span>')+' '+patternDescLabel(g)+
+    ' <span style="color:var(--muted)">('+g.success+'✓/'+g.fail+'✗)</span></div>';
+  });
+  box.innerHTML=html;
+}
+(function wireTeachForm(){
+ const addBtn=document.getElementById('tAdd'), showBtn=document.getElementById('tShowLearned');
+ if(!addBtn) return;
+ addBtn.addEventListener('click', ()=>{
+  const entry={
+   dir: parseInt(document.getElementById('tDir').value,10),
+   zone: document.getElementById('tZone').value,
+   rsi: document.getElementById('tRsi').value,
+   fib: document.getElementById('tFib').value,
+   pattern: document.getElementById('tPattern').value,
+   outcome: document.getElementById('tOutcome').value,
+   note: document.getElementById('tNote').value||'',
+   ts: Date.now(), sym: CUR
+  };
+  const arr=loadManualTeach(); arr.push(entry); saveManualTeach(arr);
+  document.getElementById('tNote').value='';
+  updateTeachUI(); renderLearnedPatternsBox();
+  alert(t('teachSaved'));
+ });
+ if(showBtn) showBtn.addEventListener('click', ()=>{
+  const box=document.getElementById('learnedPatternsBox');
+  const showing = box.style.display!=='none';
+  box.style.display = showing?'none':'block';
+  if(!showing) renderLearnedPatternsBox();
+ });
+ updateTeachUI();
+})();
+
 function marketClosedUI(){
  const cfg=SYMS[CUR];
  document.getElementById('sigTxt').textContent=t('market_closed');
@@ -1318,6 +1474,12 @@ function botTick(){
   const base=STRATEGY_BASE_CONF[tag.key]||70;
   const confidence=Math.min(97, base+confirmBoost(tag.dir));
   candidates.push({key:tag.key, dir:tag.dir, confidence, label:tagLabels[tag.key]});
+ });
+ // Kullanıcının manuel öğrettiği ve yeterince (3+, başarısızlığın 2 katı) başarılı olmuş kalıplar —
+ // güven, o kalıbın GERÇEK izlenen başarı oranına göre ölçeklenir (uydurma değil).
+ (typeof detectLearnedPatternMatches==='function' ? detectLearnedPatternMatches(rsi, cr) : []).forEach(m=>{
+  const confidence=Math.min(97, Math.round(65 + m.successRate*30 + confirmBoost(m.dir)*0.5));
+  candidates.push({key:m.key, dir:m.dir, confidence, label:m.label});
  });
 
  let best=null;
@@ -1549,7 +1711,8 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI(); updateTradeLogUI(); updateSessionBar();
  if(window.valensRenderCOT) window.valensRenderCOT(CUR);
  if(window.valensRenderNews) window.valensRenderNews();
- if(window.valensRenderReddit) window.valensRenderReddit();
+ if(window.valensRenderAiNews) window.valensRenderAiNews();
+ updateTeachUI(); renderLearnedPatternsBox();
  if(!isMarketOpen(CUR)) marketClosedUI();
 });
 
@@ -1797,42 +1960,25 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 </script>
 
 <script>
-/* ============ SOSYAL MEDYA / REDDIT DUYARLILIĞI ============ */
+/* ============ AI HABER ARAŞTIRMASI GÖRÜNTÜLEME ============ */
 (function(){
- const REDDIT = __REDDIT_DATA__; // {available, posts:[{sub,title,score,comments,created,url,bull,bear}], reason, diag}
- function timeAgo(unixSec){
-  if(!unixSec) return '—';
-  const mins=Math.floor((Date.now()/1000-unixSec)/60);
-  if(mins<60) return mins+'dk';
-  if(mins<1440) return Math.floor(mins/60)+'sa';
-  return Math.floor(mins/1440)+'g';
- }
- function renderReddit(){
-  const box=document.getElementById('redditPanel'), badge=document.getElementById('redditBadge');
+ const AINEWS = __AI_NEWS_DATA__; // {available, text, topic, reason, diag}
+ function renderAiNews(){
+  const box=document.getElementById('aiNewsPanel'), badge=document.getElementById('aiNewsBadge');
   if(!box||!badge) return;
-  if(!REDDIT.available){
+  if(!AINEWS || !AINEWS.topic){ badge.textContent='—'; box.innerHTML='<p style="color:var(--muted);font-size:10px">'+t('aiNewsHint')+'</p>'; return; }
+  if(!AINEWS.available){
    badge.textContent=t('apiMissingBadge');
-   const msg = REDDIT.reason==='auth_failed' ? t('redditAuthFailed') : t('redditNoKey');
-   const diagLine = REDDIT.diag ? '<p style="color:var(--muted);font-size:8px;font-family:\'IBM Plex Mono\'">diag: '+REDDIT.diag+'</p>' : '';
-   box.innerHTML='<p style="color:var(--muted);font-size:10px;line-height:1.6">'+msg+'</p>'+diagLine;
+   const msg = AINEWS.reason==='no_key' ? t('aiNewsNoKey') : t('aiNewsError')(AINEWS.diag||AINEWS.reason||'');
+   box.innerHTML='<p style="color:var(--muted);font-size:10px;line-height:1.6"><b>'+(AINEWS.topic||'')+'</b></p><p style="color:var(--muted);font-size:10px;line-height:1.6">'+msg+'</p>';
    return;
   }
-  const posts=REDDIT.posts||[];
-  if(!posts.length){ badge.textContent='0'; box.innerHTML='<p style="color:var(--muted);font-size:10px">'+t('redditEmpty')+'</p>'; return; }
-  let bullTotal=0, bearTotal=0;
-  posts.forEach(p=>{ bullTotal+=p.bull||0; bearTotal+=p.bear||0; });
-  badge.textContent=posts.length+'';
-  let html='<div style="font-size:9px;color:var(--muted);margin-bottom:7px;line-height:1.5">'+t('redditSentimentLine')(bullTotal,bearTotal)+'</div>';
-  posts.slice(0,10).forEach(p=>{
-   html+='<div style="padding:5px 0;border-bottom:1px solid var(--line);font-size:9px">'+
-    '<a href="'+p.url+'" target="_blank" style="color:var(--text);text-decoration:none">'+p.title+'</a>'+
-    '<div style="color:var(--muted);margin-top:2px">r/'+p.sub+' · ▲'+(p.score||0)+' · 💬'+(p.comments||0)+' · '+timeAgo(p.created)+
-    (p.bull>p.bear?' · <span style="color:var(--green)">▲ bullish ton</span>':p.bear>p.bull?' · <span style="color:var(--red)">▼ bearish ton</span>':'')+'</div></div>';
-  });
-  box.innerHTML=html;
+  badge.textContent='✓';
+  const bodyHtml=(AINEWS.text||'').replace(/\n/g,'<br>');
+  box.innerHTML='<p style="color:var(--gold);font-size:10px;font-weight:700;margin-bottom:5px">'+AINEWS.topic+'</p><div style="color:var(--text);font-size:10px;line-height:1.6">'+bodyHtml+'</div>';
  }
- window.valensRenderReddit=renderReddit;
- renderReddit();
+ window.valensRenderAiNews=renderAiNews;
+ renderAiNews();
 })();
 </script>
 
@@ -2397,6 +2543,16 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     const nearFib = fibLevels.some(px=>Math.abs(last-px)/last<0.003);
     if(nearFib){ fibBias = srBias>0?0.5:-0.5; srText += t('confluenceSuffix'); }
   }
+  // Manuel örüntü öğretimi eşleştirmesi için: fiyatın hangi Fib BÖLGESİNE en yakın olduğu (S/R'dan
+  // bağımsız olarak) — 'shallow' (0-38.2), 'golden' (50-61.8), 'deep' (78.6-100), yoksa null.
+  let fibZone=null;
+  if(fibLines.length){
+    const up2=slope>0, diff2=res-sup;
+    const zoneMap=[{r:0.191,z:'shallow'},{r:0.382,z:'shallow'},{r:0.5,z:'golden'},{r:0.618,z:'golden'},{r:0.786,z:'deep'},{r:1,z:'deep'}];
+    let best=null, bestDist=Infinity;
+    zoneMap.forEach(zm=>{ const px=up2?res-diff2*zm.r:sup+diff2*zm.r; const d=Math.abs(last-px)/last; if(d<bestDist){bestDist=d;best=zm.z;} });
+    if(bestDist<0.006) fibZone=best;
+  }
 
   // ---- GERÇEK İNDİKATÖRLER: gerçek OHLC'den hesaplanır (rastgele değil) ----
   const rsiReal=calcRSIReal(closes,14);
@@ -2420,7 +2576,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     trend: slope>0?1:slope<0?-1:0,
     pattern: pat?(pat.d==='bull'?1:pat.d==='bear'?-1:0):0,
     patternName: pat?pat.n:'',
-    srBias, srText, fibBias, strategyTags,
+    srBias, srText, fibBias, fibZone, strategyTags,
     hasLiveData:true,
     indicators:{
       rsi: rsiReal!==null?rsiReal:50,
@@ -2567,5 +2723,5 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 </html>
 """
 
-TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON).replace("__REDDIT_DATA__", REDDIT_JSON)
+TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON).replace("__AI_NEWS_DATA__", AI_NEWS_JSON)
 components.html(TERMINAL_HTML, height=1550, scrolling=True)
