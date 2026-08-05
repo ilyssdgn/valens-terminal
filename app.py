@@ -424,6 +424,7 @@ iframe{height:100%;width:100%;border:0}
           <div class="levels"><div class="lev"><small data-i18n="entry_lbl">GİRİŞ</small><b class="entry" id="scEntry">—</b></div><div class="lev"><small data-i18n="stop_lbl">STOP</small><b class="stop" id="scStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="scTp">—</b></div></div>
           <div id="scStatus" class="trade-status wait">◇ GÖZLEM — Emir eşiği %87</div>
           <div class="pnl" id="scPnl">Hedef ≈ $250 @ 2.5 lot</div>
+          <div id="scTightTpNote" style="display:none;font-size:8px;color:#ffb27a;margin-top:5px;line-height:1.5"></div>
           <div id="scLastSignal" style="font:9px 'IBM Plex Mono';color:var(--muted);margin-top:5px">—</div>
         </div>
         <div class="tradecard">
@@ -587,6 +588,7 @@ const I18N = {
   aiNewsHint:'Yukarıdaki (sayfanın üstündeki) "AI ile Haber Araştır" kutusuna bir konu yazıp Araştır\'a basın — sonuç burada görünecek.',
   aiNewsNoKey:'Bunun için Streamlit secrets\'e <code>ANTHROPIC_API_KEY</code> eklemeniz gerekiyor (console.anthropic.com — ücretlidir, her sorgu küçük bir maliyete tabidir).',
   aiNewsError:(diag)=>'Araştırma başarısız oldu. diag: '+diag,
+  tightTpWarning:(pct)=>'⚠ Dar hedef / geniş stop yapısı (video kaynağında gözlemlenen orana göre): hedef stoptan küçük, bu yüzden başabaş noktası için en az %'+pct+' gerçek kazanma oranı gerekir. Kazanma oranı yüksek görünse bile, kayıplar kazançlardan büyük olur — dikkatli değerlendirin.',
   teach_title:'🎓 MANUEL ÖĞRETİM (kalıp hafızası)',
   teachHint:"Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.",
   teachBuy:'AL (BUY)', teachSell:'SAT (SELL)', teachSupport:'Destekte', teachResistance:'Dirençte', teachNoZone:'Bölge Yok',
@@ -621,6 +623,7 @@ const I18N = {
   tagEmaPullback:"EMA21'e Geri Çekilme (Trend Devamı)", tagInsideBar:'İç Mum (Inside Bar) Kırılımı',
   tagFvgRetest:'Fair Value Gap Retest (ICT)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Döngüsü (Accumulation-Manipulation-Distribution)',
   tagValuationZone:'Değerleme Ekstremi + Bölge Confluence', tagMacdZeroCross:'MACD Sıfır Çizgisi Kesişimi',
+  tagScalpOrb:'ORB Scalp Varyantı (dar aralık)', tagNoWickRetest:'No Wick (Fitilsiz Mum) Geri Test',
   candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
   winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
   noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
@@ -739,6 +742,7 @@ const I18N = {
   aiNewsHint:'Type a topic in the "AI Research News" box above (top of page) and click Research — the result will appear here.',
   aiNewsNoKey:'This needs an <code>ANTHROPIC_API_KEY</code> in Streamlit secrets (console.anthropic.com — paid, each query has a small cost).',
   aiNewsError:(diag)=>'Research failed. diag: '+diag,
+  tightTpWarning:(pct)=>'⚠ Tight-target / wide-stop shape (matching the ratio observed in the video source): target is smaller than stop, so breakeven requires at least '+pct+'% real win rate. Even with a high-looking win rate, losses are bigger than wins — weigh this carefully.',
   teach_title:'🎓 MANUAL TEACHING (pattern memory)',
   teachHint:'Log a setup you saw (direction + conditions + outcome). If the same combination of conditions succeeds a few times, the system automatically adds it to its own strategy memory.',
   teachBuy:'BUY', teachSell:'SELL', teachSupport:'At Support', teachResistance:'At Resistance', teachNoZone:'No Zone',
@@ -773,6 +777,7 @@ const I18N = {
   tagEmaPullback:'EMA21 Pullback (Trend Continuation)', tagInsideBar:'Inside Bar Breakout',
   tagFvgRetest:'Fair Value Gap Retest (ICT)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Cycle (Accumulation-Manipulation-Distribution)',
   tagValuationZone:'Valuation Extreme + Zone Confluence', tagMacdZeroCross:'MACD Zero-Line Cross',
+  tagScalpOrb:'ORB Scalp Variant (tight range)', tagNoWickRetest:'No Wick (Marubozu) Retest',
   candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
   winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
   noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
@@ -1459,7 +1464,8 @@ function botTick(){
 
  const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep'),
   rsiDivergence:t('tagRsiDivergence'), bollSqueeze:t('tagBollSqueeze'), emaPullback:t('tagEmaPullback'), insideBar:t('tagInsideBar'),
-  fvgRetest:t('tagFvgRetest'), ifvg:t('tagIfvg'), amdCycle:t('tagAmdCycle'), valuationZone:t('tagValuationZone'), macdZeroCross:t('tagMacdZeroCross')};
+  fvgRetest:t('tagFvgRetest'), ifvg:t('tagIfvg'), amdCycle:t('tagAmdCycle'), valuationZone:t('tagValuationZone'), macdZeroCross:t('tagMacdZeroCross'),
+  scalpOrb:t('tagScalpOrb'), noWickRetest:t('tagNoWickRetest')};
 
  // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
  // Önceki tasarım: 23 şeyin TEK harmanlanmış skoruna bakılıyordu — güçlü ama tek bir kalıp (ör. temiz bir
@@ -1468,7 +1474,8 @@ function botTick(){
  // "aday" olur, kendi temel güvenine sahiptir; diğer göstergeler de aynı yöndeyse ek güven puanı alır.
  // O an en güçlü/en tam aday NİHAİ karar olur — genel bir "23'ün X'i aynı yönde olsun" şartı YOK artık.
  const STRATEGY_BASE_CONF={emaCross:72, orb:70, momentum:70, liquiditySweep:82, rsiDivergence:78, bollSqueeze:75, emaPullback:74, insideBar:68,
-  fvgRetest:76, ifvg:77, amdCycle:85, valuationZone:73, macdZeroCross:66};
+  fvgRetest:76, ifvg:77, amdCycle:85, valuationZone:73, macdZeroCross:66,
+  scalpOrb:68, noWickRetest:75};
  function confirmBoost(dir){
   const agreeing=Object.keys(votes).filter(k=>votes[k]===dir).length;
   return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
@@ -1628,7 +1635,14 @@ function botTick(){
  if(armed){
    const d=rawDir;
    // ---- ATR bazlı dinamik SL/TP: sabit pip değil, GERÇEK volatiliteye göre ölçeklenir (2:1 R:R) ----
-   const scSL = atr ? atr*1.0 : cfg.scSL, scTP = atr ? atr*2.0 : cfg.scTP;
+   // İSTİSNA — ORB Scalp Varyantı kazanan aday olduğunda: bu kalıp video kaynağında GÖZLEMLENEN gerçek
+   // bir örnekte SL:TP oranının ~3.2:1 (dar hedef, geniş stop) olduğunu gösterdi — bu, YÜKSEK kazanma
+   // oranı ama HER kayıp, kazançlardan çok daha büyük demektir. Kör kör aynı MUTLAK puanları kopyalamak
+   // yerine AYNI ORANI kendi gerçek ATR'ımıza uyguluyoruz, ve gereken başabaş kazanma oranını AÇIKÇA
+   // gösteriyoruz — bu R:R şeklini "varsayılan" yapmıyoruz, sadece bu spesifik kalıp ateşlendiğinde.
+   const isTightTpOrb = best && best.key==='scalpOrb';
+   const scSL = atr ? (isTightTpOrb?atr*1.6:atr*1.0) : cfg.scSL;
+   const scTP = atr ? (isTightTpOrb?atr*0.5:atr*2.0) : cfg.scTP;
    const swSL = atr ? atr*3.0 : cfg.swSL, swTP = atr ? atr*6.0 : cfg.swTP;
    const scEntryPx=last, scStopPx=last-d*scSL, scTpPx=last+d*scTP;
    const swStopPx=last-d*swSL, swTpPx=last+d*swTP;
@@ -1641,6 +1655,14 @@ function botTick(){
    document.getElementById('swTp').textContent=fmt(swTpPx);
    scStatusEl.className='trade-status armed';
    scStatusEl.textContent=t('confirmedStatus')(rawDir>0?'BUY':'SELL',conf,utc());
+   const tpNoteEl=document.getElementById('scTightTpNote');
+   if(tpNoteEl){
+    if(isTightTpOrb){
+     const breakeven=Math.round((scSL/(scSL+scTP))*100);
+     tpNoteEl.style.display='block';
+     tpNoteEl.textContent=t('tightTpWarning')(breakeven);
+    } else { tpNoteEl.style.display='none'; }
+   }
 
    // ---- Gerçek $ hedef potansiyeli (SİZİN planladığınız 0.8-1.2 lot aralığıyla) — GARANTİ DEĞİL, sadece TP'ye ulaşırsa oluşacak projeksiyon ----
    const rs=loadRiskSettings(), lotMin=parseFloat(rs.lotMin)||0.8, lotMax=parseFloat(rs.lotMax)||1.2, lotAvg=(lotMin+lotMax)/2;
@@ -2233,6 +2255,55 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   return null;
  }
+ // ---- ORB SCALP VARYANTI: tek mumluk (3 değil), daha dar bir açılış aralığı kullanır ve kapanış
+ // onayı BEKLEMEDEN fitil (wick) aralığı aşar aşmaz tetiklenir — daha hızlı, daha sık, ama daha
+ // gürültülü. Geniş/onaylı ORB ile birlikte "birbirini dengeleyen çeşitli ORB varyantları" fikrini
+ // uygular; ikisi FARKLI koşullarda ateşlenip birbirini tamamlar, aynı sinyali tekrar etmez. ----
+ function detectScalpORB(a){
+  const opens=[8,13];
+  const lastTime=a[a.length-1].time;
+  const now=new Date(lastTime*1000);
+  for(const openHour of opens){
+   const sessionOpen=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),openHour,0,0)/1000;
+   if(lastTime<sessionOpen) continue;
+   const sessionCandles=a.filter(c=>c.time>=sessionOpen);
+   if(sessionCandles.length<2 || sessionCandles.length>6) continue; // sadece açılıştan hemen sonraki birkaç mum
+   const rangeCandle=sessionCandles[0]; // TEK mumluk dar aralık (geniş varyant 3 mum kullanıyor)
+   const curr=sessionCandles[sessionCandles.length-1];
+   if(curr===rangeCandle) continue;
+   if(curr.high>rangeCandle.high) return {key:'scalpOrb', dir:1};
+   if(curr.low<rangeCandle.low) return {key:'scalpOrb', dir:-1};
+  }
+  return null;
+ }
+ // ---- NO WICK (FİTİLSİZ MUM) GERİ TEST — klasik "Marubozu" kavramının bir uygulaması: gövdenin bir
+ // ucunda neredeyse hiç fitil olmayan bir mum, o yönde güçlü/kararlı bir hareketi gösterir. Trend
+ // yönünde bir "fitilsiz mum" oluşmuşsa ve fiyat sonradan o seviyeye geri dönüp reddedilirse (tekrar
+ // trend yönünde kapanırsa) bu bir giriş noktası sayılır. ----
+ function findNoWickCandles(a, lookback){
+  const w=a.slice(-lookback-1,-1), out=[];
+  w.forEach(c=>{
+   const range=c.high-c.low||1e-9, bodyTop=Math.max(c.open,c.close), bodyBot=Math.min(c.open,c.close);
+   const topWick=c.high-bodyTop, botWick=bodyBot-c.low, bull=c.close>c.open;
+   if(bull && botWick/range<0.1) out.push({dir:1, level:c.low});
+   if(!bull && topWick/range<0.1) out.push({dir:-1, level:c.high});
+  });
+  return out;
+ }
+ function detectNoWickRetest(a, ema200){
+  if(a.length<20 || ema200==null) return null;
+  const curr=a[a.length-1];
+  const trend = curr.close>ema200?1:curr.close<ema200?-1:0;
+  if(trend===0) return null;
+  const noWicks=findNoWickCandles(a,15);
+  for(let i=noWicks.length-1;i>=0;i--){
+   const nw=noWicks[i];
+   if(nw.dir!==trend) continue; // sadece trend yönündeki fitilsiz mumlar geçerli
+   if(nw.dir>0 && curr.low<=nw.level*1.002 && curr.close>nw.level && curr.close>curr.open) return {key:'noWickRetest', dir:1};
+   if(nw.dir<0 && curr.high>=nw.level*0.998 && curr.close<nw.level && curr.close<curr.open) return {key:'noWickRetest', dir:-1};
+  }
+  return null;
+ }
  // ---- (5) RSI UYUMSUZLUĞU: fiyat yeni bir dip/tepe yaparken RSI onu teyit etmiyorsa momentum
  // zayıflıyor demektir — klasik dönüş sinyali. Gerçek RSI serisinden (tek değer değil) hesaplanır. ----
  function calcRSISeries(closes, period){
@@ -2433,6 +2504,10 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   // (13) MACD sıfır çizgisi kesişimi
   const macdSeries=calcMACDSeries(a);
   const macdCross=detectMacdZeroCross(macdSeries); if(macdCross) tags.push(macdCross);
+  // (14) ORB Scalp varyantı (dar/tek mumluk aralık, fitil tetikli)
+  const scalpOrb=detectScalpORB(a); if(scalpOrb) tags.push(scalpOrb);
+  // (15) No Wick (fitilsiz mum) geri test
+  const noWick=detectNoWickRetest(a, ind.ema200); if(noWick) tags.push(noWick);
   return tags;
  }
  function drawSRLines(){
