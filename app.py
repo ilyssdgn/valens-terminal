@@ -336,7 +336,7 @@ iframe{height:100%;width:100%;border:0}
     <button class="market active" data-sym="OANDA:XAUUSD" data-label="XAU/USD · GOLD OZ" data-price="4053.98"><small>XAU/USD · GOLD OZ</small><strong>4,053.98</strong> <small class="down">▼ -1.83%</small></button>
     <button class="market" data-sym="BINANCE:BTCUSDT" data-label="BTC/USD" data-price="118240"><small>BTC/USD</small><strong>118,240</strong> <small class="up">▲ +2.14%</small></button>
     <button class="market" data-sym="OANDA:EURUSD" data-label="EUR/USD" data-price="1.0842"><small>EUR/USD</small><strong>1.0842</strong> <small class="down">▼ -0.31%</small></button>
-    <button class="market" data-sym="OANDA:SPX500USD" data-label="SPX500" data-price="5892"><small>SPX500</small><strong>5,892</strong> <small class="up">▲ +0.47%</small></button>
+    <button class="market" data-sym="OANDA:SPX500USD" data-label="SPX500" data-price=""><small>SPX500</small><strong>—</strong> <small style="color:var(--muted)" data-i18n="noLiveShort">canlı veri yok</small></button>
   </div>
 
   <main class="shell">
@@ -437,6 +437,7 @@ iframe{height:100%;width:100%;border:0}
       <div class="charthead">
         <b id="chartTitle">XAU/USD · GOLD SPOT</b>
         <button class="tfbtn on" data-int="15">15M</button><button class="tfbtn" data-int="30">30M</button><button class="tfbtn" data-int="60">1H</button><button class="tfbtn" data-int="240">4H</button><button class="tfbtn" data-int="D">1D</button>
+        <span id="goldOffsetNote" style="margin-left:auto;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono'"></span>
       </div>
 
       <div class="sessionbar" id="sessionBar">
@@ -607,8 +608,11 @@ const I18N = {
   xauPressureScenario:' → XAU/USD üzerinde baskı yönünde etki beklenir.', xauSupportScenario:' → XAU/USD üzerinde destekleyici etki beklenir.',
   apiMissingBadge:'API YOK', newsCountBadge:n=>n+' HABER', defaultEventName:'Ekonomik Veri',
   ruleNfp:'İstihdam verisi', ruleUnrate:'İşsizlik oranı', ruleClaims:'İşsizlik başvuruları', ruleCpi:'Enflasyon (CPI)',
+  ruleJolts:'JOLTS Açık İş Sayısı', ruleAdp:'ADP İstihdam Değişimi', ruleChallenger:'Challenger İşten Çıkarma',
+  employmentFamilyNote:'📌 Bu, geniş "istihdam ailesi" verilerinden biri — JOLTS (açık iş sayısı), ADP, NFP (tarım dışı istihdam), İşsizlik Başvuruları ve İşsizlik Oranı birbiriyle ilişkilidir ve genelde birkaç gün arayla art arda gelir (ör. JOLTS → birkaç gün sonra İşsizlik Başvuruları → ayın ilk Cuma\'sı NFP). Piyasa bunları TEK TEK değil, biriktirdiği genel "işgücü piyasası zayıflıyor mu güçleniyor mu" resmine göre yorumlar — art arda gelen birkaç zayıf/güçlü veri, tek bir veriden daha belirleyicidir.',
   ruleGdp:'GSYH (GDP)', ruleRetail:'Perakende satışlar', rulePmi:'PMI', ruleRate:'Faiz kararı', ruleTrade:'Dış ticaret dengesi',
-  noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir",
+  noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir", noLiveShort:'canlı veri yok',
+  goldOffsetLine:(sign,val)=>'PAXG proxy vs gerçek spot altın farkı: '+sign+val+'$ (MT5/OANDA ile karşılaştırırken bu farkı hesaba katın — ticker fiyatı zaten düzeltilmiştir, ama grafikteki S/R/giriş seviyeleri henüz düzeltilmemiştir)',
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   mainResistance:'Ana Direnç (1H)', mainSupport:'Ana Destek (1H)', srNearMainSupport:'ana desteğe (1H) yakın', srNearMainResistance:'ana dirence (1H) yakın',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
@@ -756,8 +760,11 @@ const I18N = {
   xauPressureScenario:' → typically pressures XAU/USD.', xauSupportScenario:' → typically supports XAU/USD.',
   apiMissingBadge:'NO API', newsCountBadge:n=>n+' NEWS', defaultEventName:'Economic Data',
   ruleNfp:'Employment data', ruleUnrate:'Unemployment rate', ruleClaims:'Jobless claims', ruleCpi:'Inflation (CPI)',
+  ruleJolts:'JOLTS Job Openings', ruleAdp:'ADP Employment Change', ruleChallenger:'Challenger Job Cuts',
+  employmentFamilyNote:'📌 This is one of the broader "employment family" releases — JOLTS (job openings), ADP, NFP (payrolls), Jobless Claims, and the Unemployment Rate are all related and typically release a few days apart (e.g. JOLTS → Jobless Claims a few days later → NFP on the first Friday of the month). Markets tend to read these as a CUMULATIVE picture of labor-market strength/weakness rather than judging any single release in isolation — several consecutive weak/strong prints carry more weight than one data point.',
   ruleGdp:'GDP', ruleRetail:'Retail sales', rulePmi:'PMI', ruleRate:'Rate decision', ruleTrade:'Trade balance',
-  noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required',
+  noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required', noLiveShort:'no live data',
+  goldOffsetLine:(sign,val)=>'PAXG proxy vs real spot gold gap: '+sign+val+'$ (factor this in when comparing to MT5/OANDA — the ticker price is already corrected, but chart S/R and entry levels are not yet corrected)',
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   mainResistance:'Main Resistance (1H)', mainSupport:'Main Support (1H)', srNearMainSupport:'near main support (1H)', srNearMainResistance:'near main resistance (1H)',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
@@ -1128,7 +1135,7 @@ function getLastSignal(sym,plan){
 }
 function fmtSigTime(ts){
   const d=new Date(ts), M=MONTHS[LANG]||MONTHS.tr;
-  return String(d.getDate()).padStart(2,'0')+' '+M[d.getMonth()].slice(0,3)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+' UTC';
+  return String(d.getUTCDate()).padStart(2,'0')+' '+M[d.getUTCMonth()].slice(0,3)+' '+String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')+' UTC';
 }
 function updateLastSignalUI(){
   const cfg=SYMS[CUR];
@@ -1695,6 +1702,60 @@ document.querySelectorAll('.market').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.market').forEach(y=>y.classList.remove('active'));
  x.classList.add('active'); switchSymbol(x.dataset.sym);
 });
+
+// ---- ÜST FİYAT ŞERİDİ CANLI GÜNCELLEME ---- Önceden bu şeritteki değerler HTML'e sabit yazılmış
+// örnek verilerdi ve HİÇBİR ZAMAN güncellenmiyordu — bu yüzden sinyal motorunun gerçek, canlı giriş
+// fiyatıyla karşılaştırıldığında "tutarsız/eski" görünüyordu. Artık gerçek Binance verisinden,
+// şu an hangi enstrümanı izlediğinizden BAĞIMSIZ olarak periyodik çekiliyor.
+const TICKER_MAP={'OANDA:XAUUSD':'PAXGUSDT','BINANCE:BTCUSDT':'BTCUSDT','OANDA:EURUSD':'EURUSDT'};
+// XAU/USD grafiğimiz Binance'ın PAXG (tokenize altın) proxy'sinden geliyor — bu, gerçek MT5/OANDA spot
+// altınından FARKLI bir piyasadır (kripto arz-talebine göre "prim/iskonto" ile işlem görür, belgelenmiş,
+// beklenen bir davranıştır, hata değildir). Gerçek karşılaştırma yapabilmeniz için PAXG ile gerçek spot
+// arasındaki CANLI farkı ayrıca çekip şeffafça gösteriyoruz; ticker'da GERÇEK spot-eşdeğeri fiyat gösterilir.
+window.valensGoldOffset = 0;
+async function updateGoldOffset(){
+ try{
+  const [paxgR, spotR] = await Promise.all([
+   fetch('https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT'),
+   fetch('https://xaus.com/api/v1/spot?compact=1')
+  ]);
+  const paxgD = await paxgR.json(), spotD = await spotR.json();
+  const paxgPx = parseFloat(paxgD.price), spotPx = parseFloat(spotD.spot_usd_oz);
+  if(!isNaN(paxgPx) && !isNaN(spotPx)){
+   window.valensGoldOffset = spotPx - paxgPx;
+   const offEl=document.getElementById('goldOffsetNote');
+   if(offEl){
+    const off=window.valensGoldOffset;
+    offEl.textContent = t('goldOffsetLine')(off>=0?'+':'', off.toFixed(2));
+    offEl.style.color = Math.abs(off)>15 ? 'var(--red)' : 'var(--muted)';
+   }
+  }
+ }catch(e){ /* xaus.com geçici olarak erişilemezse sessizce eski değeri koru */ }
+}
+async function updateTickerBar(){
+ for(const sym of Object.keys(TICKER_MAP)){
+  const btn=document.querySelector('.market[data-sym="'+sym+'"]'); if(!btn) continue;
+  try{
+   const r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+TICKER_MAP[sym]);
+   const d=await r.json();
+   let px=parseFloat(d.lastPrice); const pct=parseFloat(d.priceChangePercent);
+   if(isNaN(px)||isNaN(pct)) continue;
+   if(sym==='OANDA:XAUUSD') px += (window.valensGoldOffset||0); // gerçek spot-eşdeğeri fiyat göster
+   const cfg=SYMS[sym]; const dec=cfg?cfg.dec:2;
+   btn.dataset.price=px;
+   btn.querySelector('strong').textContent=px.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+   const pctEl=btn.querySelector('small.up, small.down')||btn.querySelector('small:last-child');
+   if(pctEl){
+    pctEl.className=pct>=0?'up':'down';
+    pctEl.textContent=(pct>=0?'▲ +':'▼ ')+pct.toFixed(2)+'%';
+   }
+  }catch(e){ /* tek bir sembolün geçici hatası tüm şeridi bozmasın */ }
+ }
+}
+updateGoldOffset().then(updateTickerBar);
+setInterval(updateGoldOffset, 45000); // xaus.com adil kullanım kuralı: en az 30sn — 45sn kullanıyoruz
+setInterval(updateTickerBar, 15000);
+
 document.querySelectorAll('.tfbtn').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tfbtn').forEach(y=>y.classList.remove('on'));
  x.classList.add('on'); INT=x.dataset.int; loadChart(); updateAggUI();
@@ -1806,9 +1867,12 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 
  // Standart makro ilişki şablonları — ders kitabı seviyesinde genel eğilimlerdir, kesin tahmin DEĞİLDİR.
  const RULES = [
-  {re:/non-?farm|nfp|payroll/i, higherIsCurrencyPositive:true, labelKey:'ruleNfp'},
-  {re:/unemployment rate/i, higherIsCurrencyPositive:false, labelKey:'ruleUnrate'},
-  {re:/jobless claims|unemployment claims/i, higherIsCurrencyPositive:false, labelKey:'ruleClaims'},
+  {re:/non-?farm|nfp|payroll/i, higherIsCurrencyPositive:true, labelKey:'ruleNfp', employmentFamily:true},
+  {re:/unemployment rate/i, higherIsCurrencyPositive:false, labelKey:'ruleUnrate', employmentFamily:true},
+  {re:/jobless claims|unemployment claims/i, higherIsCurrencyPositive:false, labelKey:'ruleClaims', employmentFamily:true},
+  {re:/jolts|job openings/i, higherIsCurrencyPositive:true, labelKey:'ruleJolts', employmentFamily:true},
+  {re:/adp employment|adp non-?farm/i, higherIsCurrencyPositive:true, labelKey:'ruleAdp', employmentFamily:true},
+  {re:/challenger.*job cuts|job cuts/i, higherIsCurrencyPositive:false, labelKey:'ruleChallenger', employmentFamily:true},
   {re:/cpi|inflation/i, higherIsCurrencyPositive:true, labelKey:'ruleCpi'},
   {re:/gdp/i, higherIsCurrencyPositive:true, labelKey:'ruleGdp'},
   {re:/retail sales/i, higherIsCurrencyPositive:true, labelKey:'ruleRetail'},
@@ -1887,6 +1951,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     html+='<div class="scenario bull">'+t('newsScenarioBeat')(label, ev.country, extraBull)+'</div>';
     html+='<div class="scenario bear">'+t('newsScenarioMiss')(label, ev.country, extraBear)+'</div>';
    }
+   if(rule && rule.employmentFamily){ html+='<p style="font-size:8px;color:var(--muted);margin-top:5px;line-height:1.5">'+t('employmentFamilyNote')+'</p>'; }
    html+='</div></article>';
   });
   box.innerHTML=html;
