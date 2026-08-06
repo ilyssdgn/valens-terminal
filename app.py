@@ -2720,7 +2720,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   });
   return zones;
  }
- function analyze(){
+ // Strateji kalıp tespiti sadece mum KAPANDIĞINDA yeniden hesaplanır — henüz oluşmakta olan (hâlâ
+ // hareket eden) son mum üzerinde her tick'te yeniden taranmaz. Bu, sinyalin titremesinin (flicker)
+ // asıl kök nedeniydi: 19 strateji, saniyede birkaç kez değişen "hareketli bir hedefi" değerlendiriyordu.
+ // Gösterge SAYILARI (RSI, MACD vb.) yine canlı güncellenir — sadece BUY/SAT kararını süren strateji
+ // taraması, bir sonraki mum kapanana kadar sabit tutulur.
+ let cachedStrategyTags=[];
+ function analyze(isCloseTick){
   if(ohlc.length<20)return;
   e20.setData(emaLine(ohlc,20)); e50.setData(emaLine(ohlc,50));
   const{sup,res}=supRes(ohlc);
@@ -2811,7 +2817,9 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const cciReal=calcCCI(ohlc,20);
   const psarReal=calcPSAR(ohlc);
   const pivotsReal=calcPivots(ohlc);
-  const strategyTags=detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)});
+  const strategyTags = (isCloseTick || !cachedStrategyTags.length)
+   ? (cachedStrategyTags = detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)}))
+   : cachedStrategyTags;
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
@@ -2855,7 +2863,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const intv=currentBinInterval();
   // Önce önbellekten (varsa) anında göster — kullanıcı sayfayı her açtığında boş grafik görmesin
   const cached=loadOhlcCache(curSym,intv);
-  if(cached && cached.length){ ohlc=cached; cs.setData(ohlc); chart.timeScale().fitContent(); analyze(); }
+  if(cached && cached.length){ ohlc=cached; cs.setData(ohlc); chart.timeScale().fitContent(); analyze(true); }
   try{
    // Binance REST API'de tek istekte alınabilecek azami mum sayısı 1000'dir — önceki 200 limiti
    // gereksiz yere veriyi kısıtlıyordu (15dk'da sadece ~50 saat; 1000 ile ~10 gün).
@@ -2863,7 +2871,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const d=await r.json();
    if(!Array.isArray(d))throw new Error('no data');
    ohlc=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
-   cs.setData(ohlc); chart.timeScale().fitContent(); analyze();
+   cs.setData(ohlc); chart.timeScale().fitContent(); analyze(true);
    saveOhlcCache(curSym,intv,ohlc);
   }catch(e){console.error('history err',e);}
  }
@@ -2876,7 +2884,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const bar={time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};
    const last=ohlc[ohlc.length-1];
    if(last&&last.time===bar.time)ohlc[ohlc.length-1]=bar; else{ohlc.push(bar);if(ohlc.length>1000)ohlc.shift();}
-   cs.update(bar); analyze();
+   cs.update(bar); analyze(k.x);
    if(k.x) saveOhlcCache(curSym,intv,ohlc); // sadece mum KAPANDIĞINDA önbelleği güncelle (her tick'te yazmaya gerek yok)
   };
  }
@@ -2938,6 +2946,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   window.valensChartRead={};
   closedEl.style.display='none';
+  cachedStrategyTags=[];
   fetchMainSR(sym);
   loadHistory().then(()=>{
     drawSRLines(); connect(); connectTrades();
@@ -2964,6 +2973,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
   ohlc=[]; cs.setData([]);
   window.valensChartRead={};
+  cachedStrategyTags=[];
   loadHistory().then(()=>{
    drawSRLines(); connect(); connectTrades();
    chart.priceScale('right').applyOptions({autoScale:true});
