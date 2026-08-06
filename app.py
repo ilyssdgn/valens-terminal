@@ -627,6 +627,11 @@ const I18N = {
   tagOrbSweepFade:'ORB Süpürme-Geri Dönüş', tagBosSignal:'Piyasa Yapısı: BOS (Yapı Devamı)',
   tagChochSignal:'Piyasa Yapısı: CHoCH (Karakter Değişimi)', tagEqualHighsLows:'Eşit Tepe/Dip (EQH/EQL) Likidite Avı',
   tagTradeDelta:'Trades Delta (Gerçek Alım/Satım Hacim Farkı)',
+  tagSilverBullet:'Silver Bullet (Likidite Süpürmesi + FVG)', tagOrbVolume:'ORB + Hacim Onayı',
+  tagVwapPullback:'VWAP Geri Çekilme + Dönüş Mumu', tagTtmSqueeze:'TTM Squeeze (Bollinger/Keltner)',
+  tagDivergenceChoch:'RSI Uyumsuzluğu + CHoCH', tagPocBounce:'Hacim Profili POC Sekmesi',
+  tagOrderBlockMit:'Order Block Mitigasyonu', tagFibOte:'Fibonacci OTE (Optimal Giriş Bölgesi)',
+  tagAsianFakeout:'Asya Aralığı Killzone Sahte Kırılımı', tagExtremeMR:'Aşırı Ortalamaya Dönüş (3-Sigma)',
   candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
   winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
   noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
@@ -784,6 +789,11 @@ const I18N = {
   tagOrbSweepFade:'ORB Sweep-and-Reclaim Fade', tagBosSignal:'Market Structure: BOS (Continuation)',
   tagChochSignal:'Market Structure: CHoCH (Change of Character)', tagEqualHighsLows:'Equal Highs/Lows (EQH/EQL) Liquidity Grab',
   tagTradeDelta:'Trades Delta (Real Buy/Sell Volume Imbalance)',
+  tagSilverBullet:'Silver Bullet (Liquidity Sweep + FVG)', tagOrbVolume:'ORB + Volume Confirmation',
+  tagVwapPullback:'VWAP Pullback + Reversal Candle', tagTtmSqueeze:'TTM Squeeze (Bollinger/Keltner)',
+  tagDivergenceChoch:'RSI Divergence + CHoCH', tagPocBounce:'Volume Profile POC Bounce',
+  tagOrderBlockMit:'Order Block Mitigation', tagFibOte:'Fibonacci OTE (Optimal Trade Entry)',
+  tagAsianFakeout:'Asian Range Killzone Fakeout', tagExtremeMR:'Extreme Mean Reversion (3-Sigma)',
   candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
   winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
   noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
@@ -1473,7 +1483,10 @@ function botTick(){
   fvgRetest:t('tagFvgRetest'), ifvg:t('tagIfvg'), amdCycle:t('tagAmdCycle'), valuationZone:t('tagValuationZone'), macdZeroCross:t('tagMacdZeroCross'),
   scalpOrb:t('tagScalpOrb'), noWickRetest:t('tagNoWickRetest'),
   orbSweepFade:t('tagOrbSweepFade'), bosSignal:t('tagBosSignal'), chochSignal:t('tagChochSignal'),
-  equalHighsLows:t('tagEqualHighsLows'), tradeDelta:t('tagTradeDelta')};
+  equalHighsLows:t('tagEqualHighsLows'), tradeDelta:t('tagTradeDelta'),
+  silverBullet:t('tagSilverBullet'), orbVolume:t('tagOrbVolume'), vwapPullback:t('tagVwapPullback'),
+  ttmSqueeze:t('tagTtmSqueeze'), divergenceChoch:t('tagDivergenceChoch'), pocBounce:t('tagPocBounce'),
+  orderBlockMit:t('tagOrderBlockMit'), fibOte:t('tagFibOte'), asianFakeout:t('tagAsianFakeout'), extremeMeanReversion:t('tagExtremeMR')};
 
  // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
  // Önceki tasarım: 23 şeyin TEK harmanlanmış skoruna bakılıyordu — güçlü ama tek bir kalıp (ör. temiz bir
@@ -1484,7 +1497,9 @@ function botTick(){
  const STRATEGY_BASE_CONF={emaCross:72, orb:70, momentum:70, liquiditySweep:82, rsiDivergence:78, bollSqueeze:75, emaPullback:74, insideBar:68,
   fvgRetest:76, ifvg:77, amdCycle:85, valuationZone:73, macdZeroCross:66,
   scalpOrb:68, noWickRetest:75,
-  orbSweepFade:79, bosSignal:71, chochSignal:80, equalHighsLows:77, tradeDelta:65};
+  orbSweepFade:79, bosSignal:71, chochSignal:80, equalHighsLows:77, tradeDelta:65,
+  silverBullet:86, orbVolume:74, vwapPullback:75, ttmSqueeze:77, divergenceChoch:84,
+  pocBounce:76, orderBlockMit:75, fibOte:73, asianFakeout:78, extremeMeanReversion:80};
  function confirmBoost(dir){
   const agreeing=Object.keys(votes).filter(k=>votes[k]===dir).length;
   return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
@@ -2369,6 +2384,189 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(deltaValue<-0.35) return {key:'tradeDelta', dir:-1};
   return null;
  }
+ // ==================== YENİ 10 KALIP (kullanıcı tarafından tarif edilen kurumsal/ICT stratejiler) ====================
+ // ---- 1) SILVER BULLET: likidite süpürmesi (FİTİLLE, kapanışla değil) + arkasında taze bir FVG bırakan
+ // güçlü ters yönlü kapanış. Mevcut Likidite Süpürme + FVG tespitlerinin BİRLEŞİMİ, tek başlarına
+ // yakalayamayacakları daha seçici/güçlü bir kurulum. ----
+ function detectSilverBullet(a, ema200, vwap){
+  const sweep=detectLiquiditySweep(a, ema200, vwap);
+  if(!sweep) return null;
+  const fvgs=findFVGs(a, 5);
+  const freshFvg=fvgs.some(f=>f.dir===sweep.dir);
+  return freshFvg ? {key:'silverBullet', dir:sweep.dir} : null;
+ }
+ // ---- 2) ORB + HACİM ONAYI: mevcut geniş ORB'un (kapanış onaylı) hacim filtresiyle güçlendirilmiş hali —
+ // kırılım anındaki hacim, son 20 mumun ortalamasının 2 katından fazla olmalı. ----
+ function detectORBVolume(a){
+  const opens=[8,13];
+  const lastTime=a[a.length-1].time;
+  const now=new Date(lastTime*1000);
+  for(const openHour of opens){
+   const sessionOpen=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),openHour,0,0)/1000;
+   if(lastTime<sessionOpen) continue;
+   const sessionCandles=a.filter(c=>c.time>=sessionOpen);
+   if(sessionCandles.length<4 || sessionCandles.length>20) continue;
+   const rangeCandles=sessionCandles.slice(0,3);
+   const hi=Math.max(...rangeCandles.map(c=>c.high)), lo=Math.min(...rangeCandles.map(c=>c.low));
+   const curr=sessionCandles[sessionCandles.length-1];
+   const recentVols=a.slice(-21,-1).map(c=>c.volume||0);
+   const avgVol=recentVols.reduce((s,v)=>s+v,0)/(recentVols.length||1);
+   if((curr.volume||0) <= avgVol*2) continue;
+   if(curr.close>hi) return {key:'orbVolume', dir:1};
+   if(curr.close<lo) return {key:'orbVolume', dir:-1};
+  }
+  return null;
+ }
+ // ---- 3) VWAP GERİ ÇEKİLME: trend (EMA50 vs EMA200) + fiyat VWAP'a değip oradan bir dönüş mumuyla
+ // (Hammer/Shooting Star/Engulf) tepki verir. ----
+ function detectVwapPullback(a, ema50, ema200, vwap){
+  if(a.length<3 || ema50==null || ema200==null || vwap==null) return null;
+  const curr=a[a.length-1];
+  const pat=pattern(a);
+  if(!pat || pat.d==='neutral') return null;
+  const touchedVwap = curr.low<=vwap*1.0015 && curr.high>=vwap*0.9985;
+  if(!touchedVwap) return null;
+  if(ema50>ema200 && pat.d==='bull' && curr.close>vwap) return {key:'vwapPullback', dir:1};
+  if(ema50<ema200 && pat.d==='bear' && curr.close<vwap) return {key:'vwapPullback', dir:-1};
+  return null;
+ }
+ // ---- 4) TTM SQUEEZE: Bollinger Bantları Keltner Kanalı'nın TAMAMEN İÇİNE girdiğinde ("sıkışma"),
+ // sonra dışarı taştığında ("patlama") — genel "en dar genişlik" tanımından daha kesin, klasik TTM
+ // Squeeze tanımı (Bollinger içeri/dışarı Keltner'e göre). ----
+ function detectTTMSqueeze(a, closes){
+  const period=20;
+  if(closes.length<period+16 || a.length<period+16) return null;
+  function bollAt(idx){
+   const w=closes.slice(idx-period+1,idx+1), sma=w.reduce((s,v)=>s+v,0)/period;
+   const sd=Math.sqrt(w.reduce((s,v)=>s+(v-sma)**2,0)/period);
+   return {upper:sma+sd*2, lower:sma-sd*2};
+  }
+  function keltnerAt(idx){
+   const emaW=closes.slice(Math.max(0,idx-19),idx+1);
+   let ema=emaW[0]; const kk=2/(20+1);
+   emaW.forEach((c,i)=>{ ema = i? c*kk+ema*(1-kk) : c; });
+   const trs=[];
+   for(let j=Math.max(1,idx-13);j<=idx;j++){
+    const cur=a[j], prev=a[j-1];
+    trs.push(Math.max(cur.high-cur.low, Math.abs(cur.high-prev.close), Math.abs(cur.low-prev.close)));
+   }
+   const atrV=trs.reduce((s,v)=>s+v,0)/(trs.length||1);
+   return {upper:ema+atrV*1.5, lower:ema-atrV*1.5};
+  }
+  const n=closes.length;
+  const bollPrev=bollAt(n-2), kelPrev=keltnerAt(n-2);
+  const bollNow=bollAt(n-1), kelNow=keltnerAt(n-1);
+  const squeezedPrev = bollPrev.upper<kelPrev.upper && bollPrev.lower>kelPrev.lower;
+  const firedNow = bollNow.upper>=kelNow.upper || bollNow.lower<=kelNow.lower;
+  if(!squeezedPrev || !firedNow) return null;
+  const curr=a[a.length-1];
+  if(curr.close>curr.open) return {key:'ttmSqueeze', dir:1};
+  if(curr.close<curr.open) return {key:'ttmSqueeze', dir:-1};
+  return null;
+ }
+ // ---- 5) RSI UYUMSUZLUĞU + CHoCH: mevcut iki bağımsız tespitin (RSI Uyumsuzluğu + Piyasa Yapısı
+ // CHoCH) AYNI YÖNDE aynı anda gerçekleşmesi — tek başlarına olduğundan daha seçici bir dönüş sinyali. ----
+ function detectDivergenceChoch(a, rsiSeries){
+  const div=detectRSIDivergence(a, rsiSeries);
+  if(!div) return null;
+  const struct=detectMarketStructure(a);
+  if(struct && struct.key==='chochSignal' && struct.dir===div.dir) return {key:'divergenceChoch', dir:div.dir};
+  return null;
+ }
+ // ---- 6) HACİM PROFİLİ (VPVR) — POC SEKMESİ: son ~24 saatte en çok hacmin işlem gördüğü fiyat
+ // seviyesi (Point of Control) hesaplanır; fiyat buraya gelip reddederse (iğne atıp tepki verirse)
+ // "hacim mıknatısı" sekmesi sayılır. ----
+ function detectPOCBounce(a){
+  const lookback=96;
+  if(a.length<lookback+2) return null;
+  const window=a.slice(-lookback-1,-1);
+  const lo=Math.min(...window.map(c=>c.low)), hi=Math.max(...window.map(c=>c.high));
+  const bins=24, binSize=(hi-lo)/bins;
+  if(!(binSize>0)) return null;
+  const volByBin=new Array(bins).fill(0);
+  window.forEach(c=>{
+   const mid=(c.high+c.low)/2;
+   let idx=Math.floor((mid-lo)/binSize);
+   idx=Math.max(0,Math.min(bins-1,idx));
+   volByBin[idx]+=(c.volume||0);
+  });
+  let maxIdx=0; for(let i=1;i<bins;i++) if(volByBin[i]>volByBin[maxIdx]) maxIdx=i;
+  const poc=lo+(maxIdx+0.5)*binSize;
+  const curr=a[a.length-1];
+  if(Math.abs(curr.close-poc)/poc>=0.004) return null;
+  if(curr.low<=poc && curr.close>poc && curr.close>curr.open) return {key:'pocBounce', dir:1};
+  if(curr.high>=poc && curr.close<poc && curr.close<curr.open) return {key:'pocBounce', dir:-1};
+  return null;
+ }
+ // ---- 7) ORDER BLOCK MİTİGASYONU — büyük bir hareketten (impulse) hemen önceki SON ters yönlü mum,
+ // "kurumsal emir bloğu" sayılır. Fiyat ileride bu bloğa geri dönüp reddederse mitigasyon sinyali. ----
+ function findOrderBlocks(a, lookback){
+  const w=a.slice(-lookback-3,-1), obs=[];
+  for(let i=1;i<w.length-1;i++){
+   const c=w[i], next=w[i+1];
+   const moveSize=Math.abs(next.close-next.open);
+   const avgRange=(w[i-1]?Math.abs(w[i-1].high-w[i-1].low):moveSize)||1e-9;
+   if(moveSize>avgRange*1.8){
+    if(next.close>next.open && c.close<c.open) obs.push({dir:1, top:c.high, bottom:c.low});
+    if(next.close<next.open && c.close>c.open) obs.push({dir:-1, top:c.high, bottom:c.low});
+   }
+  }
+  return obs;
+ }
+ function detectOrderBlockMitigation(a){
+  if(a.length<20) return null;
+  const obs=findOrderBlocks(a, 20), curr=a[a.length-1];
+  for(let i=obs.length-1;i>=0;i--){
+   const ob=obs[i];
+   if(ob.dir>0 && curr.low<=ob.top && curr.low>=ob.bottom*0.998 && curr.close>ob.top && curr.close>curr.open) return {key:'orderBlockMit', dir:1};
+   if(ob.dir<0 && curr.high>=ob.bottom && curr.high<=ob.top*1.002 && curr.close<ob.bottom && curr.close<curr.open) return {key:'orderBlockMit', dir:-1};
+  }
+  return null;
+ }
+ // ---- 8) FİBONACCİ OTE (Optimal Trade Entry): mevcut fibZone hesaplamasından ("golden" 0.5-0.618 ya da
+ // "deep" 0.786+ bölgeleri) yararlanır — trend yönünde bu bölgeye çekilme + dönüş mumu birlikte arar. ----
+ function detectFibOTE(a, fibZoneVal, ema200){
+  if(!fibZoneVal || (fibZoneVal!=='golden' && fibZoneVal!=='deep') || ema200==null) return null;
+  const curr=a[a.length-1];
+  const pat=pattern(a);
+  if(!pat || pat.d==='neutral') return null;
+  if(curr.close>ema200 && pat.d==='bull') return {key:'fibOte', dir:1};
+  if(curr.close<ema200 && pat.d==='bear') return {key:'fibOte', dir:-1};
+  return null;
+ }
+ // ---- 9) ASYA ARALIĞI KILLZONE SAHTE KIRILIMI — Asya seansının (22:00-07:00 UTC) TAM aralığı çizilir;
+ // Londra/NY açılışında bu aralığın bir ucu sahte kırılıp geri içeri kapanırsa ters yönde sinyal. ----
+ function detectAsianRangeFakeout(a){
+  const lastTime=a[a.length-1].time;
+  const now=new Date(lastTime*1000);
+  let asianOpen=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),22,0,0)/1000;
+  if(lastTime<asianOpen) asianOpen-=86400;
+  const asianClose=asianOpen+9*3600;
+  if(lastTime<asianClose) return null;
+  const asianCandles=a.filter(c=>c.time>=asianOpen && c.time<asianClose);
+  if(asianCandles.length<10) return null;
+  const hi=Math.max(...asianCandles.map(c=>c.high)), lo=Math.min(...asianCandles.map(c=>c.low));
+  const postCandles=a.filter(c=>c.time>=asianClose);
+  if(postCandles.length<1 || postCandles.length>8) return null;
+  const curr=postCandles[postCandles.length-1];
+  if(curr.high>hi && curr.close<hi && curr.close<curr.open) return {key:'asianFakeout', dir:-1};
+  if(curr.low<lo && curr.close>lo && curr.close>curr.open) return {key:'asianFakeout', dir:1};
+  return null;
+ }
+ // ---- 10) AŞIRI ORTALAMAYA DÖNÜŞ — fiyat 3 standart sapma dışına taşar (çok nadir) + RSI 15 altı/85
+ // üstü + ilk dönüş mumu kapanır: istatistiksel bir uç noktadan "V" tipi dönüş. ----
+ function detectExtremeMeanReversion(a, closes, rsiVal){
+  const period=20;
+  if(closes.length<period+2 || rsiVal==null) return null;
+  const w=closes.slice(-period), sma=w.reduce((s,v)=>s+v,0)/period;
+  const sd=Math.sqrt(w.reduce((s,v)=>s+(v-sma)**2,0)/period);
+  const upper3=sma+sd*3, lower3=sma-sd*3;
+  const curr=a[a.length-1];
+  if(curr.close<lower3 && rsiVal<15 && curr.close>curr.open) return {key:'extremeMeanReversion', dir:1};
+  if(curr.close>upper3 && rsiVal>85 && curr.close<curr.open) return {key:'extremeMeanReversion', dir:-1};
+  return null;
+ }
+ // ==================== 10 YENİ KALIP SONU ====================
  // ---- NO WICK (FİTİLSİZ MUM) GERİ TEST — klasik "Marubozu" kavramının bir uygulaması: gövdenin bir
  // ucunda neredeyse hiç fitil olmayan bir mum, o yönde güçlü/kararlı bir hareketi gösterir. Trend
  // yönünde bir "fitilsiz mum" oluşmuşsa ve fiyat sonradan o seviyeye geri dönüp reddedilirse (tekrar
@@ -2609,6 +2807,26 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const eqhl=detectEqualHighsLows(a); if(eqhl) tags.push(eqhl);
   // (19) Trades Delta (gerçek agresif alım/satım hacmi farkı)
   const tDelta=detectTradeDelta(ind.tradeDelta); if(tDelta) tags.push(tDelta);
+  // (20) Silver Bullet (likidite süpürmesi + FVG kombinasyonu)
+  const silverBullet=detectSilverBullet(a, ind.ema200, ind.vwap); if(silverBullet) tags.push(silverBullet);
+  // (21) ORB + Hacim onayı
+  const orbVol=detectORBVolume(a); if(orbVol) tags.push(orbVol);
+  // (22) VWAP Geri Çekilme + dönüş mumu
+  const vwapPb=detectVwapPullback(a, ind.ema50, ind.ema200, ind.vwap); if(vwapPb) tags.push(vwapPb);
+  // (23) TTM Squeeze (Bollinger/Keltner kesin tanımı)
+  const ttm=detectTTMSqueeze(a, closes); if(ttm) tags.push(ttm);
+  // (24) RSI Uyumsuzluğu + CHoCH kombinasyonu
+  const divChoch=detectDivergenceChoch(a, rsiSeries); if(divChoch) tags.push(divChoch);
+  // (25) Hacim Profili POC sekmesi
+  const poc=detectPOCBounce(a); if(poc) tags.push(poc);
+  // (26) Order Block mitigasyonu
+  const obMit=detectOrderBlockMitigation(a); if(obMit) tags.push(obMit);
+  // (27) Fibonacci OTE bölgesi
+  const fibOte=detectFibOTE(a, ind.fibZone, ind.ema200); if(fibOte) tags.push(fibOte);
+  // (28) Asya Aralığı Killzone sahte kırılımı
+  const asianFake=detectAsianRangeFakeout(a); if(asianFake) tags.push(asianFake);
+  // (29) Aşırı ortalamaya dönüş (3-sigma)
+  const extremeMR=detectExtremeMeanReversion(a, closes, ind.rsi); if(extremeMR) tags.push(extremeMR);
   return tags;
  }
  function drawSRLines(){
@@ -2818,7 +3036,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const psarReal=calcPSAR(ohlc);
   const pivotsReal=calcPivots(ohlc);
   const strategyTags = (isCloseTick || !cachedStrategyTags.length)
-   ? (cachedStrategyTags = detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)}))
+   ? (cachedStrategyTags = detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, fibZone:fibZone, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)}))
    : cachedStrategyTags;
 
   window.valensChartRead={
