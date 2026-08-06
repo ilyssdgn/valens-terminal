@@ -1528,13 +1528,22 @@ function botTick(){
  candidates.forEach(c=>{ if(!best || c.confidence>best.confidence) best=c; });
 
  const rawDir = best ? best.dir : 0;
- const conf = best ? best.confidence : 50;
  const THRESHOLD=87;
 
- // Şeffaflık: kazanan adayın TERS yönünde, ona yakın güvende başka bir aday varsa "karışık" işaretle —
- // ama yine de EN İYİ seçeneği veriyoruz, sadece bunun tartışmalı olabileceğini açıkça belirtiyoruz.
+ // Şeffaflık: kazanan adayın TERS yönünde, ona yakın güvende başka bir aday varsa "karışık" işaretle.
+ // ÖNEMLİ: bu artık sadece bir uyarı METNİ değil — çakışma GERÇEKTEN güveni düşürür. Rakip ne kadar
+ // yakınsa (gerçek anlaşmazlık o kadar büyükse) indirim o kadar büyük olur. Önceden bu bilgi sadece
+ // görüntüleniyordu ama karar/güven sayısını hiç etkilemiyordu — "%90 KESİN İŞLEM" ile "görüşler
+ // bölünmüş, dikkatli olun" aynı anda gösterilip birbirini yalanlıyordu.
  const opposing = best ? candidates.filter(c=>c.dir===-best.dir && c.confidence>=(best.confidence-15)) : [];
  const conflicted = best!==null && opposing.length>0;
+ let conf = best ? best.confidence : 50;
+ if(conflicted){
+  const closestOpposing = Math.max(...opposing.map(c=>c.confidence));
+  const gap = conf - closestOpposing; // tanım gereği 0-15 arası
+  const discount = Math.max(5, Math.round(18 - gap)); // rakip ne kadar yakınsa indirim o kadar büyük
+  conf = Math.max(50, Math.round(conf - discount));
+ }
 
  const agreeCount = best ? candidates.filter(c=>c.dir===best.dir).length : 0;
  const totalVotes = candidates.length;
