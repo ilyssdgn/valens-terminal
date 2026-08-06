@@ -655,6 +655,8 @@ const I18N = {
   cotNoData:'Bu enstrüman için COT verisi yok (CFTC yalnız vadeli piyasa raporlar).',
   cotHedgeFunds:'HEDGE FONLAR (Spekülatör)', cotBanks:'BANKALAR / TİCARİ', cotNetLong:'NET LONG', cotNetShort:'NET SHORT',
   cotLong:'Long', cotShort:'Short', cotSourceNote:'Kaynak: CFTC Legacy COT · her Salı kesiti Cuma yayınlanır.',
+  cotWeeklyNote:'Haftada 1 güncellenir, bu normaldir.',
+  cotStaleWarning:(days)=>'Bu veri '+days+' gündür aynı — beklenenden eski olabilir, CFTC kaynağını kontrol edin.',
   psarUpLbl:'▲ YÜKSELİŞ', psarDownLbl:'▼ DÜŞÜŞ', trendUp:'yükselen trend', trendDown:'düşen trend', trendFlat:'yatay',
   srNearSupport:l=>'desteğe yakın ('+l+')', srNearResistance:l=>'dirence yakın ('+l+')',
   srNearDynSupport:'dinamik desteğe (Dyn Support) yakın', srNearDynResistance:'dinamik dirence (Dyn Resistance) yakın',
@@ -817,6 +819,8 @@ const I18N = {
   cotNoData:'No COT data for this instrument (CFTC only reports futures markets).',
   cotHedgeFunds:'HEDGE FUNDS (Speculators)', cotBanks:'BANKS / COMMERCIALS', cotNetLong:'NET LONG', cotNetShort:'NET SHORT',
   cotLong:'Long', cotShort:'Short', cotSourceNote:'Source: CFTC Legacy COT · each Tuesday cut is published Friday.',
+  cotWeeklyNote:'Updates weekly — this is normal.',
+  cotStaleWarning:(days)=>'This data has been unchanged for '+days+' days — may be older than expected, check the CFTC source.',
   psarUpLbl:'▲ UP', psarDownLbl:'▼ DOWN', trendUp:'uptrend', trendDown:'downtrend', trendFlat:'sideways',
   srNearSupport:l=>'near support ('+l+')', srNearResistance:l=>'near resistance ('+l+')',
   srNearDynSupport:'near dynamic support (Dyn Support)', srNearDynResistance:'near dynamic resistance (Dyn Resistance)',
@@ -1888,7 +1892,12 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  window.valensRenderCOT=function(sym){
    const c=COT[sym], body=document.getElementById('cotBody'), dEl=document.getElementById('cotDate');
    if(!c){ dEl.textContent='—'; body.innerHTML='<p style="color:var(--muted)">'+t('cotNoData')+'</p>'; return; }
-   dEl.textContent=c.date;
+   // COT raporu haftada BİR kez (Cuma) yayınlanır — bu yüzden birkaç gün "aynı" görünmesi normaldir.
+   // Ama gerçekten beklenenden eski kalırsa (>14 gün, olağan haftalık+tatil payını aşan), görünür uyarı ver.
+   const daysOld = Math.floor((Date.now() - new Date(c.date+'T00:00:00Z').getTime())/86400000);
+   dEl.textContent = c.date + (daysOld<=13 ? '' : '  ⚠');
+   dEl.style.color = daysOld<=13 ? '' : 'var(--red)';
+   dEl.title = daysOld<=13 ? '' : t('cotStaleWarning')(daysOld);
    const fundNet=c.fund_long-c.fund_short, bankNet=c.bank_long-c.bank_short;
    body.innerHTML=
     '<p><b>'+c.market+'</b> · OI: '+fmt(c.oi)+'</p>'+
@@ -1898,7 +1907,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     '<div class="scenario '+(bankNet>=0?'bull':'bear')+'"><b>'+(bankNet>=0?'▲':'▼')+' '+t('cotBanks')+':</b> '+
       (bankNet>=0?t('cotNetLong'):t('cotNetShort'))+' '+fmt(Math.abs(bankNet))+
       '<br>'+t('cotLong')+' '+fmt(c.bank_long)+' · '+t('cotShort')+' '+fmt(c.bank_short)+'</div>'+
-    '<p style="font-size:8px;color:var(--muted);margin-top:5px">'+t('cotSourceNote')+'</p>';
+    '<p style="font-size:8px;color:var(--muted);margin-top:5px">'+t('cotSourceNote')+
+      (daysOld<=13 ? ' · '+t('cotWeeklyNote') : '')+'</p>';
  };
  window.valensRenderCOT(CUR);
 })();
