@@ -362,6 +362,19 @@ iframe{height:100%;width:100%;border:0}
           <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
         </div>
       </div>
+      <div class="ph"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ</b><span class="badge" id="mt5BridgeBadge">—</span></div>
+      <div style="padding:9px;border-bottom:1px solid var(--line)">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="mt5BridgeHint">PC'nizde valens_mt5_executor.py çalışıyorsa, KESİN İŞLEM sinyalleri buradan otomatik MT5'e gönderilir. Kapalıyken hiçbir şey gönderilmez.</div>
+        <div style="display:flex;gap:6px;margin-bottom:7px">
+          <button id="mt5BridgeToggle" style="flex:1;padding:7px;border-radius:4px;border:1px solid var(--line);background:#07101c;color:var(--text);font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="mt5BridgeToggleOff">🔌 Köprüyü Etkinleştir</button>
+        </div>
+        <div id="mt5BridgeStatus" style="font-size:8px;color:var(--muted);line-height:1.5">—</div>
+      </div>
+      <div class="ph"><b data-i18n="strategy_stats_title">📊 GERÇEK STRATEJİ PERFORMANSI</b><span class="badge" id="strategyStatsBadge" data-i18n="strategyStatsSource">MT5</span></div>
+      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="strategyStatsHint">MT5 köprüsünden gelen GERÇEK kapanan işlemlere göre — simülasyon değil. En az 5 işlem birikmeden karar motorunu etkilemez.</div>
+        <div id="strategyStatsBody"><p style="color:var(--muted);font-size:8px">—</p></div>
+      </div>
       <div class="ph"><b data-i18n="teach_title">🎓 MANUEL ÖĞRETİM (kalıp hafızası)</b><span class="badge" id="teachBadge">—</span></div>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="teachHint">Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.</div>
@@ -437,7 +450,7 @@ iframe{height:100%;width:100%;border:0}
 
       <div class="charthead">
         <b id="chartTitle">XAU/USD · GOLD SPOT</b>
-        <button class="tfbtn on" data-int="15">15M</button><button class="tfbtn" data-int="30">30M</button><button class="tfbtn" data-int="60">1H</button><button class="tfbtn" data-int="240">4H</button><button class="tfbtn" data-int="D">1D</button>
+        <button class="tfbtn" data-int="1">1M</button><button class="tfbtn on" data-int="15">15M</button><button class="tfbtn" data-int="30">30M</button><button class="tfbtn" data-int="60">1H</button><button class="tfbtn" data-int="240">4H</button><button class="tfbtn" data-int="D">1D</button>
         <span id="goldOffsetNote" style="margin-left:auto;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono'"></span>
       </div>
 
@@ -666,6 +679,20 @@ const I18N = {
   noLastSignal:'Henüz bu seviyede sinyal verilmedi.',
   lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RİSK YÖNETİCİSİ', risk_balance:'Bakiye ($)', risk_daily:'Günlük Kayıp Limiti (%)',
+  mt5_bridge_title:'🔌 MT5 KÖPRÜSÜ',
+  mt5BridgeHint:"PC'nizde valens_mt5_executor.py çalışıyorsa, KESİN İŞLEM sinyalleri buradan otomatik MT5'e gönderilir. Kapalıyken hiçbir şey gönderilmez.",
+  mt5BridgeToggleOff:'🔌 Köprüyü Etkinleştir', mt5BridgeToggleOn:'⏸ Köprüyü Durdur',
+  mt5BridgeBadgeOn:'AKTİF', mt5BridgeBadgeOff:'KAPALI',
+  mt5BridgeConnectedNote:'Köprü aktif — KESİN İŞLEM sinyalleri MT5\'e gönderilecek (PC\'nizde script çalışıyor olmalı).',
+  mt5BridgeStoppedNote:'Köprü durduruldu — sinyaller artık gönderilmeyecek.',
+  mt5BridgeUnreachable:'⚠ Yerel köprüye ulaşılamıyor — PC\'nizde valens_mt5_executor.py çalışıyor mu kontrol edin.',
+  mt5BridgeExecuted:'✓ Son sinyal MT5\'e gönderildi ve işlem açıldı.',
+  mt5BridgeSkipped:(reason)=>'Son sinyal MT5\'e ulaştı ama işlem AÇILMADI (sebep: '+reason+').',
+  strategy_stats_title:'📊 GERÇEK STRATEJİ PERFORMANSI', strategyStatsSource:'MT5',
+  strategyStatsHint:'MT5 köprüsünden gelen GERÇEK kapanan işlemlere göre — simülasyon değil. En az 5 işlem birikmeden karar motorunu etkilemez.',
+  strategyStatsEmpty:'Henüz kapanmış gerçek işlem yok — veri biriktikçe burada görünecek.',
+  strategyStatsLowSample:'az örneklem, henüz etkisiz',
+  strategyStatsPF:'KF', strategyStatsAvg:'Ort. kazanç/kayıp',
   risk_max:'Maks. Toplam Kayıp (%)', risk_target:'Kâr Hedefi (%)',
   risk_lotmin:'Lot (min)', risk_lotmax:'Lot (max)', risk_days:'Hedef Gün Sayısı', risk_start:'Başlangıç Tarihi',
   goal_progress_title:'🎯 HEDEFE İLERLEME (gerçek izlenen sonuçlardan)',
@@ -830,6 +857,20 @@ const I18N = {
   noLastSignal:'No signal has been given at this level yet.',
   lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RISK GOVERNOR', risk_balance:'Balance ($)', risk_daily:'Daily Loss Limit (%)',
+  mt5_bridge_title:'🔌 MT5 BRIDGE',
+  mt5BridgeHint:"If valens_mt5_executor.py is running on your PC, CONFIRMED TRADE signals are auto-sent to MT5 from here. Nothing is sent while off.",
+  mt5BridgeToggleOff:'🔌 Enable Bridge', mt5BridgeToggleOn:'⏸ Stop Bridge',
+  mt5BridgeBadgeOn:'ACTIVE', mt5BridgeBadgeOff:'OFF',
+  mt5BridgeConnectedNote:'Bridge active — CONFIRMED TRADE signals will be sent to MT5 (script must be running on your PC).',
+  mt5BridgeStoppedNote:'Bridge stopped — signals will no longer be sent.',
+  mt5BridgeUnreachable:"⚠ Can't reach the local bridge — check that valens_mt5_executor.py is running on your PC.",
+  mt5BridgeExecuted:'✓ Last signal was sent to MT5 and a trade was opened.',
+  mt5BridgeSkipped:(reason)=>'Last signal reached MT5 but no trade was opened (reason: '+reason+').',
+  strategy_stats_title:'📊 REAL STRATEGY PERFORMANCE', strategyStatsSource:'MT5',
+  strategyStatsHint:'Based on REAL closed trades from the MT5 bridge — not simulated. Needs 5+ trades before it affects the decision engine.',
+  strategyStatsEmpty:'No closed real trades yet — will populate as data accumulates.',
+  strategyStatsLowSample:'small sample, not yet influencing',
+  strategyStatsPF:'PF', strategyStatsAvg:'Avg win/loss',
   risk_max:'Max Total Loss (%)', risk_target:'Profit Target (%)',
   risk_lotmin:'Lot (min)', risk_lotmax:'Lot (max)', risk_days:'Target Days', risk_start:'Start Date',
   goal_progress_title:'🎯 PROGRESS TO TARGET (from real tracked results)',
@@ -972,6 +1013,7 @@ const NEWS_BIAS={
 };
 // Grafik motorunun canlı okuması buraya yazılır (trend/pattern/S-R/fib + gerçek indikatörler)
 window.valensChartRead={};
+window.valensCandleLock=null; // mum kilidi/devamlılık mekanizması için başlangıç durumu
 
 function isMarketOpen(sym){
  if(sym==='BINANCE:BTCUSDT')return true;
@@ -1509,13 +1551,30 @@ function botTick(){
   return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
  }
  let candidates=[];
- if(confluenceDir!==0){
+ // Test amaçlı: window.valensStrategyOnlyMode=true iken genel "15 gösterge harmanı" (confluence)
+ // adayı havuza HİÇ girmez — sadece gerçek isimli strateji kalıpları (likidite süpürmesi, FVG,
+ // piyasa yapısı, vb. — bunların hepsi zaten kendi içinde fiyat/yapı yorumlaması içerir) yarışabilir.
+ if(confluenceDir!==0 && !window.valensStrategyOnlyMode){
   candidates.push({key:'confluence', dir:confluenceDir, confidence:confluenceConf, label:t('candidateConfluence')});
  }
  (cr.strategyTags||[]).forEach(tag=>{
   const base=STRATEGY_BASE_CONF[tag.key]||70;
-  const confidence=Math.min(97, base+confirmBoost(tag.dir));
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label:tagLabels[tag.key]});
+  const label=tagLabels[tag.key];
+  let confidence=Math.min(97, base+confirmBoost(tag.dir));
+  // ---- GERÇEK MT5 PERFORMANSINA GÖRE DİNAMİK AYARLAMA ----
+  // window.valensStrategyStats, MT5 köprüsünden (gerçek kapanan işlemlerden, simülasyon değil)
+  // periyodik çekilen per-strateji kazanma oranını içerir. En az 5 GERÇEK kapanmış işlem
+  // birikmeden hiçbir ayarlama yapılmaz — küçük örneklemin önceliği çarpıtmasını önler.
+  // %50 kazanma oranı = ayarlama yok; %100'e yaklaştıkça +10'a kadar bonus; %0'a yaklaştıkça
+  // -10'a kadar ceza. Böylece "gerçekte en kârlı olan stratejiler" öne çıkar.
+  const realStats = window.valensStrategyStats && window.valensStrategyStats[label];
+  let realWinRate = null;
+  if(realStats && realStats.trades>=5 && realStats.win_rate!=null){
+   realWinRate = realStats.win_rate;
+   const adj = Math.max(-10, Math.min(10, (realWinRate-0.5)*20));
+   confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
+  }
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:realStats?realStats.trades:0});
  });
  // Kullanıcının manuel öğrettiği ve yeterince (3+, başarısızlığın 2 katı) başarılı olmuş kalıplar —
  // güven, o kalıbın GERÇEK izlenen başarı oranına göre ölçeklenir (uydurma değil).
@@ -1527,8 +1586,10 @@ function botTick(){
  let best=null;
  candidates.forEach(c=>{ if(!best || c.confidence>best.confidence) best=c; });
 
- const rawDir = best ? best.dir : 0;
- const THRESHOLD=87;
+ let rawDir = best ? best.dir : 0;
+ // Varsayılan %87 — ama test amaçlı window.valensThreshold ile dışarıdan (headless runner'ın
+ // --threshold parametresiyle) geçici olarak değiştirilebilir. Kod düzenlemeye gerek kalmaz.
+ const THRESHOLD = (typeof window.valensThreshold==='number' && window.valensThreshold>=50 && window.valensThreshold<=99) ? window.valensThreshold : 87;
 
  // Şeffaflık: kazanan adayın TERS yönünde, ona yakın güvende başka bir aday varsa "karışık" işaretle.
  // ÖNEMLİ: bu artık sadece bir uyarı METNİ değil — çakışma GERÇEKTEN güveni düşürür. Rakip ne kadar
@@ -1547,9 +1608,36 @@ function botTick(){
 
  const agreeCount = best ? candidates.filter(c=>c.dir===best.dir).length : 0;
  const totalVotes = candidates.length;
- const technicallyArmed = best!==null && conf>=THRESHOLD;
+ let technicallyArmed = best!==null && conf>=THRESHOLD;
  const riskBlocked = isRiskBlocked();
- const armed = technicallyArmed && !riskBlocked;
+ let armed = technicallyArmed && !riskBlocked;
+
+ // ---- MUM KİLİDİ / DEVAMLILIK MEKANİZMASI ----
+ // İstek: mum kapanmasını beklemeden (mum İÇİNDEYKEN) sinyal verilebilsin, AMA aynı mum içinde
+ // yön/güven sürekli değişip durmasın (titreşim/flip-flop önlensin) — "sell verdi, anlık değişiklik
+ // oldu, otomatik buy'a döndü" sorunu budur. Mum GERÇEKTEN kapanıp yeni mum başladığında, o yeni
+ // mumun taze hesaplaması aynı yönü DESTEKLİYORSA "devam" sayılır (güncel fiyata göre giriş/hedef
+ // yenilenir); desteklemiyorsa kilit serbest bırakılıp o mumun kendi sonucu kullanılır.
+ const curCandleTime = cr.candleTime || 0;
+ const lock = window.valensCandleLock;
+ if(!lock){
+  if(armed) window.valensCandleLock = {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label};
+ } else if(lock.candleTime === curCandleTime){
+  // AYNI mum — kilitli yönü/güveni koru, bu tick'in taze (muhtemelen gürültülü) sonucunu YOK SAY
+  rawDir = lock.dir; conf = lock.conf;
+  const lockedCandidate = candidates.find(c=>c.key===lock.bestKey && c.dir===lock.dir);
+  if(lockedCandidate) best = lockedCandidate;
+  // kilit zaten armed olarak kurulmuştu — durumu yeniden, tutarlı şekilde hesapla
+  technicallyArmed = conf>=THRESHOLD;
+  armed = technicallyArmed && !riskBlocked;
+ } else {
+  // YENİ mum başlamış — taze hesaplama kilidi destekliyor mu?
+  if(armed && rawDir===lock.dir){
+   window.valensCandleLock = {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label}; // devam, fiyat güncellendi
+  } else {
+   window.valensCandleLock = armed ? {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label} : null; // desteklemedi, kilit serbest
+  }
+ }
 
  let sigText='◇ GÖZLEM', sigColor='var(--gold)';
  if(rawDir>0)sigText='▲ BUY'; else if(rawDir<0)sigText='▼ SELL';
@@ -1678,8 +1766,24 @@ function botTick(){
    // yerine AYNI ORANI kendi gerçek ATR'ımıza uyguluyoruz, ve gereken başabaş kazanma oranını AÇIKÇA
    // gösteriyoruz — bu R:R şeklini "varsayılan" yapmıyoruz, sadece bu spesifik kalıp ateşlendiğinde.
    const isTightTpOrb = best && best.key==='scalpOrb';
-   const scSL = atr ? (isTightTpOrb?atr*1.6:atr*1.0) : cfg.scSL;
-   const scTP = atr ? (isTightTpOrb?atr*0.5:atr*2.0) : cfg.scTP;
+   // Test amaçlı: window.valensTightScalpMult ile (varsayılan 1.0 = değişiklik yok) scalp SL/TP
+   // mesafeleri küçültülebilir — oranlar (1:2, ya da scalpOrb'un 3.2:1'i) AYNI kalır, sadece MUTLAK
+   // büyüklük küçülür. Böylece 1dk gibi hızlı test senaryolarında daha sık kapanan, daha küçük
+   // hedefli işlemler alınabilir.
+   const tightMult = (typeof window.valensTightScalpMult==='number' && window.valensTightScalpMult>0 && window.valensTightScalpMult<=1) ? window.valensTightScalpMult : 1.0;
+   const scSL = atr ? (isTightTpOrb?atr*1.6:atr*1.0)*tightMult : cfg.scSL;
+   let scTP = atr ? (isTightTpOrb?atr*0.5:atr*2.0)*tightMult : cfg.scTP;
+   // ---- ULAŞILABİLİRLİK SINIRI: hedefin "3 günde" değil, gerçekçi bir scalp süresinde (varsayılan
+   // ~2 saat, window.valensMaxHoursToTP ile ayarlanabilir) ulaşılabilir olmasını sağlıyoruz. SL'e
+   // DOKUNMUYORUZ — işlem başına risk (SL mesafesi × sabit lot) değişmiyor, sadece hedef gerçekçi
+   // hale geliyor. 1.5x tampon payı, fiyatın düz bir çizgi değil hız kazanıp kaybederek hareket
+   // ettiğini hesaba katıyor (tamamen ortalama hıza göre kesip fırsatları kaçırmamak için).
+   const maxHours = (typeof window.valensMaxHoursToTP==='number' && window.valensMaxHoursToTP>0) ? window.valensMaxHoursToTP : 2;
+   const hourlyMove = cr.hourlyMove;
+   if(hourlyMove && hourlyMove>0){
+    const reachableDistance = hourlyMove * maxHours * 1.5;
+    if(scTP > reachableDistance) scTP = Math.max(reachableDistance, scSL*0.5); // asgari anlamlı bir hedef kalsın
+   }
    const swSL = atr ? atr*3.0 : cfg.swSL, swTP = atr ? atr*6.0 : cfg.swTP;
    const scEntryPx=last, scStopPx=last-d*scSL, scTpPx=last+d*scTP;
    const swStopPx=last-d*swSL, swTpPx=last+d*swTP;
@@ -1692,6 +1796,28 @@ function botTick(){
    document.getElementById('swTp').textContent=fmt(swTpPx);
    scStatusEl.className='trade-status armed';
    scStatusEl.textContent=t('confirmedStatus')(rawDir>0?'BUY':'SELL',conf,utc());
+   // ---- MT5 KÖPRÜSÜ: KESİN İŞLEM her arm olduğunda, PC'nizde çalışan yerel köprü script'ine
+   // (varsa) sinyali gönderir. Köprü çalışmıyorsa/kurulu değilse bu sessizce başarısız olur —
+   // terminalin geri kalanını ETKİLEMEZ. Sadece XAU/USD için, ve sadece scalp seviyeleriyle. ----
+   if(window.valensCurSym==='OANDA:XAUUSD' && window.valensMT5BridgeEnabled){
+    // DÜZELTME: önceden anahtar CANLI (dalgalanan) fiyata bağlıydı — fiyat her ~3 saniyede bir
+    // kuruş bile kıpırdasa yeni bir "sinyal" sanılıp tekrar tekrar emir gönderiliyordu (bu "50 emir"
+    // sorununun kök nedeniydi). Şimdi anahtar SABİT mum zaman damgasına + kazanan stratejiye bağlı —
+    // aynı mum süresince (ör. 15dk boyunca), aynı strateji armed kaldığı sürece sinyal SABİT kalır,
+    // sadece mum gerçekten değiştiğinde (yeni bir kurulum oluştuğunda) yeni sinyal sayılır.
+    const candleTime = cr.candleTime || Math.floor(Date.now()/1000);
+    const sigId = rawDir+'-'+(best?best.key:'none')+'-'+candleTime;
+    fetch('http://127.0.0.1:8899/signal', {
+     method:'POST', headers:{'Content-Type':'application/json'},
+     body: JSON.stringify({dir:rawDir, entry:scEntryPx, stop:scStopPx, tp:scTpPx, confidence:conf, label:(best?best.label:'?'), signal_id:sigId})
+    }).then(r=>r.json()).then(res=>{
+     const el=document.getElementById('mt5BridgeStatus');
+     if(el) el.textContent = res.executed ? t('mt5BridgeExecuted') : t('mt5BridgeSkipped')(res.reason||'?');
+    }).catch(()=>{
+     const el=document.getElementById('mt5BridgeStatus');
+     if(el) el.textContent = t('mt5BridgeUnreachable');
+    });
+   }
    const tpNoteEl=document.getElementById('scTightTpNote');
    if(tpNoteEl){
     if(isTightTpOrb){
@@ -1815,6 +1941,48 @@ updateGoldOffset().then(updateTickerBar);
 setInterval(updateGoldOffset, 45000); // xaus.com adil kullanım kuralı: en az 30sn — 45sn kullanıyoruz
 setInterval(updateTickerBar, 15000);
 
+// ---- GERÇEK STRATEJİ PERFORMANSI (MT5 köprüsünden) ----
+// Köprü, her kapanan gerçek işlemi hangi stratejinin açtığını bilerek kaydediyor. Burada bu
+// verileri periyodik çekip hem karar motoruna (yukarıdaki confidence ayarlaması) besliyoruz
+// hem de kullanıcıya görünür bir panelde gösteriyoruz.
+window.valensStrategyStats = {};
+async function updateStrategyStats(){
+ if(!window.valensMT5BridgeEnabled) return;
+ try{
+  const r = await fetch('http://127.0.0.1:8899/strategy_stats');
+  const data = await r.json();
+  if(data && data.strategies){
+   window.valensStrategyStats = data.strategies;
+   renderStrategyStatsPanel(data.strategies);
+  }
+ }catch(e){ /* köprü şu an erişilemezse sessizce eski veriyi koru */ }
+}
+function renderStrategyStatsPanel(strategies){
+ const el = document.getElementById('strategyStatsBody');
+ if(!el) return;
+ const entries = Object.entries(strategies).filter(([,s])=>s.trades>0)
+   .sort((a,b)=>(b[1].profit_factor||0)-(a[1].profit_factor||0));
+ if(entries.length===0){ el.innerHTML='<p style="color:var(--muted);font-size:8px">'+t('strategyStatsEmpty')+'</p>'; return; }
+ el.innerHTML = entries.map(([label,s])=>{
+  const pct = s.win_rate!=null ? Math.round(s.win_rate*100) : '—';
+  const pf = s.profit_factor==null ? '—' : (s.profit_factor===Infinity ? '∞' : s.profit_factor.toFixed(2));
+  // KAR FAKTÖRÜ >1 kârlı, <1 zararlı demektir — kazanma oranından BAĞIMSIZ olarak asıl gerçeği gösterir.
+  const pfColor = (s.profit_factor==null) ? 'var(--muted)' : (s.profit_factor>=1 ? 'var(--green)' : 'var(--red)');
+  const profitColor = s.total_profit>=0 ? 'var(--green)' : 'var(--red)';
+  const enough = s.trades>=5;
+  const avgLine = (s.avg_win!=null||s.avg_loss!=null) ?
+    ('<div style="font-size:7px;color:var(--muted)">'+t('strategyStatsAvg')+': +$'+(s.avg_win!=null?s.avg_win.toFixed(0):'—')+' / -$'+(s.avg_loss!=null?s.avg_loss.toFixed(0):'—')+'</div>') : '';
+  return '<div style="padding:3px 0;border-bottom:1px solid var(--line)">'+
+   '<div style="display:flex;justify-content:space-between;font-size:8px">'+
+   '<span>'+label+(enough?'':' <i style="color:var(--muted)">('+t('strategyStatsLowSample')+')</i>')+'</span>'+
+   '<span>'+t('strategyStatsPF')+' <b style="color:'+pfColor+'">'+pf+'</b> · %'+pct+' ('+s.trades+') <b style="color:'+profitColor+'">$'+s.total_profit.toFixed(0)+'</b></span>'+
+   '</div>'+avgLine+
+   '</div>';
+ }).join('');
+}
+setInterval(updateStrategyStats, 60000); // dakikada bir — gereksiz sık sorgulamaya gerek yok
+setTimeout(updateStrategyStats, 5000);
+
 document.querySelectorAll('.tfbtn').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tfbtn').forEach(y=>y.classList.remove('on'));
  x.classList.add('on'); INT=x.dataset.int; loadChart(); updateAggUI();
@@ -1824,6 +1992,26 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tab').forEach(y=>y.classList.remove('active')); x.classList.add('active');
 });
 
+window.valensMT5BridgeEnabled = false;
+document.getElementById('mt5BridgeToggle').addEventListener('click', ()=>{
+ const btn=document.getElementById('mt5BridgeToggle');
+ const statusEl=document.getElementById('mt5BridgeStatus');
+ const badgeEl=document.getElementById('mt5BridgeBadge');
+ const turningOn = !window.valensMT5BridgeEnabled;
+ fetch('http://127.0.0.1:8899/'+(turningOn?'start':'stop'), {method:'POST'})
+  .then(r=>r.json())
+  .then(res=>{
+   window.valensMT5BridgeEnabled = !!res.running;
+   btn.textContent = window.valensMT5BridgeEnabled ? t('mt5BridgeToggleOn') : t('mt5BridgeToggleOff');
+   badgeEl.textContent = window.valensMT5BridgeEnabled ? t('mt5BridgeBadgeOn') : t('mt5BridgeBadgeOff');
+   badgeEl.style.color = window.valensMT5BridgeEnabled ? 'var(--green)' : 'var(--muted)';
+   statusEl.textContent = window.valensMT5BridgeEnabled ? t('mt5BridgeConnectedNote') : t('mt5BridgeStoppedNote');
+  })
+  .catch(()=>{
+   statusEl.textContent = t('mt5BridgeUnreachable');
+   badgeEl.textContent = t('mt5BridgeBadgeOff'); badgeEl.style.color='var(--red)';
+  });
+});
 document.getElementById('langToggle').addEventListener('click', ()=>{
  LANG = LANG==='tr' ? 'en' : 'tr';
  try{ localStorage.setItem('valens_lang', LANG); }catch(e){}
@@ -2120,7 +2308,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  const MAP={'OANDA:XAUUSD':'PAXGUSDT','BINANCE:BTCUSDT':'BTCUSDT','OANDA:EURUSD':'EURUSDT','OANDA:SPX500USD':null};
  // Zaman dilimi butonu değeri -> gerçek Binance kline aralığı. Önceden bu eşleme YOKTU, interval her
  // zaman sabit "15m" kalıyordu — hangi butona basılırsa basılsın veri hiç değişmiyordu.
- const INTERVAL_MAP={'15':'15m','30':'30m','60':'1h','240':'4h','D':'1d'};
+ const INTERVAL_MAP={'1':'1m','15':'15m','30':'30m','60':'1h','240':'4h','D':'1d'};
  function currentBinInterval(){ return INTERVAL_MAP[(typeof INT!=='undefined'?INT:'15')] || '15m'; }
 
  const chart=LightweightCharts.createChart(el,{
@@ -2214,6 +2402,19 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   const tail=trs.slice(-period);
   return tail.reduce((a,b)=>a+b,0)/period;
+ }
+ // ---- SAATLİK TİPİK HAREKET TAHMİNİ — scalp hedefinin "gerçekçi sürede ulaşılabilir" olup olmadığını
+ // kontrol etmek için kullanılır. ATR tek başına BÜYÜKLÜĞÜ söyler ama NE KADAR SÜREDE kat edileceğini
+ // söylemez — bu yüzden son birkaç saatin GERÇEK kapanış-kapanış hareketini saat başına ortalıyoruz.
+ function estimateHourlyMovement(candles){
+  if(candles.length<10) return null;
+  const w=candles.slice(-40); // yeterli örneklem
+  const totalSeconds=w[w.length-1].time-w[0].time;
+  if(totalSeconds<=0) return null;
+  const totalHours=totalSeconds/3600;
+  let totalMovement=0;
+  for(let i=1;i<w.length;i++) totalMovement+=Math.abs(w[i].close-w[i-1].close);
+  return totalHours>0 ? totalMovement/totalHours : null;
  }
  function calcVWAP(candles,period){
   const w=candles.slice(-period);
@@ -2957,12 +3158,6 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   });
   return zones;
  }
- // Strateji kalıp tespiti sadece mum KAPANDIĞINDA yeniden hesaplanır — henüz oluşmakta olan (hâlâ
- // hareket eden) son mum üzerinde her tick'te yeniden taranmaz. Bu, sinyalin titremesinin (flicker)
- // asıl kök nedeniydi: 19 strateji, saniyede birkaç kez değişen "hareketli bir hedefi" değerlendiriyordu.
- // Gösterge SAYILARI (RSI, MACD vb.) yine canlı güncellenir — sadece BUY/SAT kararını süren strateji
- // taraması, bir sonraki mum kapanana kadar sabit tutulur.
- let cachedStrategyTags=[];
  function analyze(isCloseTick){
   if(ohlc.length<20)return;
   e20.setData(emaLine(ohlc,20)); e50.setData(emaLine(ohlc,50));
@@ -3054,9 +3249,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const cciReal=calcCCI(ohlc,20);
   const psarReal=calcPSAR(ohlc);
   const pivotsReal=calcPivots(ohlc);
-  const strategyTags = (isCloseTick || !cachedStrategyTags.length)
-   ? (cachedStrategyTags = detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, fibZone:fibZone, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)}))
-   : cachedStrategyTags;
+  const strategyTags = detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, fibZone:fibZone, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)});
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
@@ -3064,6 +3257,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     patternName: pat?pat.n:'',
     srBias, srText, fibBias, fibZone, strategyTags,
     hasLiveData:true,
+    candleTime: ohlc[ohlc.length-1].time, // mevcut mumun SABİT zaman damgası — sinyal tekilleştirmede kullanılır
+    hourlyMove: estimateHourlyMovement(ohlc), // saatlik tipik hareket — TP ulaşılabilirlik sınırı için
     indicators:{
       rsi: rsiReal!==null?rsiReal:50,
       macd: macdReal,
@@ -3160,7 +3355,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   };
  }
  window.valensSetSymbol=function(sym){
-  curSym=sym;
+  curSym=sym; window.valensCurSym=sym;
   if(ws){ws.close();ws=null;} if(tradeWs){tradeWs.close();tradeWs=null;}
   // ---- ESKİ PARİTENİN TÜM ÇİZGİLERİNİ TEMİZLE (eksen takılmasın) ----
   cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
@@ -3183,7 +3378,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   window.valensChartRead={};
   closedEl.style.display='none';
-  cachedStrategyTags=[];
+  window.valensCandleLock=null;
   fetchMainSR(sym);
   loadHistory().then(()=>{
     drawSRLines(); connect(); connectTrades();
@@ -3210,7 +3405,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
   ohlc=[]; cs.setData([]);
   window.valensChartRead={};
-  cachedStrategyTags=[];
+  window.valensCandleLock=null;
   loadHistory().then(()=>{
    drawSRLines(); connect(); connectTrades();
    chart.priceScale('right').applyOptions({autoScale:true});
