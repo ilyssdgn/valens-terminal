@@ -3535,19 +3535,28 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    return parsed.data;
   }catch(e){ return null; }
  }
+ function filterClosedMarketCandles(arr, sym){
+  if(sym==='BINANCE:BTCUSDT') return arr;
+  return arr.filter(c=>!isClosedMarketTime(sym, c.time));
+ }
  async function loadHistory(){
   const intv=currentBinInterval();
   // Önce önbellekten (varsa) anında göster — kullanıcı sayfayı her açtığında boş grafik görmesin
   const cached=loadOhlcCache(curSym,intv);
-  if(cached && cached.length){ ohlc=cached; cs.setData(styledCandles(ohlc,curSym)); showRecentRange(); analyze(true); }
+  if(cached && cached.length){ ohlc=filterClosedMarketCandles(cached,curSym); cs.setData(ohlc); showRecentRange(); analyze(true); }
   try{
    // Binance REST API'de tek istekte alınabilecek azami mum sayısı 1000'dir — önceki 200 limiti
    // gereksiz yere veriyi kısıtlıyordu (15dk'da sadece ~50 saat; 1000 ile ~10 gün).
    const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${binSym}&interval=${intv}&limit=1000`);
    const d=await r.json();
    if(!Array.isArray(d))throw new Error('no data');
-   ohlc=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
-   cs.setData(styledCandles(ohlc,curSym)); showRecentRange(); analyze(true);
+   // ---- GERÇEK XAU/USD (ya da EUR/USD) PİYASASI KAPALIYKEN OLUŞAN MUMLAR TAMAMEN ATILIR ----
+   // Kullanıcı gerçek ekran görüntüsüyle gösterdi: sadece analiz çizgilerini dondurmak yetmiyor —
+   // mumların kendisi hâlâ görünüp hareket etmeye devam edince grafiği okurken kafa karıştırıcı
+   // oluyordu. Artık hafta sonu/kapalı-piyasa PAXG hareketi grafiğe HİÇ girmiyor — sanki o saatler
+   // hiç yaşanmamış gibi, gerçek bir forex/emtia platformunun hafta sonu davranışıyla aynı.
+   ohlc=filterClosedMarketCandles(d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]})), curSym);
+   cs.setData(ohlc); showRecentRange(); analyze(true);
    saveOhlcCache(curSym,intv,ohlc);
    setTimeout(()=>{
     window.valensBacktestResults = runHistoricalBacktest();
@@ -3562,9 +3571,10 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   ws.onmessage=ev=>{
    const k=JSON.parse(ev.data).k;
    const bar={time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};
+   if(isClosedMarketTime(curSym, bar.time)) return; // gerçek piyasa kapalıyken gelen mumu grafiğe hiç yansıtma
    const last=ohlc[ohlc.length-1];
    if(last&&last.time===bar.time)ohlc[ohlc.length-1]=bar; else{ohlc.push(bar);if(ohlc.length>1000)ohlc.shift();}
-   cs.update(styledCandle(bar,curSym)); analyze(k.x);
+   cs.update(bar); analyze(k.x);
    if(k.x) saveOhlcCache(curSym,intv,ohlc); // sadece mum KAPANDIĞINDA önbelleği güncelle (her tick'te yazmaya gerek yok)
   };
  }
