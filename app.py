@@ -645,6 +645,8 @@ const I18N = {
   tagDivergenceChoch:'RSI Uyumsuzluğu + CHoCH', tagPocBounce:'Hacim Profili POC Sekmesi',
   tagOrderBlockMit:'Order Block Mitigasyonu', tagFibOte:'Fibonacci OTE (Optimal Giriş Bölgesi)',
   tagAsianFakeout:'Asya Aralığı Killzone Sahte Kırılımı', tagExtremeMR:'Aşırı Ortalamaya Dönüş (3-Sigma)',
+  tagLevelConfluence:'Önceki Gün Seviye Confluence (POC/VAH/VAL)', tagDeltaConfirmTrend:'Delta Doğrulaması (Fonlanmış Hareket)',
+  tagDeltaAbsorption:'Delta Absorpsiyonu (Tükeniş/Olası Dönüş)',
   candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
   winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
   noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
@@ -823,6 +825,8 @@ const I18N = {
   tagDivergenceChoch:'RSI Divergence + CHoCH', tagPocBounce:'Volume Profile POC Bounce',
   tagOrderBlockMit:'Order Block Mitigation', tagFibOte:'Fibonacci OTE (Optimal Trade Entry)',
   tagAsianFakeout:'Asian Range Killzone Fakeout', tagExtremeMR:'Extreme Mean Reversion (3-Sigma)',
+  tagLevelConfluence:'Prior-Day Level Confluence (POC/VAH/VAL)', tagDeltaConfirmTrend:'Delta Confirmation (Funded Move)',
+  tagDeltaAbsorption:'Delta Absorption (Exhaustion/Possible Reversal)',
   candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
   winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
   noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
@@ -1532,7 +1536,8 @@ function botTick(){
   equalHighsLows:t('tagEqualHighsLows'), tradeDelta:t('tagTradeDelta'),
   silverBullet:t('tagSilverBullet'), orbVolume:t('tagOrbVolume'), vwapPullback:t('tagVwapPullback'),
   ttmSqueeze:t('tagTtmSqueeze'), divergenceChoch:t('tagDivergenceChoch'), pocBounce:t('tagPocBounce'),
-  orderBlockMit:t('tagOrderBlockMit'), fibOte:t('tagFibOte'), asianFakeout:t('tagAsianFakeout'), extremeMeanReversion:t('tagExtremeMR')};
+  orderBlockMit:t('tagOrderBlockMit'), fibOte:t('tagFibOte'), asianFakeout:t('tagAsianFakeout'), extremeMeanReversion:t('tagExtremeMR'),
+  levelConfluence:t('tagLevelConfluence'), deltaConfirmTrend:t('tagDeltaConfirmTrend'), deltaAbsorption:t('tagDeltaAbsorption')};
 
  // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
  // Önceki tasarım: 23 şeyin TEK harmanlanmış skoruna bakılıyordu — güçlü ama tek bir kalıp (ör. temiz bir
@@ -1545,7 +1550,8 @@ function botTick(){
   scalpOrb:68, noWickRetest:75,
   orbSweepFade:79, bosSignal:71, chochSignal:80, equalHighsLows:77, tradeDelta:65,
   silverBullet:86, orbVolume:74, vwapPullback:75, ttmSqueeze:77, divergenceChoch:84,
-  pocBounce:76, orderBlockMit:75, fibOte:73, asianFakeout:78, extremeMeanReversion:80};
+  pocBounce:76, orderBlockMit:75, fibOte:73, asianFakeout:78, extremeMeanReversion:80,
+  levelConfluence:84, deltaConfirmTrend:70, deltaAbsorption:77};
  function confirmBoost(dir){
   const agreeing=Object.keys(votes).filter(k=>votes[k]===dir).length;
   return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
@@ -2604,6 +2610,24 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(deltaValue<-0.35) return {key:'tradeDelta', dir:-1};
   return null;
  }
+ // ---- DELTA DOĞRULAMA MATRİSİ — gözden geçirilen bir içerikten esinlenildi: fiyat yönü ile agresif
+ // alım/satım hacmi (delta) yönü karşılaştırılır. Düz bir eşik yerine (eski detectTradeDelta) dört
+ // farklı durumu ayırt eder: fiyat YUKARI + delta YUKARI = gerçek alım baskısı ("fonlanmış" hareket);
+ // fiyat AŞAĞI + delta AŞAĞI = gerçek satış (karşı gitme); fiyat AŞAĞI + delta YUKARI = absorpsiyon
+ // (biri satışı emiyor — genelde tükeniş/olası dönüş işareti); fiyat YUKARI + delta DÜZ = "kırılgan"
+ // hareket (kimse gerçekten almıyor) — bu durumda yön ÜRETMİYORUZ, çünkü akış fiyatla çelişiyor. ----
+ function detectDeltaConfirmation(a, deltaValue){
+  if(deltaValue==null || a.length<6) return null;
+  const curr=a[a.length-1], prior=a[a.length-6];
+  const priceChangePct=(curr.close-prior.close)/prior.close;
+  const priceUp=priceChangePct>0.0008, priceDown=priceChangePct<-0.0008;
+  const deltaUp=deltaValue>0.15, deltaDown=deltaValue<-0.15;
+  if(priceUp && deltaUp) return {key:'deltaConfirmTrend', dir:1};
+  if(priceDown && deltaDown) return {key:'deltaConfirmTrend', dir:-1};
+  if(priceDown && deltaValue>0.2) return {key:'deltaAbsorption', dir:1};
+  if(priceUp && deltaValue<-0.2) return {key:'deltaAbsorption', dir:-1};
+  return null;
+ }
  // ==================== YENİ 10 KALIP (kullanıcı tarafından tarif edilen kurumsal/ICT stratejiler) ====================
  // ---- 1) SILVER BULLET: likidite süpürmesi (FİTİLLE, kapanışla değil) + arkasında taze bir FVG bırakan
  // güçlü ters yönlü kapanış. Mevcut Likidite Süpürme + FVG tespitlerinin BİRLEŞİMİ, tek başlarına
@@ -2716,6 +2740,67 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(Math.abs(curr.close-poc)/poc>=0.004) return null;
   if(curr.low<=poc && curr.close>poc && curr.close>curr.open) return {key:'pocBounce', dir:1};
   if(curr.high>=poc && curr.close<poc && curr.close<curr.open) return {key:'pocBounce', dir:-1};
+  return null;
+ }
+ // ---- ÖNCEKİ GÜN SEVİYELERİ (POC/VAH/VAL/Yüksek/Düşük) + SEVİYE CONFLUENCE ——
+ // Gözden geçirilen bir içerikten esinlenildi: "gerçek" referans seviyeleri sadece ÖNCEKİ TAM günün
+ // hacim profilinden (kayan bir pencere değil) hesaplanır — POC (en çok hacmin işlem gördüğü tek
+ // fiyat), VAH/VAL (POC'tan başlayıp hacmin %70'ine ulaşana kadar iki yöne genişletilen "değer alanı"
+ // sınırları, standart yöntem) + önceki günün yüksek/düşüğü. Bu 5 seviyeden İKİSİ birbirine yakınsa
+ // ("confluence"), bu güçlü bir bölge sayılır — fiyat orayı süpürüp geri alırsa sıradan bir POC
+ // sekmesinden daha seçici/güçlü bir sinyaldir.
+ function computePriorDayLevels(a){
+  if(a.length<60) return null;
+  const lastTime=a[a.length-1].time;
+  const now=new Date(lastTime*1000);
+  const todayStart=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),0,0,0)/1000;
+  const priorDayStart=todayStart-86400, priorDayEnd=todayStart;
+  const priorCandles=a.filter(c=>c.time>=priorDayStart && c.time<priorDayEnd);
+  if(priorCandles.length<10) return null;
+  const hi=Math.max(...priorCandles.map(c=>c.high)), lo=Math.min(...priorCandles.map(c=>c.low));
+  const bins=30, binSize=(hi-lo)/bins;
+  if(!(binSize>0)) return null;
+  const volByBin=new Array(bins).fill(0);
+  priorCandles.forEach(c=>{
+   const mid=(c.high+c.low)/2;
+   let idx=Math.floor((mid-lo)/binSize);
+   idx=Math.max(0,Math.min(bins-1,idx));
+   volByBin[idx]+=(c.volume||0);
+  });
+  const totalVol=volByBin.reduce((s,v)=>s+v,0);
+  if(totalVol<=0) return null;
+  let maxIdx=0; for(let i=1;i<bins;i++) if(volByBin[i]>volByBin[maxIdx]) maxIdx=i;
+  const poc=lo+(maxIdx+0.5)*binSize;
+  // VAH/VAL: standart yöntem — POC'tan başlayıp toplam hacmin %70'ine ulaşana kadar HANGİ komşu bin
+  // daha yüksek hacimliyse o yöne bir bin daha genişlet.
+  let included=volByBin[maxIdx], lowIdx=maxIdx, highIdx=maxIdx;
+  while(included<totalVol*0.7 && (lowIdx>0||highIdx<bins-1)){
+   const nextLow=lowIdx>0?volByBin[lowIdx-1]:-1, nextHigh=highIdx<bins-1?volByBin[highIdx+1]:-1;
+   if(nextHigh>=nextLow && highIdx<bins-1){ highIdx++; included+=volByBin[highIdx]; }
+   else if(lowIdx>0){ lowIdx--; included+=volByBin[lowIdx]; }
+   else break;
+  }
+  return {poc, vah:lo+(highIdx+1)*binSize, val:lo+lowIdx*binSize, high:hi, low:lo};
+ }
+ function detectLevelConfluenceReversal(a, priorDay){
+  if(!priorDay || a.length<15) return null;
+  const curr=a[a.length-1];
+  // 'vah','val' etiketiyle tutuyoruz ki VAH-VAL çiftini (aynı değer alanının iki doğal kenarı —
+  // her zaman birbirine yakındır, eşleştirmek anlamsız/gereksiz sinyal üretir) hariç tutabilelim.
+  const levels=[['poc',priorDay.poc],['vah',priorDay.vah],['val',priorDay.val],['high',priorDay.high],['low',priorDay.low]];
+  const tol=curr.close*0.0025;
+  let bigLevels=[];
+  for(let i=0;i<levels.length;i++) for(let j=i+1;j<levels.length;j++){
+   const [nameI,valI]=levels[i], [nameJ,valJ]=levels[j];
+   if(nameI==='vah' && nameJ==='val') continue; // aynı değer alanının doğal iki kenarı, anlamsız eşleşme
+   if(Math.abs(valI-valJ)<tol) bigLevels.push((valI+valJ)/2);
+  }
+  if(!bigLevels.length) return null;
+  for(const lvl of bigLevels){
+   // Kır → geri dön → karar ver: fiyat seviyeyi fitille geçip KAPANIŞLA geri alırsa (red/reclaim)
+   if(curr.low<lvl-tol*0.4 && curr.close>lvl && curr.close>curr.open) return {key:'levelConfluence', dir:1};
+   if(curr.high>lvl+tol*0.4 && curr.close<lvl && curr.close<curr.open) return {key:'levelConfluence', dir:-1};
+  }
   return null;
  }
  // ---- 7) ORDER BLOCK MİTİGASYONU — büyük bir hareketten (impulse) hemen önceki SON ters yönlü mum,
@@ -3047,6 +3132,11 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const asianFake=detectAsianRangeFakeout(a); if(asianFake) tags.push(asianFake);
   // (29) Aşırı ortalamaya dönüş (3-sigma)
   const extremeMR=detectExtremeMeanReversion(a, closes, ind.rsi); if(extremeMR) tags.push(extremeMR);
+  // (30) Önceki gün seviye confluence (POC/VAH/VAL/Yüksek/Düşük üst üste binmesi + süpürme-geri alım)
+  const priorDayLv=computePriorDayLevels(a);
+  const levelConf=detectLevelConfluenceReversal(a, priorDayLv); if(levelConf) tags.push(levelConf);
+  // (31) Delta doğrulama matrisi (fonlanmış hareket / absorpsiyon)
+  const deltaConf=detectDeltaConfirmation(a, ind.tradeDelta); if(deltaConf) tags.push(deltaConf);
   return tags;
  }
  function drawSRLines(){
