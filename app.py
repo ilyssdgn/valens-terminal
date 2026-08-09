@@ -125,80 +125,6 @@ def get_econ_calendar():
 
 ECON_JSON = _json.dumps(get_econ_calendar())
 
-# ============ AI HABER ARAŞTIRMASI (Anthropic API + gerçek web araması) ============
-# Kullanıcı bir haber konusu girdiğinde (ör. "Faiz kararı"), Claude'u GERÇEK web arama aracıyla
-# çağırıp güncel internet verisine dayanan olası senaryolar üretir. Kesin tahmin İSTEMİYORUZ —
-# modelden bilinçli olarak "olası senaryolar" istiyoruz, "şu kesin olacak" değil.
-@st.cache_data(ttl=3600, show_spinner=False)
-def get_ai_news_scenario(topic, instrument_label):
-    key = ""
-    try:
-        key = st.secrets.get("ANTHROPIC_API_KEY", "")
-    except Exception:
-        pass
-    key = key or __import__("os").environ.get("ANTHROPIC_API_KEY", "")
-    if not key or not topic:
-        return {"available": False, "reason": "no_key", "diag": "no_key", "topic": topic}
-    try:
-        prompt = (
-            f"Sen kurumsal bir makro-piyasa analistisin. Konu: \"{topic}\". "
-            f"Bu konuyla ilgili GÜNCEL gelişmeleri web aramasıyla bul (tarih, kaynak belirt). "
-            f"Sonra {instrument_label} için 2-3 KISA olası senaryo yaz, 'Eğer X olursa → genellikle Y beklenir' "
-            f"formatında. KESİN TAHMİN YAPMA — sadece bilinen ilişkileri ve güncel bağlamı özetle. "
-            f"En fazla 180 kelime, Türkçe, madde işaretli."
-        )
-        r = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-sonnet-4-6",
-                "max_tokens": 700,
-                "messages": [{"role": "user", "content": prompt}],
-                "tools": [{"type": "web_search_20250305", "name": "web_search"}],
-            },
-            timeout=45,
-        )
-        status = r.status_code
-        if status != 200:
-            return {"available": False, "reason": "api_error", "diag": f"status={status} body={str(r.text)[:200]}", "topic": topic}
-        data = r.json()
-        text_parts = [b.get("text", "") for b in data.get("content", []) if isinstance(b, dict) and b.get("type") == "text"]
-        text = "\n".join([t for t in text_parts if t]).strip()
-        if not text:
-            return {"available": False, "reason": "empty", "diag": "no text in response", "topic": topic}
-        return {"available": True, "text": text, "topic": topic, "diag": f"status={status}"}
-    except Exception as e:
-        return {"available": False, "reason": "error", "diag": "exception: " + str(e)[:200], "topic": topic}
-
-# Kullanıcının Streamlit'te (JS panelinin DIŞINDA, gerçek bir Streamlit widget'ında) girdiği konu.
-# JS içindeki manuel haber formu bunu TETİKLEYEMEZ (components.html tek yönlüdür, Python'a geri
-# veri gönderemez) — bu yüzden bu ayrı, gerçek bir Streamlit girişi olarak var.
-if "ai_news_topic" not in st.session_state:
-    st.session_state.ai_news_topic = ""
-with st.expander("🔍 AI ile Haber Araştır (Claude + gerçek web araması, ücretli API)", expanded=False):
-    st.caption("Not: Bu, JS panelindeki hızlı/kural-tabanlı manuel haber girişinden FARKLI bir araçtır — burada gerçekten internet taranır. Her sorgu Anthropic hesabınızda küçük bir ücrete tabidir (Anthropic Console'da fiyatlandırmaya bakın).")
-    topic_input = st.text_input("Haber konusu (ör. 'Fed faiz kararı', 'ECB toplantısı')", key="ai_news_topic_input")
-    if st.button("Araştır") and topic_input.strip():
-        st.session_state.ai_news_topic = topic_input.strip()
-    if st.session_state.ai_news_topic:
-        with st.spinner("Claude web'de araştırıyor…"):
-            _ai_result = get_ai_news_scenario(st.session_state.ai_news_topic, "XAU/USD ve genel piyasalar")
-        if _ai_result.get("available"):
-            st.markdown(f"**{_ai_result['topic']}**")
-            st.markdown(_ai_result["text"])
-        else:
-            _reason = _ai_result.get("reason")
-            if _reason == "no_key":
-                st.info("Bunu kullanmak için Streamlit secrets'e `ANTHROPIC_API_KEY` eklemeniz gerekiyor (console.anthropic.com üzerinden alınır, ücretlidir).")
-            else:
-                st.warning(f"Araştırma başarısız oldu — diag: {_ai_result.get('diag')}")
-
-AI_NEWS_JSON = _json.dumps(get_ai_news_scenario(st.session_state.ai_news_topic, "XAU/USD ve genel piyasalar") if st.session_state.ai_news_topic else {"available": False, "reason": "no_topic", "topic": ""})
-
 TERMINAL_HTML = r"""
 <!DOCTYPE html>
 <html lang="tr">
@@ -238,6 +164,11 @@ nav{height:54px;display:flex;align-items:center;justify-content:space-between;pa
 .shell{min-height:0;flex:1;display:grid;grid-template-columns:270px minmax(540px,1fr) 310px;overflow:hidden}
 aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line)}
 .ph{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;border-bottom:1px solid var(--line)}
+.ph.collapsible{cursor:pointer;list-style:none;user-select:none}
+.ph.collapsible::-webkit-details-marker{display:none}
+.ph.collapsible::after{content:'▾';color:var(--muted);font-size:10px;margin-left:6px;transition:transform .15s}
+details[open]>.ph.collapsible::after{transform:rotate(180deg)}
+details.panelgroup{border-bottom:none}
 .ph b{font-size:10px;color:var(--gold);letter-spacing:1.2px}.badge{font:9px 'IBM Plex Mono';color:var(--gold);border:1px solid rgba(212,175,55,.3);padding:2px 6px;border-radius:9px}
 .simwarn{font:8px 'IBM Plex Mono';color:#ffb27a;padding:4px 12px;background:rgba(255,120,60,.08);border-bottom:1px solid var(--line)}
 .netdelta{margin:8px;padding:8px 10px;border-radius:5px;font:700 12px 'IBM Plex Mono';text-align:center;border:1px solid var(--line);background:var(--panel2);letter-spacing:.5px}
@@ -328,8 +259,8 @@ iframe{height:100%;width:100%;border:0}
   </nav>
 
   <div class="ticker"><div class="ticklabel">LIVE</div><div class="tickscroll">
-    <span>XAU/USD <b id="tk1">4,053.98</b></span><span>ECB Faiz Kararı: <b>%2.40</b></span><span>US İşsizlik Başvuruları: <b>187K</b></span><span>TCMB Faiz Kararı: <b>%37.00</b></span><span>Kurumsal akış ve haber verileri doğrulama gerektirir.</span>
-    <span>XAU/USD <b>4,053.98</b></span><span>ECB Faiz Kararı: <b>%2.40</b></span><span>US İşsizlik Başvuruları: <b>187K</b></span><span>TCMB Faiz Kararı: <b>%37.00</b></span><span>Kurumsal akış ve haber verileri doğrulama gerektirir.</span>
+    <span>XAU/USD <b id="tkXau">—</b></span><span>BTC/USD <b id="tkBtc">—</b></span><span>EUR/USD <b id="tkEur">—</b></span><span id="tkEconNote" data-i18n="tickerEconFallback">Ekonomik takvim için sağ panele bakın.</span>
+    <span>XAU/USD <b id="tkXau2">—</b></span><span>BTC/USD <b id="tkBtc2">—</b></span><span>EUR/USD <b id="tkEur2">—</b></span><span data-i18n="tickerDisclaimer">Kurumsal akış ve haber verileri doğrulama gerektirir.</span>
   </div></div>
 
   <div class="marketbar" id="marketbar">
@@ -362,7 +293,8 @@ iframe{height:100%;width:100%;border:0}
           <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
         </div>
       </div>
-      <div class="ph"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ</b><span class="badge" id="mt5BridgeBadge">—</span></div>
+      <details class="panelgroup">
+      <summary class="ph collapsible"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ</b><span class="badge" id="mt5BridgeBadge">—</span></summary>
       <div style="padding:9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="mt5BridgeHint">PC'nizde valens_mt5_executor.py çalışıyorsa, KESİN İŞLEM sinyalleri buradan otomatik MT5'e gönderilir. Kapalıyken hiçbir şey gönderilmez.</div>
         <div style="display:flex;gap:6px;margin-bottom:7px">
@@ -370,17 +302,23 @@ iframe{height:100%;width:100%;border:0}
         </div>
         <div id="mt5BridgeStatus" style="font-size:8px;color:var(--muted);line-height:1.5">—</div>
       </div>
-      <div class="ph"><b data-i18n="strategy_stats_title">📊 GERÇEK STRATEJİ PERFORMANSI</b><span class="badge" id="strategyStatsBadge" data-i18n="strategyStatsSource">MT5</span></div>
+      </details>
+      <details class="panelgroup">
+      <summary class="ph collapsible"><b data-i18n="strategy_stats_title">📊 GERÇEK STRATEJİ PERFORMANSI</b><span class="badge" id="strategyStatsBadge" data-i18n="strategyStatsSource">MT5</span></summary>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="strategyStatsHint">MT5 köprüsünden gelen GERÇEK kapanan işlemlere göre — simülasyon değil. En az 5 işlem birikmeden karar motorunu etkilemez.</div>
         <div id="strategyStatsBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
-      <div class="ph"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></div>
+      </details>
+      <details class="panelgroup">
+      <summary class="ph collapsible"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></summary>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="backtestHint">Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR ve MT5'teki canlı işlem takibinden AYRIDIR — sadece "bu kalıp bu grafikte geçmişte işe yaramış mı" sorusuna cevap verir.</div>
         <div id="backtestBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
-      <div class="ph"><b data-i18n="teach_title">🎓 MANUEL ÖĞRETİM (kalıp hafızası)</b><span class="badge" id="teachBadge">—</span></div>
+      </details>
+      <details class="panelgroup">
+      <summary class="ph collapsible"><b data-i18n="teach_title">🎓 MANUEL ÖĞRETİM (kalıp hafızası)</b><span class="badge" id="teachBadge">—</span></summary>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="teachHint">Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
@@ -414,6 +352,7 @@ iframe{height:100%;width:100%;border:0}
         </div>
         <div id="learnedPatternsBox" style="display:none;margin-top:8px;max-height:180px;overflow:auto;font-size:9px"></div>
       </div>
+      </details>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
       <div class="netdelta" id="netDelta">NET DELTA: — </div>
@@ -550,8 +489,6 @@ iframe{height:100%;width:100%;border:0}
         <div id="tradeLogSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
         <div id="tradeLogList" style="max-height:230px;overflow:auto"></div>
       </div>
-      <div class="ph" style="border-top:1px solid var(--line)"><b data-i18n="ai_news_title">🔍 AI HABER ARAŞTIRMASI</b><span class="badge" id="aiNewsBadge">—</span></div>
-      <div id="aiNewsPanel" style="padding:8px 9px;max-height:220px;overflow:auto"><p style="color:var(--muted);font-size:10px" data-i18n="aiNewsHint">Yukarıdaki (sayfanın üstündeki) "AI ile Haber Araştır" kutusuna bir konu yazıp Araştır'a basın — sonuç burada görünecek.</p></div>
     </aside>
   </main>
 </div>
@@ -602,10 +539,7 @@ const I18N = {
   manualNewsEmpty:'Henüz haber eklenmedi. TradingView takvimine bakıp yukarıdaki formdan 3 yıldızlı haberleri ekleyin — sistem otomatik senaryo üretecek.',
   manualNewsNeedName:'Lütfen önce haber adını girin.',
   manualNewsRemove:'Sil', manualClearConfirm:'Tüm manuel eklenen haberleri silmek istediğinize emin misiniz?',
-  ai_news_title:'🔍 AI HABER ARAŞTIRMASI',
-  aiNewsHint:'Yukarıdaki (sayfanın üstündeki) "AI ile Haber Araştır" kutusuna bir konu yazıp Araştır\'a basın — sonuç burada görünecek.',
-  aiNewsNoKey:'Bunun için Streamlit secrets\'e <code>ANTHROPIC_API_KEY</code> eklemeniz gerekiyor (console.anthropic.com — ücretlidir, her sorgu küçük bir maliyete tabidir).',
-  aiNewsError:(diag)=>'Araştırma başarısız oldu. diag: '+diag,
+  cotLong:'Long', cotShort:'Short', cotSourceNote:'Kaynak: CFTC Legacy COT · her Salı kesiti Cuma yayınlanır.',
   tightTpWarning:(pct)=>'⚠ Dar hedef / geniş stop yapısı (video kaynağında gözlemlenen orana göre): hedef stoptan küçük, bu yüzden başabaş noktası için en az %'+pct+' gerçek kazanma oranı gerekir. Kazanma oranı yüksek görünse bile, kayıplar kazançlardan büyük olur — dikkatli değerlendirin.',
   teach_title:'🎓 MANUEL ÖĞRETİM (kalıp hafızası)',
   teachHint:"Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.",
@@ -626,13 +560,15 @@ const I18N = {
   ccyStrengthens:'güçlendirir', ccyWeakens:'zayıflatır',
   xauPressureNote:' XAU/USD için genel eğilim: baskı (USD güçlü).', xauSupportNote:' XAU/USD için genel eğilim: destek (USD zayıf).',
   xauPressureScenario:' → XAU/USD üzerinde baskı yönünde etki beklenir.', xauSupportScenario:' → XAU/USD üzerinde destekleyici etki beklenir.',
-  apiMissingBadge:'API YOK', newsCountBadge:n=>n+' HABER', defaultEventName:'Ekonomik Veri',
+  newsCountBadge:n=>n+' HABER', defaultEventName:'Ekonomik Veri',
   ruleNfp:'İstihdam verisi', ruleUnrate:'İşsizlik oranı', ruleClaims:'İşsizlik başvuruları', ruleCpi:'Enflasyon (CPI)',
   ruleJolts:'JOLTS Açık İş Sayısı', ruleAdp:'ADP İstihdam Değişimi', ruleChallenger:'Challenger İşten Çıkarma',
   employmentFamilyNote:'📌 Bu, geniş "istihdam ailesi" verilerinden biri — JOLTS (açık iş sayısı), ADP, NFP (tarım dışı istihdam), İşsizlik Başvuruları ve İşsizlik Oranı birbiriyle ilişkilidir ve genelde birkaç gün arayla art arda gelir (ör. JOLTS → birkaç gün sonra İşsizlik Başvuruları → ayın ilk Cuma\'sı NFP). Piyasa bunları TEK TEK değil, biriktirdiği genel "işgücü piyasası zayıflıyor mu güçleniyor mu" resmine göre yorumlar — art arda gelen birkaç zayıf/güçlü veri, tek bir veriden daha belirleyicidir.',
   ruleGdp:'GSYH (GDP)', ruleRetail:'Perakende satışlar', rulePmi:'PMI', ruleRate:'Faiz kararı', ruleTrade:'Dış ticaret dengesi',
   noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir", noLiveShort:'canlı veri yok',
   goldOffsetLine:(sign,val)=>'PAXG proxy vs gerçek spot altın farkı: '+sign+val+'$ (MT5/OANDA ile karşılaştırırken bu farkı hesaba katın — ticker fiyatı zaten düzeltilmiştir, ama grafikteki S/R/giriş seviyeleri henüz düzeltilmemiştir)',
+  tickerEconFallback:'Ekonomik takvim için sağ panele bakın.', tickerDisclaimer:'Kurumsal akış ve haber verileri doğrulama gerektirir.',
+  tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   mainResistance:'Ana Direnç (1H)', mainSupport:'Ana Destek (1H)', srNearMainSupport:'ana desteğe (1H) yakın', srNearMainResistance:'ana dirence (1H) yakın',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
@@ -787,10 +723,7 @@ const I18N = {
   manualNewsEmpty:'No news added yet. Check the TradingView calendar and add today\'s 3-star events using the form above — the system will generate scenarios automatically.',
   manualNewsNeedName:'Please enter the event name first.',
   manualNewsRemove:'Remove', manualClearConfirm:'Remove all manually added news?',
-  ai_news_title:'🔍 AI NEWS RESEARCH',
-  aiNewsHint:'Type a topic in the "AI Research News" box above (top of page) and click Research — the result will appear here.',
-  aiNewsNoKey:'This needs an <code>ANTHROPIC_API_KEY</code> in Streamlit secrets (console.anthropic.com — paid, each query has a small cost).',
-  aiNewsError:(diag)=>'Research failed. diag: '+diag,
+  cotLong:'Long', cotShort:'Short', cotSourceNote:'Source: CFTC Legacy COT · each Tuesday cut is published Friday.',
   tightTpWarning:(pct)=>'⚠ Tight-target / wide-stop shape (matching the ratio observed in the video source): target is smaller than stop, so breakeven requires at least '+pct+'% real win rate. Even with a high-looking win rate, losses are bigger than wins — weigh this carefully.',
   teach_title:'🎓 MANUAL TEACHING (pattern memory)',
   teachHint:'Log a setup you saw (direction + conditions + outcome). If the same combination of conditions succeeds a few times, the system automatically adds it to its own strategy memory.',
@@ -811,13 +744,15 @@ const I18N = {
   ccyStrengthens:'strengthens', ccyWeakens:'weakens',
   xauPressureNote:' General tendency for XAU/USD: pressure (USD strong).', xauSupportNote:' General tendency for XAU/USD: support (USD weak).',
   xauPressureScenario:' → typically pressures XAU/USD.', xauSupportScenario:' → typically supports XAU/USD.',
-  apiMissingBadge:'NO API', newsCountBadge:n=>n+' NEWS', defaultEventName:'Economic Data',
+  newsCountBadge:n=>n+' NEWS', defaultEventName:'Economic Data',
   ruleNfp:'Employment data', ruleUnrate:'Unemployment rate', ruleClaims:'Jobless claims', ruleCpi:'Inflation (CPI)',
   ruleJolts:'JOLTS Job Openings', ruleAdp:'ADP Employment Change', ruleChallenger:'Challenger Job Cuts',
   employmentFamilyNote:'📌 This is one of the broader "employment family" releases — JOLTS (job openings), ADP, NFP (payrolls), Jobless Claims, and the Unemployment Rate are all related and typically release a few days apart (e.g. JOLTS → Jobless Claims a few days later → NFP on the first Friday of the month). Markets tend to read these as a CUMULATIVE picture of labor-market strength/weakness rather than judging any single release in isolation — several consecutive weak/strong prints carry more weight than one data point.',
   ruleGdp:'GDP', ruleRetail:'Retail sales', rulePmi:'PMI', ruleRate:'Rate decision', ruleTrade:'Trade balance',
   noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required', noLiveShort:'no live data',
   goldOffsetLine:(sign,val)=>'PAXG proxy vs real spot gold gap: '+sign+val+'$ (factor this in when comparing to MT5/OANDA — the ticker price is already corrected, but chart S/R and entry levels are not yet corrected)',
+  tickerEconFallback:'See the right panel for the economic calendar.', tickerDisclaimer:'Institutional flow and news data require verification.',
+  tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   mainResistance:'Main Resistance (1H)', mainSupport:'Main Support (1H)', srNearMainSupport:'near main support (1H)', srNearMainResistance:'near main resistance (1H)',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
@@ -1938,6 +1873,7 @@ async function updateGoldOffset(){
   }
  }catch(e){ /* xaus.com geçici olarak erişilemezse sessizce eski değeri koru */ }
 }
+const TOP_TICKER_IDS={'OANDA:XAUUSD':['tkXau','tkXau2'],'BINANCE:BTCUSDT':['tkBtc','tkBtc2'],'OANDA:EURUSD':['tkEur','tkEur2']};
 async function updateTickerBar(){
  for(const sym of Object.keys(TICKER_MAP)){
   const btn=document.querySelector('.market[data-sym="'+sym+'"]'); if(!btn) continue;
@@ -1949,12 +1885,16 @@ async function updateTickerBar(){
    if(sym==='OANDA:XAUUSD') px += (window.valensGoldOffset||0); // gerçek spot-eşdeğeri fiyat göster
    const cfg=SYMS[sym]; const dec=cfg?cfg.dec:2;
    btn.dataset.price=px;
-   btn.querySelector('strong').textContent=px.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+   const pxFmt=px.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+   btn.querySelector('strong').textContent=pxFmt;
    const pctEl=btn.querySelector('small.up, small.down')||btn.querySelector('small:last-child');
    if(pctEl){
     pctEl.className=pct>=0?'up':'down';
     pctEl.textContent=(pct>=0?'▲ +':'▼ ')+pct.toFixed(2)+'%';
    }
+   // Üstteki akan şerit — önceden burada HİÇ güncellenmeyen sahte "ECB %2.40" gibi örnek değerler
+   // duruyordu; artık aynı gerçek, canlı fiyatlarla besleniyor.
+   (TOP_TICKER_IDS[sym]||[]).forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=pxFmt; });
   }catch(e){ /* tek bir sembolün geçici hatası tüm şeridi bozmasın */ }
  }
 }
@@ -2066,7 +2006,6 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI(); updateTradeLogUI(); updateSessionBar();
  if(window.valensRenderCOT) window.valensRenderCOT(CUR);
  if(window.valensRenderNews) window.valensRenderNews();
- if(window.valensRenderAiNews) window.valensRenderAiNews();
  updateTeachUI(); renderLearnedPatternsBox();
  if(!isMarketOpen(CUR)) marketClosedUI();
 });
@@ -2186,6 +2125,19 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // birimidir (EUR güçlenirse EURUSD YÜKSELİR) — bu yüzden tek bir yön formülü kullanmıyoruz.
  const CCY_EFFECT = { US: {'OANDA:XAUUSD': -1, 'OANDA:EURUSD': -1}, EU: {'OANDA:EURUSD': 1} };
  function countryFlag(c){return {US:'🇺🇸',EU:'🇪🇺',DE:'🇩🇪',GB:'🇬🇧',JP:'🇯🇵',CN:'🇨🇳',TR:'🇹🇷'}[c]||'🌐';}
+ // Üstteki akan şeritteki ekonomik not — GERÇEK takvim verisi (Finnhub canlı ya da manuel giriş)
+ // varsa en yakın olayı gösterir; yoksa sahte bir sayı UYDURMAK yerine dürüst bir yönlendirme kalır.
+ function updateTickerEconNote(events){
+  const el=document.getElementById('tkEconNote'); if(!el) return;
+  const now=new Date();
+  const upcoming=(events||[]).filter(ev=>ev.time && new Date(ev.time)>=now).sort((a,b)=>a.time.localeCompare(b.time))[0];
+  if(upcoming){
+   const timeStr=fmtTime(upcoming.time);
+   el.textContent=t('tickerNextEvent')(countryFlag(upcoming.country), upcoming.event||t('defaultEventName'), timeStr);
+  } else {
+   el.textContent=t('tickerEconFallback');
+  }
+ }
  function impStars(imp){return imp==='high'?('★★★ '+t('newsHigh')):('★★ '+t('newsMed'));}
  function fmtTime(tm){ if(!tm) return '—'; try{ return new Date(tm).toISOString().slice(11,16)+' UTC'; }catch(e){ return tm; } }
 
@@ -2210,6 +2162,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  function renderNews(){
   const box=document.getElementById('newsEvents'), badge=document.getElementById('newsBadge');
   const events=getAllNewsEvents();
+  updateTickerEconNote(events);
   if(!events.length){
    badge.textContent=t('newsCountBadge')(0);
    let extra='';
@@ -2325,29 +2278,6 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 </script>
 
 <script>
-/* ============ AI HABER ARAŞTIRMASI GÖRÜNTÜLEME ============ */
-(function(){
- const AINEWS = __AI_NEWS_DATA__; // {available, text, topic, reason, diag}
- function renderAiNews(){
-  const box=document.getElementById('aiNewsPanel'), badge=document.getElementById('aiNewsBadge');
-  if(!box||!badge) return;
-  if(!AINEWS || !AINEWS.topic){ badge.textContent='—'; box.innerHTML='<p style="color:var(--muted);font-size:10px">'+t('aiNewsHint')+'</p>'; return; }
-  if(!AINEWS.available){
-   badge.textContent=t('apiMissingBadge');
-   const msg = AINEWS.reason==='no_key' ? t('aiNewsNoKey') : t('aiNewsError')(AINEWS.diag||AINEWS.reason||'');
-   box.innerHTML='<p style="color:var(--muted);font-size:10px;line-height:1.6"><b>'+(AINEWS.topic||'')+'</b></p><p style="color:var(--muted);font-size:10px;line-height:1.6">'+msg+'</p>';
-   return;
-  }
-  badge.textContent='✓';
-  const bodyHtml=(AINEWS.text||'').replace(/\n/g,'<br>');
-  box.innerHTML='<p style="color:var(--gold);font-size:10px;font-weight:700;margin-bottom:5px">'+AINEWS.topic+'</p><div style="color:var(--text);font-size:10px;line-height:1.6">'+bodyHtml+'</div>';
- }
- window.valensRenderAiNews=renderAiNews;
- renderAiNews();
-})();
-</script>
-
-<script>
 /* ============ VALENS CANLI GRAFİK + OTOMATİK ÇİZİM MOTORU + GERÇEK İNDİKATÖR HESABI ============ */
 (function(){
  const el=document.getElementById('valensChart');
@@ -2375,6 +2305,15 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  const kelUp=chart.addLineSeries({color:'rgba(0,200,150,.55)',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
  const kelLo=chart.addLineSeries({color:'rgba(0,200,150,.55)',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
  const resize=()=>chart.applyOptions({width:el.clientWidth,height:el.clientHeight});
+ // Önceden fitContent() TÜM (1000'e kadar) mumu sığdırıyordu — bu da her mumu çok ince/görünmez
+ // yapıyordu, kullanıcı her açılışta manuel yakınlaştırmak zorunda kalıyordu. Artık açılışta sadece
+ // son ~120 mumu (okunaklı bir yakınlık) gösteriyoruz; kullanıcı isterse kendisi uzaklaştırabilir.
+ function showRecentRange(){
+  const n=ohlc.length; if(n<2) return;
+  const visibleCount=Math.min(120, n);
+  try{ chart.timeScale().setVisibleLogicalRange({from:n-visibleCount, to:n-1}); }
+  catch(e){ chart.timeScale().fitContent(); } // beklenmedik bir durumda güvenli yedek
+ }
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
  let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[];
@@ -3479,7 +3418,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const intv=currentBinInterval();
   // Önce önbellekten (varsa) anında göster — kullanıcı sayfayı her açtığında boş grafik görmesin
   const cached=loadOhlcCache(curSym,intv);
-  if(cached && cached.length){ ohlc=cached; cs.setData(ohlc); chart.timeScale().fitContent(); analyze(true); }
+  if(cached && cached.length){ ohlc=cached; cs.setData(ohlc); showRecentRange(); analyze(true); }
   try{
    // Binance REST API'de tek istekte alınabilecek azami mum sayısı 1000'dir — önceki 200 limiti
    // gereksiz yere veriyi kısıtlıyordu (15dk'da sadece ~50 saat; 1000 ile ~10 gün).
@@ -3487,7 +3426,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const d=await r.json();
    if(!Array.isArray(d))throw new Error('no data');
    ohlc=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
-   cs.setData(ohlc); chart.timeScale().fitContent(); analyze(true);
+   cs.setData(ohlc); showRecentRange(); analyze(true);
    saveOhlcCache(curSym,intv,ohlc);
    setTimeout(()=>{
     window.valensBacktestResults = runHistoricalBacktest();
@@ -3572,7 +3511,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     drawSRLines(); connect(); connectTrades();
     // ---- EKSENİ YENİ FİYATA OTURT ----
     chart.priceScale('right').applyOptions({autoScale:true});
-    chart.timeScale().fitContent();
+    showRecentRange();
   });
   setTimeout(resize,120);
  };
@@ -3597,7 +3536,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   loadHistory().then(()=>{
    drawSRLines(); connect(); connectTrades();
    chart.priceScale('right').applyOptions({autoScale:true});
-   chart.timeScale().fitContent();
+   showRecentRange();
   });
  };
  window.valensSetSymbol(CUR);
@@ -3607,5 +3546,5 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 </html>
 """
 
-TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON).replace("__AI_NEWS_DATA__", AI_NEWS_JSON)
+TERMINAL_HTML = TERMINAL_HTML.replace("__COT_DATA__", COT_JSON).replace("__ECON_DATA__", ECON_JSON)
 components.html(TERMINAL_HTML, height=1550, scrolling=True)
