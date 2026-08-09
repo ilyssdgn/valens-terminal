@@ -642,6 +642,9 @@ const I18N = {
   strategyStatsLowSample:'az örneklem, henüz etkisiz',
   strategyStatsPF:'KF', strategyStatsAvg:'Ort. kazanç/kayıp',
   confSourceLive:'Güven, gerçek MT5 işlem sonuçlarına göre ayarlandı', confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
+  regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
+  regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
+  regimeBonus:'Bu strateji şu anki piyasa rejimine UYGUN — güven artırıldı', regimePenalty:'Bu strateji şu anki piyasa rejimine UYMUYOR — güven düşürüldü',
   backtest_title:'🔬 GEÇMİŞ VERİ TESTİ (backtest)',
   backtestHint:'Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP\'ye mi SL\'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR ve MT5\'teki canlı işlem takibinden AYRIDIR.',
   backtestNotEnoughData:'Yeterli geçmiş veri birikmedi (en az ~350 mum gerekir).',
@@ -827,6 +830,9 @@ const I18N = {
   strategyStatsLowSample:'small sample, not yet influencing',
   strategyStatsPF:'PF', strategyStatsAvg:'Avg win/loss',
   confSourceLive:'Confidence adjusted using real MT5 trade results', confSourceBacktest:'Confidence adjusted using historical backtest results',
+  regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
+  regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
+  regimeBonus:'This strategy FITS the current market regime — confidence increased', regimePenalty:'This strategy does NOT fit the current market regime — confidence decreased',
   backtest_title:'🔬 HISTORICAL BACKTEST',
   backtestHint:'Looks at the ~300 REAL past candles on this chart and checks, for every point in the past where each strategy actually fired, whether price reached TP or SL first. This is NOT a random/possible-future projection and is SEPARATE from live MT5 trade tracking.',
   backtestNotEnoughData:'Not enough historical data yet (needs at least ~350 candles).',
@@ -1509,6 +1515,46 @@ function botTick(){
   silverBullet:86, orbVolume:74, vwapPullback:75, ttmSqueeze:77, divergenceChoch:84,
   pocBounce:76, orderBlockMit:75, fibOte:73, asianFakeout:78, extremeMeanReversion:80,
   levelConfluence:84, deltaConfirmTrend:70, deltaAbsorption:77};
+ // ---- STRATEJİ AİLESİ + PİYASA REJİMİ — kullanıcının en baştaki orijinal tasarımında olup şu ana
+ // kadar hiç uygulanmamış "anlık duruma göre en uygun strateji" fikri. Her strateji, doğası gereği
+ // TREND'i (kırılımı/devamı takip eden) mi yoksa REVERSAL'ı (dönüş/ortalamaya çekilme arayan) mı
+ // aradığına göre sınıflandırılır. Piyasa GÜÇLÜ TRENDDEYSE (ADX yüksek), trend ailesine bonus, trende
+ // KARŞI ateşlenen reversal stratejilerine ceza verilir (güçlü trende karşı gitmek istatistiksel
+ // olarak daha zayıftır). Piyasa YATAYSA (ADX düşük), tam tersi — reversal ailesine bonus, trend
+ // ailesine (yatayda kırılımlar genelde sahte çıkar) ceza verilir. Bu KATI bir kapı DEĞİL — sadece
+ // güveni ayarlayan bir bonus/ceza, Gemini'nin önerdiği sert kapının sorunlarını (tek bir zayıf halka
+ // güçlü bir kurulumu tamamen susturması) tekrar etmiyor.
+ const STRATEGY_FAMILY={
+  emaCross:'trend', orb:'trend', momentum:'trend', emaPullback:'trend', bosSignal:'trend',
+  scalpOrb:'trend', noWickRetest:'trend', orbVolume:'trend', vwapPullback:'trend', fibOte:'trend',
+  deltaConfirmTrend:'trend', fvgRetest:'trend',
+  liquiditySweep:'reversal', rsiDivergence:'reversal', ifvg:'reversal', amdCycle:'reversal',
+  valuationZone:'reversal', orbSweepFade:'reversal', chochSignal:'reversal', equalHighsLows:'reversal',
+  silverBullet:'reversal', divergenceChoch:'reversal', pocBounce:'reversal', orderBlockMit:'reversal',
+  asianFakeout:'reversal', extremeMeanReversion:'reversal', levelConfluence:'reversal', deltaAbsorption:'reversal',
+  insideBar:'neutral', bollSqueeze:'neutral', macdZeroCross:'neutral', ttmSqueeze:'neutral', tradeDelta:'neutral'
+ };
+ function detectMarketRegime(adxVal, trendDir){
+  if(adxVal==null) return 'unknown';
+  if(adxVal>25) return trendDir>0?'trendUp':trendDir<0?'trendDown':'trendFlat';
+  if(adxVal<18) return 'ranging';
+  return 'transitional';
+ }
+ function regimeAdjustment(family, candDir, regime){
+  if(family==='neutral' || regime==='unknown' || regime==='transitional') return 0;
+  const isTrending = regime==='trendUp' || regime==='trendDown';
+  const trendDir = regime==='trendUp'?1:regime==='trendDown'?-1:0;
+  if(isTrending){
+   if(family==='trend' && candDir===trendDir) return 6;   // duruma UYGUN: güçlü trend + trend ailesi, trend yönünde
+   if(family==='reversal' && candDir===-trendDir) return -6; // duruma UYGUN DEĞİL: güçlü trende karşı dönüş arayan strateji
+   return 0;
+  }
+  if(regime==='ranging'){
+   if(family==='reversal') return 6;  // duruma UYGUN: yatay piyasa + dönüş/ortalama arayan strateji
+   if(family==='trend') return -6;    // duruma UYGUN DEĞİL: yatayda kırılım takibi genelde sahte çıkar
+  }
+  return 0;
+ }
  function confirmBoost(dir){
   const agreeing=Object.keys(votes).filter(k=>votes[k]===dir).length;
   return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
@@ -1520,10 +1566,16 @@ function botTick(){
  if(confluenceDir!==0 && !window.valensStrategyOnlyMode){
   candidates.push({key:'confluence', dir:confluenceDir, confidence:confluenceConf, label:t('candidateConfluence')});
  }
+ const marketRegime = detectMarketRegime(adx, cr.trend||0);
  (cr.strategyTags||[]).forEach(tag=>{
   const base=STRATEGY_BASE_CONF[tag.key]||70;
   const label=tagLabels[tag.key];
   let confidence=Math.min(97, base+confirmBoost(tag.dir));
+  // ---- BAĞLAMA (PİYASA REJİMİNE) GÖRE AYARLAMA — "anlık duruma göre en uygun strateji hangisi"
+  // sorusunun cevabı. Katı bir kapı değil, güveni ayarlayan bir bonus/ceza.
+  const family = STRATEGY_FAMILY[tag.key] || 'neutral';
+  const regimeAdj = regimeAdjustment(family, tag.dir, marketRegime);
+  if(regimeAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+regimeAdj)));
   // ---- GERÇEK MT5 PERFORMANSINA GÖRE DİNAMİK AYARLAMA (1. öncelik) ----
   // window.valensStrategyStats, MT5 köprüsünden (gerçek kapanan işlemlerden, simülasyon değil)
   // periyodik çekilen per-strateji kazanma oranını içerir. En az 5 GERÇEK kapanmış işlem
@@ -1551,7 +1603,7 @@ function botTick(){
     source = 'backtest';
    }
   }
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:realStats?realStats.trades:0, confSource:source});
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:realStats?realStats.trades:0, confSource:source, regime:marketRegime, family});
  });
  // Kullanıcının manuel öğrettiği ve yeterince (3+, başarısızlığın 2 katı) başarılı olmuş kalıplar —
  // güven, o kalıbın GERÇEK izlenen başarı oranına göre ölçeklenir (uydurma değil).
@@ -1632,10 +1684,18 @@ function botTick(){
   if(candidates.length){
    const srcMark=(c)=> c.confSource==='live' ? ' <span style="color:var(--green)" title="'+t('confSourceLive')+'">●</span>'
      : c.confSource==='backtest' ? ' <span style="color:var(--blue)" title="'+t('confSourceBacktest')+'">◐</span>' : '';
+   const regimeMark=(c)=>{
+    if(!c.family || c.family==='neutral' || !c.regime) return '';
+    const adj = regimeAdjustment(c.family, c.dir, c.regime);
+    if(adj>0) return ' <span style="color:var(--green)" title="'+t('regimeBonus')+'">▲</span>';
+    if(adj<0) return ' <span style="color:var(--red)" title="'+t('regimePenalty')+'">▼</span>';
+    return '';
+   };
    const parts=candidates.slice().sort((a,b)=>b.confidence-a.confidence).map(c=>
-    (c===best?'<b style="color:'+(c.dir>0?'var(--green)':'var(--red)')+'">':'')+c.label+' ('+c.confidence+'%)'+srcMark(c)+(c===best?'</b>':'')
+    (c===best?'<b style="color:'+(c.dir>0?'var(--green)':'var(--red)')+'">':'')+c.label+' ('+c.confidence+'%)'+srcMark(c)+regimeMark(c)+(c===best?'</b>':'')
    );
-   tagEl.style.display='block'; tagEl.innerHTML=t('strategyTagPrefix')+parts.join(' · ');
+   const regimeLabel = marketRegime==='trendUp'?t('regimeTrendUp'):marketRegime==='trendDown'?t('regimeTrendDown'):marketRegime==='ranging'?t('regimeRanging'):marketRegime==='trendFlat'?t('regimeTrendFlat'):t('regimeUnclear');
+   tagEl.style.display='block'; tagEl.innerHTML='<div style="color:var(--muted);margin-bottom:2px">'+t('regimePrefix')+' <b style="color:var(--gold)">'+regimeLabel+'</b></div>'+t('strategyTagPrefix')+parts.join(' · ');
   } else { tagEl.style.display='none'; tagEl.textContent=''; }
  }
 
