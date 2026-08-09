@@ -169,6 +169,11 @@ aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px 
 .ph.collapsible::after{content:'▾';color:var(--muted);font-size:10px;margin-left:6px;transition:transform .15s}
 details[open]>.ph.collapsible::after{transform:rotate(180deg)}
 details.panelgroup{border-bottom:none}
+.statusdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle;box-shadow:0 0 5px currentColor}
+.statusdot.on{background:var(--green);color:var(--green)}
+.statusdot.off{background:var(--red);color:var(--red)}
+.statusdot.mid{background:var(--gold);color:var(--gold)}
+.statusdot.na{background:var(--muted);color:var(--muted);box-shadow:none}
 .ph b{font-size:10px;color:var(--gold);letter-spacing:1.2px}.badge{font:9px 'IBM Plex Mono';color:var(--gold);border:1px solid rgba(212,175,55,.3);padding:2px 6px;border-radius:9px}
 .simwarn{font:8px 'IBM Plex Mono';color:#ffb27a;padding:4px 12px;background:rgba(255,120,60,.08);border-bottom:1px solid var(--line)}
 .netdelta{margin:8px;padding:8px 10px;border-radius:5px;font:700 12px 'IBM Plex Mono';text-align:center;border:1px solid var(--line);background:var(--panel2);letter-spacing:.5px}
@@ -636,6 +641,7 @@ const I18N = {
   strategyStatsEmpty:'Henüz kapanmış gerçek işlem yok — veri biriktikçe burada görünecek.',
   strategyStatsLowSample:'az örneklem, henüz etkisiz',
   strategyStatsPF:'KF', strategyStatsAvg:'Ort. kazanç/kayıp',
+  confSourceLive:'Güven, gerçek MT5 işlem sonuçlarına göre ayarlandı', confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   backtest_title:'🔬 GEÇMİŞ VERİ TESTİ (backtest)',
   backtestHint:'Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP\'ye mi SL\'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR ve MT5\'teki canlı işlem takibinden AYRIDIR.',
   backtestNotEnoughData:'Yeterli geçmiş veri birikmedi (en az ~350 mum gerekir).',
@@ -820,6 +826,7 @@ const I18N = {
   strategyStatsEmpty:'No closed real trades yet — will populate as data accumulates.',
   strategyStatsLowSample:'small sample, not yet influencing',
   strategyStatsPF:'PF', strategyStatsAvg:'Avg win/loss',
+  confSourceLive:'Confidence adjusted using real MT5 trade results', confSourceBacktest:'Confidence adjusted using historical backtest results',
   backtest_title:'🔬 HISTORICAL BACKTEST',
   backtestHint:'Looks at the ~300 REAL past candles on this chart and checks, for every point in the past where each strategy actually fired, whether price reached TP or SL first. This is NOT a random/possible-future projection and is SEPARATE from live MT5 trade tracking.',
   backtestNotEnoughData:'Not enough historical data yet (needs at least ~350 candles).',
@@ -1517,20 +1524,34 @@ function botTick(){
   const base=STRATEGY_BASE_CONF[tag.key]||70;
   const label=tagLabels[tag.key];
   let confidence=Math.min(97, base+confirmBoost(tag.dir));
-  // ---- GERÇEK MT5 PERFORMANSINA GÖRE DİNAMİK AYARLAMA ----
+  // ---- GERÇEK MT5 PERFORMANSINA GÖRE DİNAMİK AYARLAMA (1. öncelik) ----
   // window.valensStrategyStats, MT5 köprüsünden (gerçek kapanan işlemlerden, simülasyon değil)
   // periyodik çekilen per-strateji kazanma oranını içerir. En az 5 GERÇEK kapanmış işlem
   // birikmeden hiçbir ayarlama yapılmaz — küçük örneklemin önceliği çarpıtmasını önler.
   // %50 kazanma oranı = ayarlama yok; %100'e yaklaştıkça +10'a kadar bonus; %0'a yaklaştıkça
   // -10'a kadar ceza. Böylece "gerçekte en kârlı olan stratejiler" öne çıkar.
   const realStats = window.valensStrategyStats && window.valensStrategyStats[label];
-  let realWinRate = null;
+  let realWinRate = null, source = null;
   if(realStats && realStats.trades>=5 && realStats.win_rate!=null){
    realWinRate = realStats.win_rate;
    const adj = Math.max(-10, Math.min(10, (realWinRate-0.5)*20));
    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
+   source = 'live';
+  } else {
+   // ---- YEDEK: GEÇMİŞ VERİ TESTİ (2. öncelik) — gerçek MT5 verisi henüz yeterli değilse (5 işlem
+   // birikmediyse), önceden SADECE panelde gösterilen ama karara hiç katılmayan backtest sonucunu
+   // kullanıyoruz. Gerçek para/gerçek kayma içermediği için canlıdan DAHA AZ ağırlıklı (±6, ±10 değil)
+   // ve daha yüksek bir örneklem eşiği (5) istiyoruz — yine de "boşu boşuna duran" bir panel olmaktan
+   // çıkıp gerçekten karara katkı sağlıyor.
+   const bt = window.valensBacktestResults && window.valensBacktestResults[tag.key];
+   if(bt && bt.trades>=5){
+    const btWinRate = bt.wins/bt.trades;
+    const adj = Math.max(-6, Math.min(6, (btWinRate-0.5)*12));
+    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
+    source = 'backtest';
+   }
   }
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:realStats?realStats.trades:0});
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:realStats?realStats.trades:0, confSource:source});
  });
  // Kullanıcının manuel öğrettiği ve yeterince (3+, başarısızlığın 2 katı) başarılı olmuş kalıplar —
  // güven, o kalıbın GERÇEK izlenen başarı oranına göre ölçeklenir (uydurma değil).
@@ -1609,8 +1630,10 @@ function botTick(){
  const tagEl=document.getElementById('strategyTagLine');
  if(tagEl){
   if(candidates.length){
+   const srcMark=(c)=> c.confSource==='live' ? ' <span style="color:var(--green)" title="'+t('confSourceLive')+'">●</span>'
+     : c.confSource==='backtest' ? ' <span style="color:var(--blue)" title="'+t('confSourceBacktest')+'">◐</span>' : '';
    const parts=candidates.slice().sort((a,b)=>b.confidence-a.confidence).map(c=>
-    (c===best?'<b style="color:'+(c.dir>0?'var(--green)':'var(--red)')+'">':'')+c.label+' ('+c.confidence+'%)'+(c===best?'</b>':'')
+    (c===best?'<b style="color:'+(c.dir>0?'var(--green)':'var(--red)')+'">':'')+c.label+' ('+c.confidence+'%)'+srcMark(c)+(c===best?'</b>':'')
    );
    tagEl.style.display='block'; tagEl.innerHTML=t('strategyTagPrefix')+parts.join(' · ');
   } else { tagEl.style.display='none'; tagEl.textContent=''; }
@@ -1669,11 +1692,11 @@ function botTick(){
  function buildCategoryBreakdown(st){
   const winDir=st.winDir;
   function stateBadge(agree,total){
-   if(winDir===0) return '<span style="color:var(--muted)">'+t('catNoVerdictYet')+'</span>';
-   if(total===0) return '<span style="color:var(--muted)">'+t('catNoData')+'</span>';
-   if(agree===total) return '<span style="color:var(--green)">✓ '+t('catFull')+'</span>';
-   if(agree===0) return '<span style="color:var(--red)">✗ '+t('catNone')+'</span>';
-   return '<span style="color:var(--gold)">◐ '+t('catPartial')+' ('+agree+'/'+total+')</span>';
+   if(winDir===0) return '<span class="statusdot na"></span><span style="color:var(--muted)">'+t('catNoVerdictYet')+'</span>';
+   if(total===0) return '<span class="statusdot na"></span><span style="color:var(--muted)">'+t('catNoData')+'</span>';
+   if(agree===total) return '<span class="statusdot on"></span><span style="color:var(--green)">'+t('catFull')+'</span>';
+   if(agree===0) return '<span class="statusdot off"></span><span style="color:var(--red)">'+t('catNone')+'</span>';
+   return '<span class="statusdot mid"></span><span style="color:var(--gold)">'+t('catPartial')+' ('+agree+'/'+total+')</span>';
   }
   const indLevels='RSI '+rsi.toFixed(1)+' · MACD '+(macd>=0?'+':'')+macd.toFixed(2)+' · EMA '+(ema50>ema200?'Golden ▲':'Death ▼')+' · Boll %'+bollPct.toFixed(0)+' · Stoch '+stoch.toFixed(1)+' · ADX '+adx.toFixed(1);
   const stratList=st.stratCands.length?st.stratCands.map(c=>c.label+' ('+(c.dir>0?'▲':'▼')+' %'+c.confidence+')').join(', '):t('catNoStrategies');
@@ -1929,13 +1952,14 @@ function renderStrategyStatsPanel(strategies){
   const pf = s.profit_factor==null ? '—' : (s.profit_factor===Infinity ? '∞' : s.profit_factor.toFixed(2));
   // KAR FAKTÖRÜ >1 kârlı, <1 zararlı demektir — kazanma oranından BAĞIMSIZ olarak asıl gerçeği gösterir.
   const pfColor = (s.profit_factor==null) ? 'var(--muted)' : (s.profit_factor>=1 ? 'var(--green)' : 'var(--red)');
+  const dotClass = s.profit_factor==null ? 'na' : (s.profit_factor>=1.3 ? 'on' : s.profit_factor>=1 ? 'mid' : 'off');
   const profitColor = s.total_profit>=0 ? 'var(--green)' : 'var(--red)';
   const enough = s.trades>=5;
   const avgLine = (s.avg_win!=null||s.avg_loss!=null) ?
     ('<div style="font-size:7px;color:var(--muted)">'+t('strategyStatsAvg')+': +$'+(s.avg_win!=null?s.avg_win.toFixed(0):'—')+' / -$'+(s.avg_loss!=null?s.avg_loss.toFixed(0):'—')+'</div>') : '';
   return '<div style="padding:3px 0;border-bottom:1px solid var(--line)">'+
    '<div style="display:flex;justify-content:space-between;font-size:8px">'+
-   '<span>'+label+(enough?'':' <i style="color:var(--muted)">('+t('strategyStatsLowSample')+')</i>')+'</span>'+
+   '<span><span class="statusdot '+dotClass+'"></span>'+label+(enough?'':' <i style="color:var(--muted)">('+t('strategyStatsLowSample')+')</i>')+'</span>'+
    '<span>'+t('strategyStatsPF')+' <b style="color:'+pfColor+'">'+pf+'</b> · %'+pct+' ('+s.trades+') <b style="color:'+profitColor+'">$'+s.total_profit.toFixed(0)+'</b></span>'+
    '</div>'+avgLine+
    '</div>';
@@ -1963,8 +1987,9 @@ window.valensRenderBacktestPanel=function(results){
  el.innerHTML=entries.map(([key,s])=>{
   const pct=Math.round((s.wins/s.trades)*100);
   const color=pct>=50?'var(--green)':'var(--red)';
+  const dotClass = pct>=55?'on':pct>=40?'mid':'off';
   return '<div style="display:flex;justify-content:space-between;font-size:8px;padding:3px 0;border-bottom:1px solid var(--line)">'+
-   '<span>'+backtestLabelFor(key)+'</span>'+
+   '<span><span class="statusdot '+dotClass+'"></span>'+backtestLabelFor(key)+'</span>'+
    '<span><b style="color:'+color+'">%'+pct+'</b> ('+s.wins+'/'+s.trades+')</span>'+
    '</div>';
  }).join('');
