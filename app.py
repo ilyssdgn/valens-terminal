@@ -982,9 +982,10 @@ const NEWS_BIAS={
 window.valensChartRead={};
 window.valensCandleLock=null; // mum kilidi/devamlılık mekanizması için başlangıç durumu
 
-function isMarketOpen(sym){
+function isMarketOpen(sym, atUnixSeconds){
  if(sym==='BINANCE:BTCUSDT')return true;
- const d=new Date(),day=d.getUTCDay(),h=d.getUTCHours();
+ const d=atUnixSeconds!=null ? new Date(atUnixSeconds*1000) : new Date();
+ const day=d.getUTCDay(),h=d.getUTCHours();
  if(sym==='OANDA:SPX500USD'){
    if(day===0||day===6)return false;
    const m=h*60+d.getUTCMinutes(); return m>=870 && m<=1260;
@@ -994,6 +995,7 @@ function isMarketOpen(sym){
  if(day===5 && h>=22)return false;
  return true;
 }
+window.valensIsMarketOpen = isMarketOpen; // grafik motoru (ayrı script) geçmiş mumları kontrol edebilsin diye
 function loadChart(){document.getElementById('chartTitle').textContent=SYMS[CUR].title;}
 function drawZones(){document.getElementById('zones').style.display='none';}
 
@@ -2402,6 +2404,22 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
  let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[];
+ // ---- HAFTA SONU/KAPALI PİYASA MUM RENKLENDİRMESİ — kullanıcı gerçek ekran görüntüsüyle gösterdi:
+ // XAU/USD piyasası GERÇEKTE kapalıyken (hafta sonu), grafiğimiz PAXG'nin (7/24 açık kripto) hareketini
+ // göstermeye devam ediyor ve bu, gerçek altınla hiç ilgisi olmayan sahte bir teknik görünüm (kırılan
+ // destekler, oluşan trendler) yaratıp YANILTICI oluyordu. BTC hariç (o zaten gerçekten 7/24 açık),
+ // gerçek piyasası kapalı sembollerde o saatlerdeki mumları SOLUK GRİ render ediyoruz — "bu gerçek
+ // piyasa hareketi değil" görsel olarak apaçık olsun diye.
+ function isClosedMarketTime(sym, t){
+  if(sym==='BINANCE:BTCUSDT') return false;
+  return window.valensIsMarketOpen ? !window.valensIsMarketOpen(sym, t) : false;
+ }
+ function styledCandle(c, sym){
+  if(!isClosedMarketTime(sym, c.time)) return c;
+  const muted='#4a5568';
+  return Object.assign({}, c, {color:muted, borderColor:muted, wickColor:muted});
+ }
+ function styledCandles(arr, sym){ return arr.map(c=>styledCandle(c, sym)); }
  // "Ana destek/direnç" HER ZAMAN 1 saatlik mumlardan hesaplanır (kullanıcı hangi zaman dilimini
  // izlerse izlesin) — "scalp" destek/direnç ise o an izlenen aralığın kendi dinamik S/R'ıdır.
  let mainSR={sup:null,res:null}, mainSRLines=[];
@@ -3285,10 +3303,11 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   mainSRLines.push(cs.createPriceLine({price:mainSR.res,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainResistance')}));
   mainSRLines.push(cs.createPriceLine({price:mainSR.sup,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainSupport')}));
  }
- function drawFibonacci(){
+ function drawFibonacci(dataArr){
+  const a=dataArr||ohlc;
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
-  if(ohlc.length<40)return;
-  const w=ohlc.slice(-80);
+  if(a.length<40)return;
+  const w=a.slice(-80);
   let hi=-1e12,lo=1e12,hiT=0,loT=0;
   w.forEach(c=>{if(c.high>hi){hi=c.high;hiT=c.time;} if(c.low<lo){lo=c.low;loT=c.time;}});
   const upTrend = loT<hiT;
@@ -3300,9 +3319,10 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    fibLines.push(cs.createPriceLine({price:px,color:f.c,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:'Fib '+f.r.toFixed(3)}));
   });
  }
- function drawTrendChannel(){
-  if(ohlc.length<30){trendSeries.setData([]);chanUp.setData([]);chanLo.setData([]);return;}
-  const w=ohlc.slice(-60), n=w.length;
+ function drawTrendChannel(dataArr){
+  const a=dataArr||ohlc;
+  if(a.length<30){trendSeries.setData([]);chanUp.setData([]);chanLo.setData([]);return;}
+  const w=a.slice(-60), n=w.length;
   let sx=0,sy=0,sxy=0,sxx=0;
   w.forEach((c,i)=>{sx+=i;sy+=c.close;sxy+=i*c.close;sxx+=i*i;});
   const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx), intercept=(sy-slope*sx)/n;
@@ -3314,22 +3334,23 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
  // ---- ATR bazlı volatilite zarfı (EMA20 ± ATR14*2) — TradingView ekranınızdaki renkli "volatilite bulutu"
  // konseptinin genel/klasik karşılığı (Keltner Channel). Trend yönüne göre renk değiştirir. ----
- function drawVolatilityBand(){
-  if(ohlc.length<25){ kelUp.setData([]); kelLo.setData([]); return; }
-  const closes=ohlc.map(c=>c.close), period=20, mult=2, k=2/(period+1);
+ function drawVolatilityBand(dataArr){
+  const a=dataArr||ohlc;
+  if(a.length<25){ kelUp.setData([]); kelLo.setData([]); return; }
+  const closes=a.map(c=>c.close), period=20, mult=2, k=2/(period+1);
   let ema=closes[0]; const emaSeries=[];
   closes.forEach((c,i)=>{ ema = i? c*k+ema*(1-k) : c; emaSeries.push(ema); });
   let trs=[0];
-  for(let i=1;i<ohlc.length;i++){
-   const cur=ohlc[i], prev=ohlc[i-1];
+  for(let i=1;i<a.length;i++){
+   const cur=a[i], prev=a[i-1];
    trs.push(Math.max(cur.high-cur.low,Math.abs(cur.high-prev.close),Math.abs(cur.low-prev.close)));
   }
   const up=[], lo=[];
-  for(let i=0;i<ohlc.length;i++){
+  for(let i=0;i<a.length;i++){
    const start=Math.max(0,i-13), slice=trs.slice(start,i+1);
-   const atr=slice.reduce((a,b)=>a+b,0)/slice.length;
-   up.push({time:ohlc[i].time,value:+(emaSeries[i]+atr*mult).toFixed(4)});
-   lo.push({time:ohlc[i].time,value:+(emaSeries[i]-atr*mult).toFixed(4)});
+   const atr=slice.reduce((a2,b)=>a2+b,0)/slice.length;
+   up.push({time:a[i].time,value:+(emaSeries[i]+atr*mult).toFixed(4)});
+   lo.push({time:a[i].time,value:+(emaSeries[i]-atr*mult).toFixed(4)});
   }
   const bullish = closes[closes.length-1] >= emaSeries[emaSeries.length-1];
   const col = bullish ? 'rgba(0,200,150,.55)' : 'rgba(255,80,109,.55)';
@@ -3338,12 +3359,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
  // ---- Konsolidasyon / hacim birikim bölgesi tespiti — TradingView ekranınızdaki teal kutular gibi
  // dar-aralıklı, sıkışık fiyat pencerelerini gerçek OHLC'den bulur; bunlar geleceğe dönük S/R adayı olur. ----
- function detectConsolidationZones(){
-  if(ohlc.length<40) return [];
-  const N=6, atrRef=calcATR(ohlc,14)||( (ohlc[ohlc.length-1].high-ohlc[ohlc.length-1].low)||1 );
+ function detectConsolidationZones(dataArr){
+  const a=dataArr||ohlc;
+  if(a.length<40) return [];
+  const N=6, atrRef=calcATR(a,14)||( (a[a.length-1].high-a[a.length-1].low)||1 );
   let raw=[];
-  for(let i=N;i<ohlc.length;i++){
-   const w=ohlc.slice(i-N,i);
+  for(let i=N;i<a.length;i++){
+   const w=a.slice(i-N,i);
    const hi=Math.max(...w.map(c=>c.high)), lo=Math.min(...w.map(c=>c.low));
    if((hi-lo) < atrRef*1.2) raw.push({startIdx:i-N, endIdx:i-1, hi, lo});
   }
@@ -3355,12 +3377,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   });
   return merged.filter(z=>(z.endIdx-z.startIdx)>=N-1).slice(-6);
  }
- function drawZoneLines(){
+ function drawZoneLines(dataArr){
+  const a=dataArr||ohlc;
   zoneLines.forEach(l=>cs.removePriceLine(l)); zoneLines=[];
-  const zones=detectConsolidationZones();
-  const last=ohlc[ohlc.length-1]?ohlc[ohlc.length-1].close:0;
+  const zones=detectConsolidationZones(a);
+  const last=a[a.length-1]?a[a.length-1].close:0;
   // sadece fiyata en yakın 2 bölgeyi çiz (grafik kirlenmesin)
-  zones.map(z=>({z,dist:Math.min(Math.abs(last-z.hi),Math.abs(last-z.lo))})).sort((a,b)=>a.dist-b.dist).slice(0,2).forEach(({z})=>{
+  zones.map(z=>({z,dist:Math.min(Math.abs(last-z.hi),Math.abs(last-z.lo))})).sort((a2,b)=>a2.dist-b.dist).slice(0,2).forEach(({z})=>{
    zoneLines.push(cs.createPriceLine({price:z.hi,color:'rgba(20,184,166,.85)',lineWidth:1,lineStyle:3,axisLabelVisible:true,title:t('zoneTop')}));
    zoneLines.push(cs.createPriceLine({price:z.lo,color:'rgba(20,184,166,.85)',lineWidth:1,lineStyle:3,axisLabelVisible:true,title:t('zoneBottom')}));
   });
@@ -3368,17 +3391,30 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
  function analyze(isCloseTick){
   if(ohlc.length<20)return;
-  e20.setData(emaLine(ohlc,20)); e50.setData(emaLine(ohlc,50));
-  const{sup,res}=supRes(ohlc);
+  // ---- HAFTA SONU/KAPALI PİYASA DONDURMA — kullanıcı gerçek ekran görüntüsüyle gösterdi: XAU/USD
+  // GERÇEKTE kapalıyken bile grafiğimiz PAXG'nin (7/24 kripto) hareketini gösterip, destek/direnç/trend
+  // çizgilerini bu SAHTE hareketten yeniden çiziyordu — "destek kırılmış, aşağı gitmiş" gibi YANILTICI
+  // bir teknik görünüm yaratıyordu. Artık: piyasa şu an kapalıysa (BTC hariç), tüm analiz SADECE son
+  // GERÇEK açık-piyasa mumuna kadar olan veriyle yapılır — mumlar görsel olarak (soluk gri) akmaya
+  // devam eder ama S/R, trend, Fib, bölge çizgileri ve gösterge sayıları son gerçek an'da DONAR.
+  let a = ohlc;
+  if(curSym!=='BINANCE:BTCUSDT' && isClosedMarketTime(curSym, ohlc[ohlc.length-1].time)){
+   let lastOpenIdx = ohlc.length-1;
+   while(lastOpenIdx>0 && isClosedMarketTime(curSym, ohlc[lastOpenIdx].time)) lastOpenIdx--;
+   a = ohlc.slice(0, lastOpenIdx+1);
+   if(a.length<20) return; // henüz hiç gerçek-piyasa verisi yoksa analiz üretme
+  }
+  e20.setData(emaLine(a,20)); e50.setData(emaLine(a,50));
+  const{sup,res}=supRes(a);
   if(dynSup)cs.removePriceLine(dynSup); if(dynRes)cs.removePriceLine(dynRes);
   dynSup=cs.createPriceLine({price:sup,color:'#00c896',lineWidth:1,lineStyle:2,title:'Dyn Support'});
   dynRes=cs.createPriceLine({price:res,color:'#ff506d',lineWidth:1,lineStyle:2,title:'Dyn Resistance'});
-  drawFibonacci();
-  drawTrendChannel();
-  drawVolatilityBand();
-  const zones=drawZoneLines();
-  const pat=pattern(ohlc);
-  const lastTime=ohlc[ohlc.length-1].time;
+  drawFibonacci(a);
+  drawTrendChannel(a);
+  drawVolatilityBand(a);
+  const zones=drawZoneLines(a);
+  const pat=pattern(a);
+  const lastTime=a[a.length-1].time;
   // Formasyon işaretleri KALICI: tespit edilen her mum formasyonu grafikte kalır, sadece o an
   // oluşmakta olan SON mumun girdisi (henüz mum kapanmadığı için) canlı güncellenir/kaldırılır.
   patternMarkers = patternMarkers.filter(m=>m.time!==lastTime);
@@ -3390,9 +3426,9 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   patternMarkers.sort((a,b)=>a.time-b.time); // lightweight-charts zaman sırası ister
   cs.setMarkers(patternMarkers);
 
-  const last=ohlc[ohlc.length-1].close;
-  const closes=ohlc.map(c=>c.close);
-  const w=ohlc.slice(-60); let sx=0,sy=0,sxy=0,sxx=0;
+  const last=a[a.length-1].close;
+  const closes=a.map(c=>c.close);
+  const w=a.slice(-60); let sx=0,sy=0,sxy=0,sxx=0;
   w.forEach((c,i)=>{sx+=i;sy+=c.close;sxy+=i*c.close;sxx+=i*i;});
   const slope=(w.length*sxy-sx*sy)/(w.length*sxx-sx*sx);
   const cfg=SYMS[curSym]; let srBias=0, srText='';
@@ -3449,15 +3485,15 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const ema50Real=emaValue(closes.slice(-90),50)||last;
   const ema200Real=emaValue(closes,200)||last;
   const bollPctReal=calcBollPct(closes,20);
-  const stochReal=calcStoch(ohlc,14);
-  const adxReal=calcADXReal(ohlc,14);
-  const atrReal=calcATR(ohlc,14);
-  const vwapReal=calcVWAP(ohlc,96);
-  const wrReal=calcWilliamsR(ohlc,14);
-  const cciReal=calcCCI(ohlc,20);
-  const psarReal=calcPSAR(ohlc);
-  const pivotsReal=calcPivots(ohlc);
-  const strategyTags = detectStrategyTags(ohlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, fibZone:fibZone, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)});
+  const stochReal=calcStoch(a,14);
+  const adxReal=calcADXReal(a,14);
+  const atrReal=calcATR(a,14);
+  const vwapReal=calcVWAP(a,96);
+  const wrReal=calcWilliamsR(a,14);
+  const cciReal=calcCCI(a,20);
+  const psarReal=calcPSAR(a);
+  const pivotsReal=calcPivots(a);
+  const strategyTags = detectStrategyTags(a, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, fibZone:fibZone, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)});
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
@@ -3465,8 +3501,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     patternName: pat?pat.n:'',
     srBias, srText, fibBias, fibZone, strategyTags,
     hasLiveData:true,
-    candleTime: ohlc[ohlc.length-1].time, // mevcut mumun SABİT zaman damgası — sinyal tekilleştirmede kullanılır
-    hourlyMove: estimateHourlyMovement(ohlc), // saatlik tipik hareket — TP ulaşılabilirlik sınırı için
+    candleTime: a[a.length-1].time, // mevcut mumun SABİT zaman damgası — sinyal tekilleştirmede kullanılır
+    hourlyMove: estimateHourlyMovement(a), // saatlik tipik hareket — TP ulaşılabilirlik sınırı için
     indicators:{
       rsi: rsiReal!==null?rsiReal:50,
       macd: macdReal,
@@ -3503,7 +3539,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const intv=currentBinInterval();
   // Önce önbellekten (varsa) anında göster — kullanıcı sayfayı her açtığında boş grafik görmesin
   const cached=loadOhlcCache(curSym,intv);
-  if(cached && cached.length){ ohlc=cached; cs.setData(ohlc); showRecentRange(); analyze(true); }
+  if(cached && cached.length){ ohlc=cached; cs.setData(styledCandles(ohlc,curSym)); showRecentRange(); analyze(true); }
   try{
    // Binance REST API'de tek istekte alınabilecek azami mum sayısı 1000'dir — önceki 200 limiti
    // gereksiz yere veriyi kısıtlıyordu (15dk'da sadece ~50 saat; 1000 ile ~10 gün).
@@ -3511,7 +3547,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const d=await r.json();
    if(!Array.isArray(d))throw new Error('no data');
    ohlc=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
-   cs.setData(ohlc); showRecentRange(); analyze(true);
+   cs.setData(styledCandles(ohlc,curSym)); showRecentRange(); analyze(true);
    saveOhlcCache(curSym,intv,ohlc);
    setTimeout(()=>{
     window.valensBacktestResults = runHistoricalBacktest();
@@ -3528,7 +3564,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const bar={time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};
    const last=ohlc[ohlc.length-1];
    if(last&&last.time===bar.time)ohlc[ohlc.length-1]=bar; else{ohlc.push(bar);if(ohlc.length>1000)ohlc.shift();}
-   cs.update(bar); analyze(k.x);
+   cs.update(styledCandle(bar,curSym)); analyze(k.x);
    if(k.x) saveOhlcCache(curSym,intv,ohlc); // sadece mum KAPANDIĞINDA önbelleği güncelle (her tick'te yazmaya gerek yok)
   };
  }
