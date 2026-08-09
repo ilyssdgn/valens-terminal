@@ -375,6 +375,11 @@ iframe{height:100%;width:100%;border:0}
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="strategyStatsHint">MT5 köprüsünden gelen GERÇEK kapanan işlemlere göre — simülasyon değil. En az 5 işlem birikmeden karar motorunu etkilemez.</div>
         <div id="strategyStatsBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
+      <div class="ph"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></div>
+      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="backtestHint">Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR ve MT5'teki canlı işlem takibinden AYRIDIR — sadece "bu kalıp bu grafikte geçmişte işe yaramış mı" sorusuna cevap verir.</div>
+        <div id="backtestBody"><p style="color:var(--muted);font-size:8px">—</p></div>
+      </div>
       <div class="ph"><b data-i18n="teach_title">🎓 MANUEL ÖĞRETİM (kalıp hafızası)</b><span class="badge" id="teachBadge">—</span></div>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="teachHint">Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.</div>
@@ -695,6 +700,11 @@ const I18N = {
   strategyStatsEmpty:'Henüz kapanmış gerçek işlem yok — veri biriktikçe burada görünecek.',
   strategyStatsLowSample:'az örneklem, henüz etkisiz',
   strategyStatsPF:'KF', strategyStatsAvg:'Ort. kazanç/kayıp',
+  backtest_title:'🔬 GEÇMİŞ VERİ TESTİ (backtest)',
+  backtestHint:'Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP\'ye mi SL\'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR ve MT5\'teki canlı işlem takibinden AYRIDIR.',
+  backtestNotEnoughData:'Yeterli geçmiş veri birikmedi (en az ~350 mum gerekir).',
+  backtestNoSignals:'Bu ~300 mumda, en az 3 kez ateşlenen bir strateji bulunamadı.',
+  backtestCandleCount:(n)=>'son '+n+' mum',
   risk_max:'Maks. Toplam Kayıp (%)', risk_target:'Kâr Hedefi (%)',
   risk_lotmin:'Lot (min)', risk_lotmax:'Lot (max)', risk_days:'Hedef Gün Sayısı', risk_start:'Başlangıç Tarihi',
   goal_progress_title:'🎯 HEDEFE İLERLEME (gerçek izlenen sonuçlardan)',
@@ -875,6 +885,11 @@ const I18N = {
   strategyStatsEmpty:'No closed real trades yet — will populate as data accumulates.',
   strategyStatsLowSample:'small sample, not yet influencing',
   strategyStatsPF:'PF', strategyStatsAvg:'Avg win/loss',
+  backtest_title:'🔬 HISTORICAL BACKTEST',
+  backtestHint:'Looks at the ~300 REAL past candles on this chart and checks, for every point in the past where each strategy actually fired, whether price reached TP or SL first. This is NOT a random/possible-future projection and is SEPARATE from live MT5 trade tracking.',
+  backtestNotEnoughData:'Not enough historical data yet (needs at least ~350 candles).',
+  backtestNoSignals:'No strategy fired at least 3 times in these ~300 candles.',
+  backtestCandleCount:(n)=>'last '+n+' candles',
   risk_max:'Max Total Loss (%)', risk_target:'Profit Target (%)',
   risk_lotmin:'Lot (min)', risk_lotmax:'Lot (max)', risk_days:'Target Days', risk_start:'Start Date',
   goal_progress_title:'🎯 PROGRESS TO TARGET (from real tracked results)',
@@ -1988,6 +2003,32 @@ function renderStrategyStatsPanel(strategies){
 }
 setInterval(updateStrategyStats, 60000); // dakikada bir — gereksiz sık sorgulamaya gerek yok
 setTimeout(updateStrategyStats, 5000);
+
+// ---- GEÇMİŞ VERİ TESTİ (backtest) paneli — window.valensRenderBacktestPanel, chart engine script'i
+// runHistoricalBacktest() sonucunu hesapladığında çağırır. Kazanma oranına göre sıralar, en az 3
+// geçmiş sinyali olmayan stratejileri (istatistiksel olarak anlamsız olur) göstermez.
+function backtestLabelFor(key){
+ const i18nKey='tag'+key.charAt(0).toUpperCase()+key.slice(1);
+ const label=t(i18nKey);
+ return (label && label!==i18nKey) ? label : key;
+}
+window.valensRenderBacktestPanel=function(results){
+ const el=document.getElementById('backtestBody'), badge=document.getElementById('backtestBadge');
+ if(!el) return;
+ if(!results){ el.innerHTML='<p style="color:var(--muted);font-size:8px">'+t('backtestNotEnoughData')+'</p>'; if(badge) badge.textContent='—'; return; }
+ const entries=Object.entries(results).filter(([,s])=>s.trades>=3)
+   .sort((a,b)=>(b[1].wins/b[1].trades)-(a[1].wins/a[1].trades));
+ if(badge) badge.textContent=t('backtestCandleCount')(300);
+ if(!entries.length){ el.innerHTML='<p style="color:var(--muted);font-size:8px">'+t('backtestNoSignals')+'</p>'; return; }
+ el.innerHTML=entries.map(([key,s])=>{
+  const pct=Math.round((s.wins/s.trades)*100);
+  const color=pct>=50?'var(--green)':'var(--red)';
+  return '<div style="display:flex;justify-content:space-between;font-size:8px;padding:3px 0;border-bottom:1px solid var(--line)">'+
+   '<span>'+backtestLabelFor(key)+'</span>'+
+   '<span><b style="color:'+color+'">%'+pct+'</b> ('+s.wins+'/'+s.trades+')</span>'+
+   '</div>';
+ }).join('');
+};
 
 document.querySelectorAll('.tfbtn').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tfbtn').forEach(y=>y.classList.remove('on'));
@@ -3139,6 +3180,59 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const deltaConf=detectDeltaConfirmation(a, ind.tradeDelta); if(deltaConf) tags.push(deltaConf);
   return tags;
  }
+ // ---- GEÇMİŞ VERİ TESTİ (BACKTEST) — Kullanıcı isteği: "sinyal vermeden önce stratejiyi test etsin."
+ // ÖNEMLİ AYRIM: bu rastgele/olası GELECEK yolları üretip "en iyisini" seçen bir şey DEĞİLDİR — o
+ // yaklaşım her zaman şans eseri yukarı giden bir yol bulur, sahte güven yaratır. Bunun yerine, terminalin
+ // zaten elinde olan GERÇEKTEN YAŞANMIŞ geçmiş mumlar üzerinde, her stratejinin (hem AL hem SAT) geçmişte
+ // ateşlendiği HER noktayı bulup, o andan sonra fiyatın GERÇEKTE TP'ye mi SL'ye mi önce ulaştığını
+ // (canlıdaki AYNI ATR formülüyle) kontrol eder. Canlı MT5 takibinden (gerçek açılan işlemler) TAMAMEN
+ // AYRI ve farklı bir şeydir — o yüzden ayrı, net etiketli bir panelde gösterilir, asla karıştırılmaz.
+ function runHistoricalBacktest(){
+  if(ohlc.length<350) return null;
+  const WARMUP=250; // uzun-lookback'li stratejiler (BOS/CHoCH, TTM Squeeze vb.) için yeterli geçmiş bırak
+  const TEST_RANGE=Math.min(300, ohlc.length-WARMUP-1);
+  const MAX_FORWARD=100; // TP/SL'ye ulaşması için en fazla 100 mum ileri bak; ulaşamazsa "çözülmemiş" say, sayma
+  if(TEST_RANGE<20) return null;
+  const results={};
+  for(let i=WARMUP; i<WARMUP+TEST_RANGE; i++){
+   const histOhlc=ohlc.slice(0,i+1);
+   const closes=histOhlc.map(c=>c.close);
+   const last=closes[closes.length-1];
+   // O andaki göstergeleri, ZATEN TEST EDİLMİŞ aynı fonksiyonlarla, o ana kadarki veriyle hesapla —
+   // canlı sinyal motorundan AYRI/paralel bir hesaplama mantığı yazmıyoruz, tutarlılık garantili.
+   const rsiReal=calcRSIReal(closes,14);
+   const atrReal=calcATR(histOhlc,14);
+   if(rsiReal==null||atrReal==null) continue;
+   const macdReal=(emaValue(closes.slice(-40),12)||last)-(emaValue(closes.slice(-60),26)||last);
+   const ema9Real=emaValue(closes.slice(-30),9)||last;
+   const ema21Real=emaValue(closes.slice(-50),21)||last;
+   const ema50Real=emaValue(closes.slice(-90),50)||last;
+   const ema200Real=emaValue(closes,200)||last;
+   const bollPctReal=calcBollPct(closes,20);
+   const vwapReal=calcVWAP(histOhlc,96);
+
+   const tags=detectStrategyTags(histOhlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real,
+     ema200:ema200Real, vwap:vwapReal, zones:[], bollPct:bollPctReal!==null?bollPctReal:50, srBias:0, fibZone:null, tradeDelta:null});
+
+   tags.forEach(tag=>{
+    const isTightTpOrb=tag.key==='scalpOrb';
+    const slDist=isTightTpOrb?atrReal*1.6:atrReal*1.0, tpDist=isTightTpOrb?atrReal*0.5:atrReal*2.0;
+    const stopPx=last-tag.dir*slDist, tpPx=last+tag.dir*tpDist;
+    let outcome=null;
+    for(let j=i+1; j<Math.min(i+1+MAX_FORWARD, ohlc.length); j++){
+     const c=ohlc[j];
+     if(tag.dir>0){ if(c.low<=stopPx){outcome='loss';break;} if(c.high>=tpPx){outcome='win';break;} }
+     else { if(c.high>=stopPx){outcome='loss';break;} if(c.low<=tpPx){outcome='win';break;} }
+    }
+    if(outcome){
+     if(!results[tag.key]) results[tag.key]={wins:0,losses:0,trades:0};
+     results[tag.key].trades++;
+     if(outcome==='win') results[tag.key].wins++; else results[tag.key].losses++;
+    }
+   });
+  }
+  return results;
+ }
  function drawSRLines(){
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   const cfg=SYMS[curSym]; if(!cfg) return;
@@ -3395,6 +3489,10 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    ohlc=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
    cs.setData(ohlc); chart.timeScale().fitContent(); analyze(true);
    saveOhlcCache(curSym,intv,ohlc);
+   setTimeout(()=>{
+    window.valensBacktestResults = runHistoricalBacktest();
+    if(window.valensRenderBacktestPanel) window.valensRenderBacktestPanel(window.valensBacktestResults);
+   }, 50); // taze veri sonrası, tarayıcının önce çizimi bitirmesine izin vermek için küçük bir gecikme
   }catch(e){console.error('history err',e);}
  }
  function connect(){
