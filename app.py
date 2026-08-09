@@ -210,7 +210,7 @@ details.panelgroup{border-bottom:none}
 .sessCountdown{color:var(--gold);font-weight:700}
 .sessNote{color:var(--muted);margin-left:auto;font-size:9px}
 .charthead b{font:11px 'IBM Plex Mono';color:var(--gold)}.tfbtn{font:10px 'IBM Plex Mono';border:0;background:transparent;color:var(--muted);cursor:pointer;padding:5px}.tfbtn.on{color:var(--gold);border:1px solid rgba(212,175,55,.3);border-radius:3px}
-.chartzone{display:flex;height:480px;flex-shrink:0}
+.chartzone{display:flex;height:330px;flex-shrink:0}
 .volprofile{width:150px;background:#060b14;border-right:1px solid var(--line);position:relative;overflow:hidden}
 .vphead{font:8px 'IBM Plex Mono';color:var(--gold);text-align:center;padding:3px 0;border-bottom:1px solid var(--line);letter-spacing:.5px}
 .vpbar{position:absolute;right:0;height:9px;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font:600 7px 'IBM Plex Mono';color:#cfe;white-space:nowrap;border-radius:2px 0 0 2px}
@@ -368,30 +368,6 @@ iframe{height:100%;width:100%;border:0}
       <div class="megaalert" id="fullAlignmentBanner" style="border-color:var(--gold);background:linear-gradient(90deg,rgba(212,175,55,.22),rgba(0,200,150,.12))"><span style="font-size:18px">🎯</span><div><b id="faBannerTitle" data-i18n="fullAlignmentTitle">TAM UYUM — KESİN İŞLEM</b><br><span id="faBannerBody">—</span></div></div>
       <div class="megaalert" id="megaAlert"><span style="font-size:16px">🚨</span><div><b id="megaAlertTitle" data-i18n="mega_alert_title">YÜKSEK POTANSİYELLİ SCALP</b><br><span id="megaAlertBody">—</span></div></div>
 
-      <div class="charthead">
-        <b id="chartTitle">XAU/USD · GOLD SPOT</b>
-        <button class="tfbtn" data-int="1">1M</button><button class="tfbtn on" data-int="15">15M</button><button class="tfbtn" data-int="30">30M</button><button class="tfbtn" data-int="60">1H</button><button class="tfbtn" data-int="240">4H</button><button class="tfbtn" data-int="D">1D</button>
-        <span id="goldOffsetNote" style="margin-left:auto;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono'"></span>
-      </div>
-
-      <div class="sessionbar" id="sessionBar">
-        <span class="sesspill" id="pillSydney"><i class="dot2"></i> Sydney</span>
-        <span class="sesspill" id="pillTokyo"><i class="dot2"></i> Tokyo</span>
-        <span class="sesspill" id="pillLondon"><i class="dot2"></i> London</span>
-        <span class="sesspill" id="pillNewyork"><i class="dot2"></i> New York</span>
-        <span id="sessCountdown" class="sessCountdown">—</span>
-        <span id="sessNote" class="sessNote">—</span>
-      </div>
-
-      <div class="chartzone">
-        <div class="volprofile"><div class="vphead" data-i18n="vol_profile">📊 HACİM PROFİLİ</div><div id="vpBars"></div></div>
-        <div class="chartwrap">
-          <div id="valensChart"></div>
-          <div id="chartClosed"><span data-i18n="market_closed">● PİYASA KAPALI</span><small id="chartClosedMsg" data-i18n="weekend_msg">Hafta sonu — canlı veri akışı yok</small></div>
-          <div class="zones" id="zones"></div>
-        </div>
-      </div>
-
       <div class="decision-desk">
         <div class="signal-main">
           <div class="kicker"><span><span data-i18n="signal_engine">AI SIGNAL ENGINE</span> · <span id="sigPair">XAU/USD</span></span><em id="botStatus" data-i18n="running">● ÇALIŞIYOR</em></div>
@@ -418,6 +394,30 @@ iframe{height:100%;width:100%;border:0}
           <div class="levels"><div class="lev"><small data-i18n="entry_lbl">GİRİŞ</small><b class="entry" id="swEntry">—</b></div><div class="lev"><small data-i18n="stop_lbl">STOP</small><b class="stop" id="swStop">—</b></div><div class="lev"><small>TP</small><b class="target" id="swTp">—</b></div></div>
           <div class="pnl" id="swPnl">Hedef ≈ $750 @ 2.5 lot</div>
           <div id="swLastSignal" style="font:9px 'IBM Plex Mono';color:var(--muted);margin-top:5px">—</div>
+        </div>
+      </div>
+
+      <div class="charthead">
+        <b id="chartTitle">XAU/USD · GOLD SPOT</b>
+        <button class="tfbtn" data-int="1">1M</button><button class="tfbtn on" data-int="15">15M</button><button class="tfbtn" data-int="30">30M</button><button class="tfbtn" data-int="60">1H</button><button class="tfbtn" data-int="240">4H</button><button class="tfbtn" data-int="D">1D</button>
+        <span id="goldOffsetNote" style="margin-left:auto;font-size:9px;color:var(--muted);font-family:'IBM Plex Mono'"></span>
+      </div>
+
+      <div class="sessionbar" id="sessionBar">
+        <span class="sesspill" id="pillSydney"><i class="dot2"></i> Sydney</span>
+        <span class="sesspill" id="pillTokyo"><i class="dot2"></i> Tokyo</span>
+        <span class="sesspill" id="pillLondon"><i class="dot2"></i> London</span>
+        <span class="sesspill" id="pillNewyork"><i class="dot2"></i> New York</span>
+        <span id="sessCountdown" class="sessCountdown">—</span>
+        <span id="sessNote" class="sessNote">—</span>
+      </div>
+
+      <div class="chartzone">
+        <div class="volprofile"><div class="vphead" data-i18n="vol_profile">📊 HACİM PROFİLİ</div><div id="vpBars"></div></div>
+        <div class="chartwrap">
+          <div id="valensChart"></div>
+          <div id="chartClosed"><span data-i18n="market_closed">● PİYASA KAPALI</span><small id="chartClosedMsg" data-i18n="weekend_msg">Hafta sonu — canlı veri akışı yok</small></div>
+          <div class="zones" id="zones"></div>
         </div>
       </div>
 
