@@ -1568,7 +1568,7 @@ function botTick(){
  if(confluenceDir!==0 && !window.valensStrategyOnlyMode){
   candidates.push({key:'confluence', dir:confluenceDir, confidence:confluenceConf, label:t('candidateConfluence')});
  }
- const marketRegime = detectMarketRegime(adx, cr.trend||0);
+ const marketRegime = detectMarketRegime(adx, (typeof cr.fastTrend==='number'?cr.fastTrend:cr.trend)||0);
  (cr.strategyTags||[]).forEach(tag=>{
   const base=STRATEGY_BASE_CONF[tag.key]||70;
   const label=tagLabels[tag.key];
@@ -3431,6 +3431,20 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const w=a.slice(-60); let sx=0,sy=0,sxy=0,sxx=0;
   w.forEach((c,i)=>{sx+=i;sy+=c.close;sxy+=i*c.close;sxx+=i*i;});
   const slope=(w.length*sxy-sx*sy)/(w.length*sxx-sx*sx);
+  // ---- HIZLI TREND (piyasa rejimi tespiti için AYRI, daha kısa vadeli ölçüm) — kullanıcı gerçek
+  // örnekle gösterdi: fiyat desteği kırıp aşağı giderken bile bot %80 BUY veriyordu. Kök neden: rejim
+  // bonusu, 60 mumluk YAVAŞ eğime bakıyordu — bu, taze bir dönüşün etkisini geç yansıtıyor, önceki
+  // yükselişin "hafızası" hâlâ pozitif slope üretip trend-takip (BUY) stratejilerine haksız bonus
+  // veriyordu. Rejim tespiti artık çok daha kısa (15 mum) bir eğime bakıyor — gerçek bir dönüşe çok
+  // daha hızlı tepki verir, genel "confluence" oyu (cr.trend, aşağıda) hâlâ yavaş/geniş resme bakmaya
+  // devam ediyor (o amaç için değişmedi).
+  let fastTrend=0;
+  if(a.length>=16){
+   const fw=a.slice(-15); let fsx=0,fsy=0,fsxy=0,fsxx=0;
+   fw.forEach((c,i)=>{fsx+=i;fsy+=c.close;fsxy+=i*c.close;fsxx+=i*i;});
+   const fslope=(fw.length*fsxy-fsx*fsy)/(fw.length*fsxx-fsx*fsx);
+   fastTrend = fslope>0?1:fslope<0?-1:0;
+  }
   const cfg=SYMS[curSym]; let srBias=0, srText='';
   if(cfg){cfg.sr.forEach(s=>{const mid=(s.lo+s.hi)/2,dist=Math.abs(last-mid)/last;
     if(dist<0.004){ if(s.type==='s'){srBias=0.5;srText=t('srNearSupport')(s.label);}
@@ -3497,6 +3511,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
+    fastTrend,
     pattern: pat?(pat.d==='bull'?1:pat.d==='bear'?-1:0):0,
     patternName: pat?pat.n:'',
     srBias, srText, fibBias, fibZone, strategyTags,
