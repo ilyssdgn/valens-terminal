@@ -299,6 +299,46 @@ iframe{height:100%;width:100%;border:0}
         </div>
       </div>
       <details class="panelgroup">
+      <summary class="ph collapsible"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ (manuel onaylı)</b><span class="badge" id="mt5BridgeBadge">—</span></summary>
+      <div style="padding:9px;border-bottom:1px solid var(--line)">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="mt5BridgeHint">Diğer bilgisayarınızda valens_mt5_executor.py çalışıyorsa buraya bağlanın. Otomatik gönderim YOK — her KESİN İŞLEM'de burada bir "Gönder" butonu belirir, siz onaylamadan hiçbir emir MT5'e gitmez. ⚠ Bu uygulama Streamlit Cloud gibi https bir adreste açıksa, sade http:// LAN adresine tarayıcı "mixed content" güvenliğiyle bağlanamayabilir — en güvenilir yöntem bu app.py'yi de o bilgisayarda/aynı ağda lokal çalıştırmaktır (streamlit run app.py).</div>
+        <div style="display:flex;gap:6px;margin-bottom:7px">
+          <input id="mt5BridgeUrl" type="text" placeholder="http://192.168.x.x:8899" style="flex:1;min-width:0;background:#07101c;border:1px solid var(--line);color:var(--text);padding:6px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <button id="mt5BridgeToggle" style="padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:#07101c;color:var(--text);font:9px 'IBM Plex Mono';cursor:pointer;white-space:nowrap" data-i18n="mt5BridgeToggleOff">🔌 Bağlan</button>
+        </div>
+        <div id="mt5BridgeStatus" style="font-size:8px;color:var(--muted);line-height:1.5;margin-bottom:7px">—</div>
+        <div id="mt5SendArea" style="display:none">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <label style="font:8px 'IBM Plex Mono';color:var(--muted);flex:1"><span data-i18n="mt5LotLabel">Gönderilecek lot</span><input id="mt5SendLot" type="number" step="0.01" min="0.01" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          </div>
+          <button id="mt5SendBtn" style="width:100%;padding:8px;background:var(--gold);color:#07101b;border:0;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="mt5SendBtnLabel">⚡ Bu Sinyali MT5'e Gönder (Onayla)</button>
+        </div>
+      </div>
+      </details>
+      <details class="panelgroup">
+      <summary class="ph collapsible"><b data-i18n="challenge_title">🎯 CHALLENGE MODU</b><span class="badge" id="challengeBadge">—</span></summary>
+      <div style="padding:9px;border-bottom:1px solid var(--line)">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="challengeHint">Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeStartBal">Başlangıç ($)</span><input id="chStart" type="number" step="10" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeTargetBal">Hedef ($)</span><input id="chTarget" type="number" step="1000" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeGrowth">İşlem Başı Büyüme (%)</span><input id="chGrowth" type="number" step="1" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeMove">Hedef Hareket ($)</span><input id="chMove" type="number" step="0.1" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+        </div>
+        <div id="challengeBody" style="font-size:9px;color:var(--text);line-height:1.7;margin-bottom:8px">—</div>
+        <div style="height:7px;border-radius:4px;background:#07101c;overflow:hidden;border:1px solid var(--line)"><div id="challengeBar" style="height:100%;width:0%;background:var(--gold);transition:width .3s"></div></div>
+        <div id="challengeDayNote" style="font-size:8px;color:var(--muted);margin-top:6px">—</div>
+        <div id="challengeActiveControls" style="display:flex;gap:6px;margin-top:8px">
+          <button id="chWinBtn" style="flex:1;background:var(--green);color:#07101b;border:0;padding:7px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeWinBtn">✓ Bu İşlem Kazandı</button>
+          <button id="chLossBtn" style="flex:1;background:var(--red);color:#fff;border:0;padding:7px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeLossBtn">✗ Bu İşlem Kaybetti</button>
+        </div>
+        <div id="challengeFailedControls" style="display:none;margin-top:8px">
+          <div style="color:var(--red);font-size:9px;font-weight:700;margin-bottom:6px" id="challengeFailedMsg">—</div>
+          <button id="chResetBtn" style="width:100%;background:transparent;color:var(--gold);border:1px solid var(--line);padding:7px;border-radius:4px;font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeResetBtn">🔄 Yeniden Başlat (Trade #1)</button>
+        </div>
+      </div>
+      </details>
+      <details class="panelgroup">
       <summary class="ph collapsible"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></summary>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="backtestHint">Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR — sadece "bu kalıp bu grafikte geçmişte işe yaramış mı" sorusuna cevap verir.</div>
@@ -306,39 +346,10 @@ iframe{height:100%;width:100%;border:0}
       </div>
       </details>
       <details class="panelgroup">
-      <summary class="ph collapsible"><b data-i18n="teach_title">🎓 MANUEL ÖĞRETİM (kalıp hafızası)</b><span class="badge" id="teachBadge">—</span></summary>
+      <summary class="ph collapsible"><b data-i18n="stratLive_title">📊 GERÇEK STRATEJİ PERFORMANSI (canlı takip)</b><span class="badge" id="stratLiveBadge">—</span></summary>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="teachHint">Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
-          <select id="tDir" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-            <option value="1" data-i18n-opt="teachBuy">AL (BUY)</option><option value="-1" data-i18n-opt="teachSell">SAT (SELL)</option>
-          </select>
-          <select id="tZone" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-            <option value="support" data-i18n-opt="teachSupport">Destekte</option><option value="resistance" data-i18n-opt="teachResistance">Dirençte</option><option value="none" data-i18n-opt="teachNoZone">Bölge Yok</option>
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
-          <select id="tRsi" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-            <option value="oversold" data-i18n-opt="teachOversold">RSI Aşırı Satım</option><option value="neutral" data-i18n-opt="teachNeutralRsi">RSI Nötr</option><option value="overbought" data-i18n-opt="teachOverbought">RSI Aşırı Alım</option>
-          </select>
-          <select id="tFib" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-            <option value="none" data-i18n-opt="teachNoFib">Fib Yok</option><option value="shallow" data-i18n-opt="teachFibShallow">Fib 0-38.2</option><option value="golden" data-i18n-opt="teachFibGolden">Fib 50-61.8 (Altın)</option><option value="deep" data-i18n-opt="teachFibDeep">Fib 78.6+</option>
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px">
-          <select id="tPattern" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-            <option value="none">Mum: Yok</option><option value="Hammer">Hammer</option><option value="Shooting Star">Shooting Star</option><option value="Doji">Doji</option><option value="Bull Engulf">Bull Engulf</option><option value="Bear Engulf">Bear Engulf</option>
-          </select>
-          <select id="tOutcome" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-            <option value="success" data-i18n-opt="teachSuccess">✓ Başarılı Oldu</option><option value="fail" data-i18n-opt="teachFail">✗ Başarısız Oldu</option>
-          </select>
-        </div>
-        <input id="tNote" type="text" placeholder="Not (opsiyonel, sadece referans)" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono';margin-bottom:6px">
-        <div style="display:flex;gap:6px">
-          <button id="tAdd" style="flex:1;background:var(--gold);color:#07101b;border:0;padding:6px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="teachAdd">+ KAYDET</button>
-          <button id="tShowLearned" style="background:transparent;color:var(--gold);border:1px solid var(--line);padding:6px 9px;border-radius:4px;font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="teachShowLearned">Öğrenilenler</button>
-        </div>
-        <div id="learnedPatternsBox" style="display:none;margin-top:8px;max-height:180px;overflow:auto;font-size:9px"></div>
+        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="stratLiveHint">Bu terminalin ürettiği ve TP/SL'ye ulaştığı GERÇEK sinyallerden — hangi strateji burada gerçekten kazandırdı/kaybettirdi, kalıcı olarak hatırlanır. En az 3 işlem birikmeden gösterilmez.</div>
+        <div id="stratLiveBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
       </details>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
@@ -529,19 +540,9 @@ const I18N = {
   manualNewsRemove:'Sil', manualClearConfirm:'Tüm manuel eklenen haberleri silmek istediğinize emin misiniz?',
   cotLong:'Long', cotShort:'Short', cotSourceNote:'Kaynak: CFTC Legacy COT · her Salı kesiti Cuma yayınlanır.',
   tightTpWarning:(pct)=>'⚠ Dar hedef / geniş stop yapısı (video kaynağında gözlemlenen orana göre): hedef stoptan küçük, bu yüzden başabaş noktası için en az %'+pct+' gerçek kazanma oranı gerekir. Kazanma oranı yüksek görünse bile, kayıplar kazançlardan büyük olur — dikkatli değerlendirin.',
-  teach_title:'🎓 MANUEL ÖĞRETİM (kalıp hafızası)',
-  teachHint:"Gördüğünüz bir setup'ı (yön + koşullar + sonuç) girin. Aynı koşul kombinasyonu birkaç kez başarılı olursa sistem bunu otomatik olarak kendi strateji hafızasına ekler.",
-  teachBuy:'AL (BUY)', teachSell:'SAT (SELL)', teachSupport:'Destekte', teachResistance:'Dirençte', teachNoZone:'Bölge Yok',
-  teachOversold:'RSI Aşırı Satım', teachNeutralRsi:'RSI Nötr', teachOverbought:'RSI Aşırı Alım',
-  teachNoFib:'Fib Yok', teachFibShallow:'Fib 0-38.2', teachFibGolden:'Fib 50-61.8 (Altın)', teachFibDeep:'Fib 78.6+',
-  teachSuccess:'✓ Başarılı Oldu', teachFail:'✗ Başarısız Oldu', teachAdd:'+ KAYDET', teachShowLearned:'Öğrenilenler',
-  teachSaved:'Kaydedildi.', teachLearnedEmpty:'Henüz öğrenilmiş bir kalıp yok — aynı koşul kombinasyonu en az 3 kez başarılı (başarısızlığın en az 2 katı) olursa burada görünecek.',
-  teachLearnedTitle:(n)=>n+' öğrenilmiş kalıp:',
-  teachPatternDesc:(dir,zone,rsi,fib,pattern)=>(dir>0?'AL':'SAT')+' · '+zone+' · '+rsi+' · '+fib+' · '+pattern,
-  teachStrategyLabel:(desc)=>'Öğrenilen Kalıp: '+desc,
-  zoneSupport:'Destekte', zoneResistance:'Dirençte', zoneNone:'Bölge Yok',
-  rsiOversold:'RSI Aşırı Satım', rsiNeutral:'RSI Nötr', rsiOverbought:'RSI Aşırı Alım',
-  fibNone:'Fib Yok', fibShallow:'Fib 0-38.2', fibGolden:'Fib 50-61.8', fibDeep:'Fib 78.6+', patternNone:'Mum Yok',
+  stratLive_title:'📊 GERÇEK STRATEJİ PERFORMANSI (canlı takip)', stratLiveBadge:(n)=>n+' işlem',
+  stratLiveHint:'Bu terminalin ürettiği ve TP/SL\'ye ulaştığı GERÇEK sinyallerden — hangi strateji burada gerçekten kazandırdı/kaybettirdi, kalıcı olarak hatırlanır. En az 3 işlem birikmeden gösterilmez.',
+  stratLiveEmpty:'Henüz sonuçlanan sinyal yok — TP veya SL\'ye ulaşan ilk sinyalden itibaren burada birikmeye başlayacak.',
   newsNoEvents:'Önümüzdeki günler için orta/yüksek etkili planlı haber bulunamadı.', newsNoTemplate:'Bu veri tipi için hazır senaryo şablonu yok — rakamları kendi analizinize göre değerlendirin.',
   newsSame:'Sonuç beklentiyle aynı geldi — belirgin bir yön sinyali yok.',
   newsBeat:'aştı', newsMiss:'ıskaladı', newsHigh:'YÜKSEK', newsMed:'ORTA',
@@ -610,6 +611,25 @@ const I18N = {
   noLastSignal:'Henüz bu seviyede sinyal verilmedi.',
   lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RİSK YÖNETİCİSİ', risk_balance:'Bakiye ($)', risk_daily:'Günlük Kayıp Limiti (%)',
+  mt5_bridge_title:'🔌 MT5 KÖPRÜSÜ (manuel onaylı)',
+  mt5BridgeHint:'Diğer bilgisayarınızda valens_mt5_executor.py çalışıyorsa buraya bağlanın. Otomatik gönderim YOK — her KESİN İŞLEM\'de burada bir "Gönder" butonu belirir, siz onaylamadan hiçbir emir MT5\'e gitmez.',
+  mt5BridgeToggleOff:'🔌 Bağlan', mt5BridgeToggleOn:'⏸ Bağlantıyı Kes',
+  mt5BridgeBadgeOn:'BAĞLI', mt5BridgeBadgeOff:'BAĞLI DEĞİL',
+  mt5BridgeNoUrl:'⚠ Önce köprü adresini girin (ör. http://192.168.1.23:8899).',
+  mt5BridgeConnectedNote:'Köprüye bağlanıldı — KESİN İŞLEM oluştuğunda gönder butonu aktif olacak.',
+  mt5BridgeStoppedNote:'Bağlantı kesildi.',
+  mt5BridgeUnreachable:'⚠ Köprüye ulaşılamıyor — adresi, ağı ve valens_mt5_executor.py\'nin çalıştığını kontrol edin (https sayfadan http köprüye bağlanmak tarayıcı tarafından engellenmiş olabilir).',
+  mt5BridgeExecuted:'✓ Gönderildi, MT5\'te işlem açıldı.',
+  mt5BridgeSkipped:(reason)=>'Köprüye ulaştı ama işlem AÇILMADI (sebep: '+reason+').',
+  mt5LotLabel:'Gönderilecek lot', mt5SendBtnLabel:'⚡ Bu Sinyali MT5\'e Gönder (Onayla)', mt5SendBtnSending:'Gönderiliyor…', mt5SendBtnSent:'✓ Gönderildi (bu sinyal için)',
+  challenge_title:'🎯 CHALLENGE MODU', challengeBadgeBase:(n)=>'Trade #'+n,
+  challengeHint:'Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge\'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).',
+  challengeStartBal:'Başlangıç ($)', challengeTargetBal:'Hedef ($)', challengeGrowth:'İşlem Başı Büyüme (%)', challengeMove:'Hedef Hareket ($)',
+  challengeWinBtn:'✓ Bu İşlem Kazandı', challengeLossBtn:'✗ Bu İşlem Kaybetti', challengeResetBtn:'🔄 Yeniden Başlat (Trade #1)',
+  challengeBodyLine:(n,bal,nextBal,profit,lot,move)=>'Trade <b>#'+n+'</b> · Mevcut bakiye: <b>$'+bal+'</b><br>Sıradaki hedef: $'+nextBal+' (+$'+profit+') · Önerilen lot: <b style="color:var(--gold)">'+lot+'</b> ('+move+'$ hareket varsayımıyla — gerçek hareket farklı olursa lotu siz ayarlayın)',
+  challengeReachedLine:(n,bal)=>'🏆 HEDEFE ULAŞILDI — Trade #'+n+'\'de $'+bal+'! Devam etmek isterseniz hedefi yükseltip resetleyin.',
+  challengeFailedMsg:(n,bal)=>'✗ Challenge Trade #'+n+'\'de $'+bal+' bakiyede DURDU (kayıp). İlerleme dondu — yeniden başlatana kadar öneri güncellenmez.',
+  challengeDayNote:(done,cap)=>done+'/'+cap+' bugün tamamlandı'+(done>=cap?' — disiplin için yarın devam etmeniz önerilir (istersen devam edebilirsin, engellenmiyor).':'.'),
   confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
@@ -705,19 +725,9 @@ const I18N = {
   manualNewsRemove:'Remove', manualClearConfirm:'Remove all manually added news?',
   cotLong:'Long', cotShort:'Short', cotSourceNote:'Source: CFTC Legacy COT · each Tuesday cut is published Friday.',
   tightTpWarning:(pct)=>'⚠ Tight-target / wide-stop shape (matching the ratio observed in the video source): target is smaller than stop, so breakeven requires at least '+pct+'% real win rate. Even with a high-looking win rate, losses are bigger than wins — weigh this carefully.',
-  teach_title:'🎓 MANUAL TEACHING (pattern memory)',
-  teachHint:'Log a setup you saw (direction + conditions + outcome). If the same combination of conditions succeeds a few times, the system automatically adds it to its own strategy memory.',
-  teachBuy:'BUY', teachSell:'SELL', teachSupport:'At Support', teachResistance:'At Resistance', teachNoZone:'No Zone',
-  teachOversold:'RSI Oversold', teachNeutralRsi:'RSI Neutral', teachOverbought:'RSI Overbought',
-  teachNoFib:'No Fib', teachFibShallow:'Fib 0-38.2', teachFibGolden:'Fib 50-61.8 (Golden)', teachFibDeep:'Fib 78.6+',
-  teachSuccess:'✓ Succeeded', teachFail:'✗ Failed', teachAdd:'+ SAVE', teachShowLearned:'Learned',
-  teachSaved:'Saved.', teachLearnedEmpty:'No learned pattern yet — once the same condition combination succeeds at least 3 times (at least 2x more than it fails), it will appear here.',
-  teachLearnedTitle:(n)=>n+' learned pattern(s):',
-  teachPatternDesc:(dir,zone,rsi,fib,pattern)=>(dir>0?'BUY':'SELL')+' · '+zone+' · '+rsi+' · '+fib+' · '+pattern,
-  teachStrategyLabel:(desc)=>'Learned Pattern: '+desc,
-  zoneSupport:'At Support', zoneResistance:'At Resistance', zoneNone:'No Zone',
-  rsiOversold:'RSI Oversold', rsiNeutral:'RSI Neutral', rsiOverbought:'RSI Overbought',
-  fibNone:'No Fib', fibShallow:'Fib 0-38.2', fibGolden:'Fib 50-61.8', fibDeep:'Fib 78.6+', patternNone:'No Candle',
+  stratLive_title:'📊 REAL STRATEGY PERFORMANCE (live tracked)', stratLiveBadge:(n)=>n+' trades',
+  stratLiveHint:'From this terminal\'s own REAL signals that reached TP or SL — which strategy actually won/lost here is remembered permanently. Not shown until at least 3 trades accumulate.',
+  stratLiveEmpty:'No resolved signals yet — this fills in starting from the first signal that hits TP or SL.',
   newsNoEvents:'No medium/high-impact scheduled news found for the coming days.', newsNoTemplate:'No ready-made scenario template for this data type — evaluate the raw numbers yourself.',
   newsSame:'Result matched expectations — no clear directional signal.',
   newsBeat:'beat', newsMiss:'missed', newsHigh:'HIGH', newsMed:'MEDIUM',
@@ -786,6 +796,25 @@ const I18N = {
   noLastSignal:'No signal has been given at this level yet.',
   lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RISK GOVERNOR', risk_balance:'Balance ($)', risk_daily:'Daily Loss Limit (%)',
+  mt5_bridge_title:'🔌 MT5 BRIDGE (manual confirm)',
+  mt5BridgeHint:"If valens_mt5_executor.py is running on your other PC, connect here. No auto-send — every CONFIRMED TRADE shows a Send button here, nothing reaches MT5 until you approve it.",
+  mt5BridgeToggleOff:'🔌 Connect', mt5BridgeToggleOn:'⏸ Disconnect',
+  mt5BridgeBadgeOn:'CONNECTED', mt5BridgeBadgeOff:'NOT CONNECTED',
+  mt5BridgeNoUrl:'⚠ Enter the bridge address first (e.g. http://192.168.1.23:8899).',
+  mt5BridgeConnectedNote:'Connected to bridge — the send button will activate when a CONFIRMED TRADE fires.',
+  mt5BridgeStoppedNote:'Disconnected.',
+  mt5BridgeUnreachable:"⚠ Can't reach the bridge — check the address, network, and that valens_mt5_executor.py is running (an https page reaching a plain http bridge may be blocked by the browser).",
+  mt5BridgeExecuted:'✓ Sent, trade opened in MT5.',
+  mt5BridgeSkipped:(reason)=>'Reached the bridge but no trade was opened (reason: '+reason+').',
+  mt5LotLabel:'Lot to send', mt5SendBtnLabel:'⚡ Send This Signal to MT5 (Confirm)', mt5SendBtnSending:'Sending…', mt5SendBtnSent:'✓ Sent (for this signal)',
+  challenge_title:'🎯 CHALLENGE MODE', challengeBadgeBase:(n)=>'Trade #'+n,
+  challengeHint:"After each winning trade the balance compounds by the target growth %, and a lot size is suggested from that. ⚠ This model assumes an UNBROKEN win streak — real markets don't guarantee that. A single loss STOPS the challenge (it does not auto-reset — that's your call).",
+  challengeStartBal:'Start ($)', challengeTargetBal:'Target ($)', challengeGrowth:'Growth Per Trade (%)', challengeMove:'Target Move ($)',
+  challengeWinBtn:'✓ This Trade Won', challengeLossBtn:'✗ This Trade Lost', challengeResetBtn:'🔄 Restart (Trade #1)',
+  challengeBodyLine:(n,bal,nextBal,profit,lot,move)=>'Trade <b>#'+n+'</b> · Current balance: <b>$'+bal+'</b><br>Next target: $'+nextBal+' (+$'+profit+') · Suggested lot: <b style="color:var(--gold)">'+lot+'</b> (assumes a $'+move+' move — adjust the lot yourself if the real move differs)',
+  challengeReachedLine:(n,bal)=>'🏆 TARGET REACHED — $'+bal+' at Trade #'+n+'! Raise the target and reset if you want to keep going.',
+  challengeFailedMsg:(n,bal)=>'✗ Challenge STOPPED at Trade #'+n+', $'+bal+' balance (loss). Progress is frozen until you restart.',
+  challengeDayNote:(done,cap)=>done+'/'+cap+' completed today'+(done>=cap?' — for discipline, consider continuing tomorrow (not blocked, your call).':'.'),
   confSourceBacktest:'Confidence adjusted using historical backtest results',
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
@@ -1082,12 +1111,12 @@ const TRADE_STORE_PREFIX='valens_trades_';
 function getTradeKey(sym){return TRADE_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
 function loadTradeStore(sym){try{const raw=localStorage.getItem(getTradeKey(sym));if(!raw)return{trades:[]};return JSON.parse(raw);}catch(e){return{trades:[]};}}
 function saveTradeStore(sym,store){try{localStorage.setItem(getTradeKey(sym),JSON.stringify(store));}catch(e){}}
-function logArmedTrade(sym,dir,entry,tp,sl){
+function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel){
   const store=loadTradeStore(sym);
   store.trades=store.trades||[];
   const openTrade=store.trades.find(t=>!t.resolved);
   if(openTrade)return; // aynı anda tek açık takip — üst üste her tick'te yeni kayıt açılmaz
-  store.trades.push({ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null});
+  store.trades.push({ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null});
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveTradeStore(sym,store);
 }
@@ -1243,6 +1272,153 @@ function updateRiskUI(){
   );
 }
 
+// ============ CHALLENGE MODU: $50→$50.000 tarzı bileşik lot ilerleme takibi ============
+// Kullanıcı isteği: elindeki örnek tabloyu (sabit büyüme %, sabit hedef hareket $) birebir üretecek
+// şekilde. Bilerek OTOMATİK DEĞİL: her işlemin sonucunu (kazandı/kaybetti) kullanıcı kendi gerçek
+// MT5 hesabına bakıp burada işaretliyor — bu terminalin gerçek MT5 kapanış sonucunu geri okuyan bir
+// bağlantısı yok, o yüzden uydurma/otomatik ilerleme YAPILMAZ. Kayıpta ilerleme DONAR (elle reset
+// gerekir) — art arda büyüyen lotla kayıp sonrası "aynı hedefe devam" felakete açık kapı bırakır.
+const CHALLENGE_KEY='valens_challenge';
+function loadChallenge(){
+  const def={startBalance:50, targetBalance:50000, growthPct:20, moveUsd:2.0, tradeNum:1, currentBalance:50, failedAt:null, dailyCap:3, winLog:[]};
+  try{ const raw=localStorage.getItem(CHALLENGE_KEY); if(raw) return Object.assign({}, def, JSON.parse(raw)); }catch(e){}
+  return def;
+}
+function saveChallenge(s){ try{ localStorage.setItem(CHALLENGE_KEY, JSON.stringify(s)); }catch(e){} }
+function challengeTodayCount(s){
+  const todayStr=new Date().toISOString().slice(0,10);
+  return (s.winLog||[]).filter(ts=>new Date(ts).toISOString().slice(0,10)===todayStr).length;
+}
+function challengeSuggestedLot(s){
+  const profitTarget=s.currentBalance*(s.growthPct/100);
+  const cs=(SYMS['OANDA:XAUUSD']||{}).contractSize||100;
+  const move=parseFloat(s.moveUsd)||2.0;
+  return {profitTarget, lot: move>0 ? profitTarget/(move*cs) : 0};
+}
+function renderChallengePanel(){
+  const body=document.getElementById('challengeBody'), badge=document.getElementById('challengeBadge');
+  const bar=document.getElementById('challengeBar'), dayNote=document.getElementById('challengeDayNote');
+  const activeC=document.getElementById('challengeActiveControls'), failedC=document.getElementById('challengeFailedControls');
+  if(!body) return;
+  const s=loadChallenge();
+  // Formdaki değerleri (kullanıcı değiştirmiş olabilir) state'e yansıt — ama tradeNum/currentBalance/failedAt/winLog KORUNUR.
+  const startEl=document.getElementById('chStart'), targetEl=document.getElementById('chTarget'), growthEl=document.getElementById('chGrowth'), moveEl=document.getElementById('chMove');
+  if(startEl && document.activeElement!==startEl) startEl.value=s.startBalance;
+  if(targetEl && document.activeElement!==targetEl) targetEl.value=s.targetBalance;
+  if(growthEl && document.activeElement!==growthEl) growthEl.value=s.growthPct;
+  if(moveEl && document.activeElement!==moveEl) moveEl.value=s.moveUsd;
+  if(badge) badge.textContent=t('challengeBadgeBase')(s.tradeNum);
+  const pctDone=Math.max(0,Math.min(100,(s.currentBalance-s.startBalance)/(s.targetBalance-s.startBalance)*100));
+  if(bar) bar.style.width=pctDone+'%';
+  if(dayNote) dayNote.textContent=t('challengeDayNote')(challengeTodayCount(s), s.dailyCap);
+  if(s.failedAt){
+    activeC.style.display='none'; failedC.style.display='block';
+    document.getElementById('challengeFailedMsg').textContent=t('challengeFailedMsg')(s.tradeNum, s.currentBalance.toFixed(2));
+    body.innerHTML=t('challengeBodyLine')(s.tradeNum, s.currentBalance.toFixed(2), '—','—','—',s.moveUsd);
+    return;
+  }
+  activeC.style.display='flex'; failedC.style.display='none';
+  if(s.currentBalance>=s.targetBalance){
+    body.innerHTML=t('challengeReachedLine')(s.tradeNum, s.currentBalance.toFixed(2));
+    activeC.style.display='none';
+    return;
+  }
+  const {profitTarget, lot}=challengeSuggestedLot(s);
+  const nextBal=s.currentBalance+profitTarget;
+  body.innerHTML=t('challengeBodyLine')(s.tradeNum, s.currentBalance.toFixed(2), nextBal.toFixed(2), profitTarget.toFixed(2), lot.toFixed(2), s.moveUsd);
+  const mt5LotEl=document.getElementById('mt5SendLot');
+  if(mt5LotEl && document.activeElement!==mt5LotEl) mt5LotEl.value=lot.toFixed(2);
+}
+(function wireChallengeForm(){
+  ['chStart','chTarget','chGrowth','chMove'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.addEventListener('change', ()=>{
+      const s=loadChallenge();
+      s.startBalance=parseFloat(document.getElementById('chStart').value)||s.startBalance;
+      s.targetBalance=parseFloat(document.getElementById('chTarget').value)||s.targetBalance;
+      s.growthPct=parseFloat(document.getElementById('chGrowth').value)||s.growthPct;
+      s.moveUsd=parseFloat(document.getElementById('chMove').value)||s.moveUsd;
+      // Hiç işlem yapılmamışsa (hâlâ trade #1, başlangıç bakiyesinde) başlangıç değişince mevcut bakiyeyi de eşitle.
+      if(s.tradeNum===1 && !s.failedAt) s.currentBalance=s.startBalance;
+      saveChallenge(s); renderChallengePanel();
+    });
+  });
+  const winBtn=document.getElementById('chWinBtn'), lossBtn=document.getElementById('chLossBtn'), resetBtn=document.getElementById('chResetBtn');
+  if(winBtn) winBtn.addEventListener('click', ()=>{
+    const s=loadChallenge();
+    if(s.failedAt || s.currentBalance>=s.targetBalance) return;
+    const {profitTarget}=challengeSuggestedLot(s);
+    s.currentBalance=s.currentBalance+profitTarget; s.tradeNum++;
+    s.winLog=(s.winLog||[]); s.winLog.push(Date.now()); if(s.winLog.length>2000) s.winLog=s.winLog.slice(-2000);
+    saveChallenge(s); renderChallengePanel();
+  });
+  if(lossBtn) lossBtn.addEventListener('click', ()=>{
+    const s=loadChallenge();
+    if(s.failedAt) return;
+    s.failedAt=Date.now();
+    saveChallenge(s); renderChallengePanel();
+  });
+  if(resetBtn) resetBtn.addEventListener('click', ()=>{
+    const s=loadChallenge();
+    s.tradeNum=1; s.currentBalance=s.startBalance; s.failedAt=null; s.winLog=[];
+    saveChallenge(s); renderChallengePanel();
+  });
+  renderChallengePanel();
+})();
+
+// ============ MT5 KÖPRÜSÜ — MANUEL ONAYLI ============
+// Kullanıcı "MT5'i tamamen kaldır" demişti, şimdi "diğer bilgisayardaki köprüye bağlanabileceğim bir
+// alan" istiyor — bilerek OTOMATİK DEĞİL: bağlantı sadece durum okur, GÖNDERME sadece kullanıcı
+// "Gönder" butonuna bastığında olur. Adres artık sabit 127.0.0.1 değil, kullanıcı girer (başka bir
+// PC'deki köprüye bağlanabilmek için).
+window.valensMT5Connected=false;
+function mt5Url(){ const el=document.getElementById('mt5BridgeUrl'); const v=(el&&el.value||'').trim().replace(/\/$/,''); return v; }
+function updateMT5UIConnected(connected){
+  window.valensMT5Connected=connected;
+  const btn=document.getElementById('mt5BridgeToggle'), badge=document.getElementById('mt5BridgeBadge'), status=document.getElementById('mt5BridgeStatus'), sendArea=document.getElementById('mt5SendArea');
+  if(btn) btn.textContent = connected ? t('mt5BridgeToggleOn') : t('mt5BridgeToggleOff');
+  if(badge){ badge.textContent = connected ? t('mt5BridgeBadgeOn') : t('mt5BridgeBadgeOff'); badge.style.color = connected ? 'var(--green)' : 'var(--muted)'; }
+  if(status) status.textContent = connected ? t('mt5BridgeConnectedNote') : t('mt5BridgeStoppedNote');
+  if(sendArea) sendArea.style.display = connected ? 'block' : 'none';
+}
+(function wireMT5Bridge(){
+  const toggleBtn=document.getElementById('mt5BridgeToggle'), sendBtn=document.getElementById('mt5SendBtn');
+  if(!toggleBtn) return;
+  try{ const savedUrl=localStorage.getItem('valens_mt5_url'); if(savedUrl) document.getElementById('mt5BridgeUrl').value=savedUrl; }catch(e){}
+  toggleBtn.addEventListener('click', ()=>{
+    if(window.valensMT5Connected){ updateMT5UIConnected(false); return; }
+    const url=mt5Url();
+    const status=document.getElementById('mt5BridgeStatus');
+    if(!url){ if(status) status.textContent=t('mt5BridgeNoUrl'); return; }
+    try{ localStorage.setItem('valens_mt5_url', url); }catch(e){}
+    if(status) status.textContent='…';
+    fetch(url+'/status', {method:'GET'}).then(r=>r.json()).then(()=>{
+      updateMT5UIConnected(true);
+    }).catch(()=>{
+      updateMT5UIConnected(false);
+      if(status) status.textContent=t('mt5BridgeUnreachable');
+    });
+  });
+  if(sendBtn) sendBtn.addEventListener('click', ()=>{
+    const url=mt5Url(); if(!url || !window.valensMT5Connected) return;
+    const sig=window.valensPendingSignal; if(!sig) return;
+    const lot=parseFloat(document.getElementById('mt5SendLot').value)||0;
+    const status=document.getElementById('mt5BridgeStatus');
+    sendBtn.disabled=true; sendBtn.textContent=t('mt5SendBtnSending');
+    fetch(url+'/signal', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({dir:sig.dir, entry:sig.entry, stop:sig.stop, tp:sig.tp, confidence:sig.confidence, label:sig.label, lot, signal_id:sig.sigId})
+    }).then(r=>r.json()).then(res=>{
+      if(status) status.textContent = res.executed ? t('mt5BridgeExecuted') : t('mt5BridgeSkipped')(res.reason||'?');
+      window.valensLastSentSigId=sig.sigId;
+      sendBtn.textContent=t('mt5SendBtnSent');
+    }).catch(()=>{
+      if(status) status.textContent=t('mt5BridgeUnreachable');
+      sendBtn.disabled=false; sendBtn.textContent=t('mt5SendBtnLabel');
+    });
+  });
+})();
+
 // ============ SİNYAL KAR/ZARAR GÜNLÜĞÜ ============
 // Bot her "armed" (net BUY/SELL) sinyal verdiğinde o anki grafikten aldığı gerçek giriş/TP/SL
 // zaten logArmedTrade() ile kaydediliyor; updateTradeOutcomes() her tick'te fiyatın TP'ye mi SL'ye mi
@@ -1275,103 +1451,48 @@ function updateTradeLogUI(){
     const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
     const hitPx = win?tr.tp:tr.sl;
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
-      '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+
+      '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+(tr.stratLabel?' <span style="color:var(--muted)">· '+tr.stratLabel+'</span>':'')+
       '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span></div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
   }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
+  renderStrategyLivePanel(trades);
+  if(typeof renderChallengePanel==='function') renderChallengePanel();
 }
-
-// ============ MANUEL ÖĞRETİM: KULLANICI KAYITLARINDAN GERÇEK KALIP ÇIKARIMI ============
-// Bu "kara kutu" bir yapay zeka DEĞİLDİR — şeffaf bir kural türetme sistemidir: kullanıcı bir setup'ı
-// (yön + gerçek, zaten hesaplanan koşullar: bölge/RSI durumu/Fib bölgesi/mum formasyonu) ve sonucunu
-// (başarılı/başarısız) girer. AYNI koşul kombinasyonu yeterince (3+) başarılı olursa, sistem bunu
-// gelecekte KENDİ bağımsız aday stratejisi olarak tanır (diğer 13 kalıp gibi).
-const TEACH_KEY='valens_manual_teach';
-function loadManualTeach(){ try{ const raw=localStorage.getItem(TEACH_KEY); return raw?JSON.parse(raw):[]; }catch(e){ return []; } }
-function saveManualTeach(arr){ try{ localStorage.setItem(TEACH_KEY, JSON.stringify(arr)); }catch(e){} }
-function comboKey(e){ return [e.dir,e.zone,e.rsi,e.fib,e.pattern].join('|'); }
-function getLearnedPatterns(){
-  const entries=loadManualTeach();
+// ============ GERÇEK STRATEJİ PERFORMANSI — CANLI TAKİP (MT5'siz, sadece bu terminalin ürettiği
+// ve TP/SL'ye ulaştığı GERÇEK sinyallerden) ============ Kullanıcı isteği: "hangi strateji nerede
+// çalışmış unutmasın". logArmedTrade() artık kazanan stratejinin key/label'ını da kaydediyor;
+// burada sembol bağımsız, strateji bazlı toplanıyor — localStorage'da kalıcı, tarayıcı/sekme
+// kapansa da (aynı cihaz/tarayıcıda) kaybolmaz.
+function getStrategyLiveStats(trades){
   const groups={};
-  entries.forEach(e=>{
-    const k=comboKey(e);
-    if(!groups[k]) groups[k]={dir:e.dir, zone:e.zone, rsi:e.rsi, fib:e.fib, pattern:e.pattern, success:0, fail:0};
-    if(e.outcome==='success') groups[k].success++; else groups[k].fail++;
+  trades.forEach(tr=>{
+    if(!tr.stratKey) return; // bu güncellemeden ÖNCE kaydedilmiş eski işlemler — strateji bilgisi yok, sayılmaz
+    if(!groups[tr.stratKey]) groups[tr.stratKey]={label:tr.stratLabel||tr.stratKey, trades:0, wins:0, netUsd:0};
+    const g=groups[tr.stratKey];
+    g.trades++; if(tr.outcome==='win') g.wins++; g.netUsd+=tr.usd;
   });
-  return Object.values(groups).filter(g=>g.success>=3 && g.success>=g.fail*2);
+  return groups;
 }
-function patternDescLabel(g){
-  const zoneLbl={support:t('zoneSupport'),resistance:t('zoneResistance'),none:t('zoneNone')}[g.zone]||g.zone;
-  const rsiLbl={oversold:t('rsiOversold'),neutral:t('rsiNeutral'),overbought:t('rsiOverbought')}[g.rsi]||g.rsi;
-  const fibLbl={none:t('fibNone'),shallow:t('fibShallow'),golden:t('fibGolden'),deep:t('fibDeep')}[g.fib]||g.fib;
-  const patLbl = g.pattern==='none' ? t('patternNone') : g.pattern;
-  return t('teachPatternDesc')(g.dir, zoneLbl, rsiLbl, fibLbl, patLbl);
+function renderStrategyLivePanel(trades){
+  const el=document.getElementById('stratLiveBody'), badge=document.getElementById('stratLiveBadge');
+  if(!el) return;
+  const withStrat=trades.filter(tr=>tr.stratKey);
+  if(badge) badge.textContent=t('stratLiveBadge')(withStrat.length);
+  const groups=getStrategyLiveStats(trades);
+  const entries=Object.entries(groups).filter(([,g])=>g.trades>=3).sort((a,b)=>(b[1].wins/b[1].trades)-(a[1].wins/a[1].trades));
+  if(!entries.length){ el.innerHTML='<p style="color:var(--muted);font-size:8px">'+t('stratLiveEmpty')+'</p>'; return; }
+  el.innerHTML=entries.map(([,g])=>{
+    const pct=Math.round((g.wins/g.trades)*100), col=pct>=50?'var(--green)':'var(--red)';
+    const dotClass=pct>=55?'on':pct>=40?'mid':'off';
+    const profitColor=g.netUsd>=0?'var(--green)':'var(--red)';
+    return '<div style="padding:3px 0;border-bottom:1px solid var(--line)">'+
+      '<div style="display:flex;justify-content:space-between;font-size:8px">'+
+      '<span><span class="statusdot '+dotClass+'"></span>'+g.label+'</span>'+
+      '<span>%'+pct+' ('+g.wins+'/'+g.trades+') <b style="color:'+profitColor+'">'+(g.netUsd>=0?'+$':'-$')+Math.round(Math.abs(g.netUsd)).toLocaleString('en-US')+'</b></span>'+
+      '</div></div>';
+  }).join('');
 }
-// Şu anki piyasa durumunu, öğretim formundakiyle AYNI kovalarla (bucket) etiketler — eşleştirme
-// bu yüzden mekanik ve dürüsttür (metin ayrıştırma değil, aynı gerçek sayılardan gelir).
-function currentConditionBuckets(rsi, cr){
-  const rsiB = rsi<30?'oversold':rsi>70?'overbought':'neutral';
-  const zoneB = (typeof cr.srBias==='number' && cr.srBias>0.3)?'support':(typeof cr.srBias==='number' && cr.srBias<-0.3)?'resistance':'none';
-  const fibB = cr.fibZone || 'none';
-  const patB = cr.patternName || 'none';
-  return {rsi:rsiB, zone:zoneB, fib:fibB, pattern:patB};
-}
-function detectLearnedPatternMatches(rsi, cr){
-  const learned=getLearnedPatterns();
-  if(!learned.length) return [];
-  const cur=currentConditionBuckets(rsi, cr);
-  const matches=[];
-  learned.forEach((g,idx)=>{
-    if(g.zone===cur.zone && g.rsi===cur.rsi && g.fib===cur.fib && g.pattern===cur.pattern && (g.zone!=='none'||g.rsi!=='neutral'||g.fib!=='none'||g.pattern!=='none')){
-      matches.push({key:'learned_'+idx, dir:g.dir, label:t('teachStrategyLabel')(patternDescLabel(g)), successRate:g.success/(g.success+g.fail)});
-    }
-  });
-  return matches;
-}
-function updateTeachUI(){
-  const badge=document.getElementById('teachBadge');
-  if(badge) badge.textContent=getLearnedPatterns().length+'';
-}
-function renderLearnedPatternsBox(){
-  const box=document.getElementById('learnedPatternsBox'); if(!box) return;
-  const learned=getLearnedPatterns();
-  if(!learned.length){ box.innerHTML='<p style="color:var(--muted);padding:6px 0">'+t('teachLearnedEmpty')+'</p>'; return; }
-  let html='<p style="color:var(--gold);padding:4px 0">'+t('teachLearnedTitle')(learned.length)+'</p>';
-  learned.forEach(g=>{
-   html+='<div style="padding:4px 0;border-bottom:1px solid var(--line);color:var(--text)">'+
-    (g.dir>0?'<span style="color:var(--green)">▲</span>':'<span style="color:var(--red)">▼</span>')+' '+patternDescLabel(g)+
-    ' <span style="color:var(--muted)">('+g.success+'✓/'+g.fail+'✗)</span></div>';
-  });
-  box.innerHTML=html;
-}
-(function wireTeachForm(){
- const addBtn=document.getElementById('tAdd'), showBtn=document.getElementById('tShowLearned');
- if(!addBtn) return;
- addBtn.addEventListener('click', ()=>{
-  const entry={
-   dir: parseInt(document.getElementById('tDir').value,10),
-   zone: document.getElementById('tZone').value,
-   rsi: document.getElementById('tRsi').value,
-   fib: document.getElementById('tFib').value,
-   pattern: document.getElementById('tPattern').value,
-   outcome: document.getElementById('tOutcome').value,
-   note: document.getElementById('tNote').value||'',
-   ts: Date.now(), sym: CUR
-  };
-  const arr=loadManualTeach(); arr.push(entry); saveManualTeach(arr);
-  document.getElementById('tNote').value='';
-  updateTeachUI(); renderLearnedPatternsBox();
-  alert(t('teachSaved'));
- });
- if(showBtn) showBtn.addEventListener('click', ()=>{
-  const box=document.getElementById('learnedPatternsBox');
-  const showing = box.style.display!=='none';
-  box.style.display = showing?'none':'block';
-  if(!showing) renderLearnedPatternsBox();
- });
- updateTeachUI();
-})();
 
 function marketClosedUI(){
  const cfg=SYMS[CUR];
@@ -1581,12 +1702,6 @@ function botTick(){
    source = 'backtest';
   }
   candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family});
- });
- // Kullanıcının manuel öğrettiği ve yeterince (3+, başarısızlığın 2 katı) başarılı olmuş kalıplar —
- // güven, o kalıbın GERÇEK izlenen başarı oranına göre ölçeklenir (uydurma değil).
- (typeof detectLearnedPatternMatches==='function' ? detectLearnedPatternMatches(rsi, cr) : []).forEach(m=>{
-  const confidence=Math.min(97, Math.round(65 + m.successRate*30 + confirmBoost(m.dir)*0.5));
-  candidates.push({key:m.key, dir:m.dir, confidence, label:m.label});
  });
 
  let best=null;
@@ -1847,14 +1962,28 @@ function botTick(){
      document.getElementById('megaAlertBody').textContent=t('megaAlertBodyRange')(fmt(scEntryPx),fmt(scStopPx),fmt(scTpPx),Math.round(scTpUsdMin).toLocaleString('en-US'),Math.round(scTpUsdMax).toLocaleString('en-US'),lotMin,lotMax);
    } else { alertBox.classList.remove('show'); }
 
-   logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx);
+   logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx, best?best.key:null, best?best.label:null);
    recordLastSignal(CUR,'scalp',rawDir,scEntryPx,scTpPx,scStopPx);
    recordLastSignal(CUR,'swing',rawDir,adjLast,swTpPx,swStopPx);
+   // ---- MT5 KÖPRÜSÜ (manuel onaylı): bekleyen sinyali güncelle, gönder butonunun durumunu ayarla.
+   // sigId SABİT mum zaman damgasına + kazanan stratejiye bağlı (dalgalanan fiyata değil) — aynı
+   // kurulum sürdüğü sürece aynı kalır, "aynı sinyali defalarca gönder" riskini önler.
+   const candleTimeForSig = cr.candleTime || Math.floor(Date.now()/1000);
+   const sigId = rawDir+'-'+(best?best.key:'none')+'-'+candleTimeForSig;
+   window.valensPendingSignal = {dir:rawDir, entry:scEntryPx, stop:scStopPx, tp:scTpPx, confidence:conf, label:(best?best.label:'?'), sigId};
+   const mt5SendBtn=document.getElementById('mt5SendBtn');
+   if(mt5SendBtn){
+    if(window.valensLastSentSigId===sigId){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5SendBtnSent'); }
+    else { mt5SendBtn.disabled=false; mt5SendBtn.textContent=t('mt5SendBtnLabel'); }
+   }
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
    scStatusEl.textContent = (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
+   window.valensPendingSignal = null;
+   const mt5SendBtnIdle=document.getElementById('mt5SendBtn');
+   if(mt5SendBtnIdle){ mt5SendBtnIdle.disabled=true; mt5SendBtnIdle.textContent=t('mt5SendBtnLabel'); }
  }
 
  updateTradeOutcomes(CUR, adjLast);
@@ -1993,7 +2122,6 @@ document.getElementById('langToggle').addEventListener('click', ()=>{
  botTick(); updateAggUI(); updateWinRateUI(); updateRiskUI(); updateTradeLogUI(); updateSessionBar();
  if(window.valensRenderCOT) window.valensRenderCOT(CUR);
  if(window.valensRenderNews) window.valensRenderNews();
- updateTeachUI(); renderLearnedPatternsBox();
  if(!isMarketOpen(CUR)) marketClosedUI();
 });
 
