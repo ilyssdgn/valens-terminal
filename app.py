@@ -1587,6 +1587,15 @@ function botTick(){
  const goldAdj = (CUR==='OANDA:XAUUSD') ? (window.valensGoldOffset||0) : 0;
  const adjLast = last + goldAdj;
 
+ // ---- ÖNCE açık işlemi çöz, SONRA yeni karar ver — SIRALAMA HATASI DÜZELTMESİ ----
+ // Gerçek kullanıcı örneği: %92 SELL stop oldu ve AYNI tick'te %91 BUY arm oldu, çünkü
+ // updateTradeOutcomes() (ve onun içindeki recordStopLoss()) eskiden bu fonksiyonun EN SONUNDA
+ // çalışıyordu — yani "STOP SONRASI SOĞUMA" kontrolü bu tick'te henüz kaydedilmemiş eski (soğuk)
+ // veriyle çalışıyordu, taze stop'u bir tick (3sn) GERİ kalarak görüyordu. Artık açık işlem varsa
+ // önce O çözülüyor (kaydı da dahil), sonra yeni aday/güven/soğuma hesaplanıyor — taze bir STOP
+ // aynı tick'te ters yöndeki yeni "KESİN İŞLEM"i gerçekten engelliyor.
+ updateTradeOutcomes(CUR, adjLast);
+
  // Haber yönü: gerçek zamanlı takvimden (bugün açıklanan, beklenti-vs-gerçekleşen) hesaplanan
  // bias varsa ONU kullan; yoksa (API anahtarı yoksa ya da bugün ilgili haber yoksa) elle
  // girilen sabit NEWS_BIAS'a düş.
@@ -2027,7 +2036,6 @@ function botTick(){
    if(mt5SendBtnIdle){ mt5SendBtnIdle.disabled=true; mt5SendBtnIdle.textContent=t('mt5SendBtnLabel'); }
  }
 
- updateTradeOutcomes(CUR, adjLast);
  updateWinRateUI();
  updateLastSignalUI();
  updateRiskUI();
