@@ -141,6 +141,12 @@ TERMINAL_HTML = r"""
  --green:#00c896;--red:#ff506d;--blue:#52a9ff;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+*{scrollbar-width:thin;scrollbar-color:rgba(212,175,55,.35) #07101c}
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-track{background:#07101c}
+*::-webkit-scrollbar-thumb{background:rgba(212,175,55,.35);border-radius:4px;border:1px solid #07101c}
+*::-webkit-scrollbar-thumb:hover{background:rgba(212,175,55,.6)}
+*::-webkit-scrollbar-corner{background:#07101c}
 html,body{height:100%;background:var(--navy);color:var(--text);font-family:Inter,sans-serif;overflow:hidden}
 #app{height:100vh;display:flex;flex-direction:column;background:var(--navy)}
 nav{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(180deg,#0b1729,#060c16);border-bottom:1px solid rgba(212,175,55,.28)}
@@ -164,6 +170,8 @@ nav{height:54px;display:flex;align-items:center;justify-content:space-between;pa
 .shell{min-height:0;flex:1;display:grid;grid-template-columns:270px minmax(540px,1fr) 310px;overflow:hidden}
 aside{background:var(--panel);min-height:0;overflow:auto}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line)}
 .ph{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;border-bottom:1px solid var(--line)}
+.panelcard{margin:9px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel2);box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.panelcard .ph{border-bottom:1px solid var(--line);background:rgba(212,175,55,.05)}
 .ph.collapsible{cursor:pointer;list-style:none;user-select:none}
 .ph.collapsible::-webkit-details-marker{display:none}
 .ph.collapsible::after{content:'▾';color:var(--muted);font-size:10px;margin-left:6px;transition:transform .15s}
@@ -180,16 +188,16 @@ details.panelgroup{border-bottom:none}
 .gauge small{font:8px 'IBM Plex Mono';color:var(--muted);letter-spacing:.3px}
 .ph b{font-size:10px;color:var(--gold);letter-spacing:1.2px}.badge{font:9px 'IBM Plex Mono';color:var(--gold);border:1px solid rgba(212,175,55,.3);padding:2px 6px;border-radius:9px}
 .simwarn{font:8px 'IBM Plex Mono';color:#ffb27a;padding:4px 12px;background:rgba(255,120,60,.08);border-bottom:1px solid var(--line)}
-.netdelta{margin:8px;padding:8px 10px;border-radius:5px;font:700 12px 'IBM Plex Mono';text-align:center;border:1px solid var(--line);background:var(--panel2);letter-spacing:.5px}
+.netdelta{margin:8px;padding:8px 10px;border-radius:7px;font:700 12px 'IBM Plex Mono';text-align:center;border:1px solid var(--line);background:var(--panel2);letter-spacing:.5px}
 .netdelta.buy{color:var(--green);border-color:rgba(0,200,150,.4);box-shadow:0 0 12px rgba(0,200,150,.1)}
 .netdelta.sell{color:var(--red);border-color:rgba(255,80,109,.4);box-shadow:0 0 12px rgba(255,80,109,.1)}
-.flow{margin:8px;padding:10px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:5px;background:var(--panel2);animation:fadein .5s ease}
+.flow{margin:8px;padding:10px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:7px;background:var(--panel2);animation:fadein .5s ease}
 @keyframes fadein{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 .flow.buy{border-left-color:var(--green)}.flow.sell{border-left-color:var(--red)}
 .flow h4{font-size:11px;display:flex;justify-content:space-between}.flow time{font-size:9px;color:var(--muted);font-weight:400}.flow .act{margin:6px 0 4px;font:700 11px 'IBM Plex Mono'}.flow p{font-size:9px;color:var(--muted);line-height:1.55}
 .center{min-width:0;display:flex;flex-direction:column;overflow:auto}
 .decision-desk{display:grid;grid-template-columns:1.22fr 1fr 1fr;gap:8px;padding:9px;background:#07101d;border-bottom:1px solid var(--line);flex-shrink:0}
-.signal-main,.tradecard{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:11px}
+.signal-main,.tradecard{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px;box-shadow:0 2px 10px rgba(0,0,0,.22)}
 .signal-main{border-color:rgba(212,175,55,.38);box-shadow:0 0 18px rgba(212,175,55,.08)}
 .kicker{font-size:9px;color:var(--gold);letter-spacing:1px;font-weight:700;display:flex;justify-content:space-between}
 .kicker em{font-style:normal;color:var(--green);font-size:8px}
@@ -232,18 +240,18 @@ iframe{height:100%;width:100%;border:0}
 .analysis .atitle{font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:700;margin-bottom:7px;display:flex;justify-content:space-between}
 .analysis .atitle em{font-style:normal;color:var(--green);font-size:8px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px;margin-bottom:9px}
-.stat{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:8px 9px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px 9px}
 .stat small{display:block;font-size:8px;color:var(--muted);letter-spacing:.5px}.stat b{font:600 12px 'IBM Plex Mono'}
 .analysis p{font-size:11px;color:var(--text);line-height:1.6;opacity:.9}
 .upcoming{padding:10px 12px;border-top:1px solid var(--line);background:#07101c}
 .upcoming .atitle{font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:700;margin-bottom:8px}
-.newsrow{display:flex;gap:9px;padding:8px;border:1px solid var(--line);border-radius:5px;background:var(--panel2);margin-bottom:7px}
+.newsrow{display:flex;gap:9px;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--panel2);margin-bottom:7px}
 .newsrow .tm{font:600 10px 'IBM Plex Mono';color:var(--gold);min-width:52px}
 .newsrow .body{flex:1}.newsrow .body b{font-size:11px}.imp{color:#ff8498;font-size:9px;margin-left:5px}
 .newsrow .body p{font-size:9px;color:var(--muted);line-height:1.5;margin-top:3px}
 .newsrow .exp{font-size:9px;color:var(--text);opacity:.85;margin-top:3px}
 .bottomnote{padding:7px 12px;background:#07101c;border-top:1px solid var(--line);font-size:9px;color:var(--muted)}
-.event{margin:10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);overflow:hidden}
+.event{margin:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);overflow:hidden}
 .eventtop{padding:9px 10px;display:flex;align-items:center;gap:6px;background:rgba(212,175,55,.06);border-bottom:1px solid var(--line)}.eventtop b{font-size:10.5px}.eventtop time{font-size:9px;color:var(--muted);margin-left:auto}
 .eventbody{padding:10px}.eventbody p{font-size:9.5px;color:var(--muted);line-height:1.55;margin-bottom:7px}.scenario{font-size:9.5px;padding:7px;border-left:3px solid;margin-top:6px;line-height:1.55}.bull{border-color:var(--green);background:rgba(0,200,150,.06)}.bear{border-color:var(--red);background:rgba(255,80,109,.06)}
 .megaalert{margin:0 9px 9px;padding:9px 12px;border-radius:6px;border:1px solid rgba(212,175,55,.5);background:linear-gradient(90deg,rgba(212,175,55,.14),rgba(0,200,150,.08));display:none;align-items:center;gap:10px;animation:alertpulse 1.1s infinite}
@@ -302,8 +310,9 @@ iframe{height:100%;width:100%;border:0}
           <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
         </div>
       </div>
+      <div class="panelcard">
       <div class="ph"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ (manuel onaylı)</b><span class="badge" id="mt5BridgeBadge">—</span></div>
-      <div style="padding:9px;border-bottom:1px solid var(--line)">
+      <div style="padding:9px">
         <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="mt5BridgeHint">Diğer bilgisayarınızda valens_mt5_executor.py çalışıyorsa buraya bağlanın. Otomatik gönderim YOK — her KESİN İŞLEM'de burada bir "Gönder" butonu belirir, siz onaylamadan hiçbir emir MT5'e gitmez. ⚠ Bu uygulama Streamlit Cloud gibi https bir adreste açıksa, sade http:// LAN adresine tarayıcı "mixed content" güvenliğiyle bağlanamayabilir — en güvenilir yöntem bu app.py'yi de o bilgisayarda/aynı ağda lokal çalıştırmaktır (streamlit run app.py).</div>
         <div style="display:flex;gap:6px;margin-bottom:7px">
           <input id="mt5BridgeUrl" type="text" placeholder="http://192.168.x.x:8899" style="flex:1;min-width:0;background:#07101c;border:1px solid var(--line);color:var(--text);padding:6px;border-radius:3px;font:9px 'IBM Plex Mono'">
@@ -317,8 +326,10 @@ iframe{height:100%;width:100%;border:0}
           <button id="mt5SendBtn" style="width:100%;padding:8px;background:var(--gold);color:#07101b;border:0;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="mt5SendBtnLabel">⚡ Bu Sinyali MT5'e Gönder (Onayla)</button>
         </div>
       </div>
+      </div>
+      <div class="panelcard">
       <div class="ph"><b data-i18n="challenge_title">🎯 CHALLENGE MODU</b><span class="badge" id="challengeBadge">—</span></div>
-      <div style="padding:9px;border-bottom:1px solid var(--line)">
+      <div style="padding:9px">
         <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="challengeHint">Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
           <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeStartBal">Başlangıç ($)</span><input id="chStart" type="number" step="10" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
@@ -338,15 +349,20 @@ iframe{height:100%;width:100%;border:0}
           <button id="chResetBtn" style="width:100%;background:transparent;color:var(--gold);border:1px solid var(--line);padding:7px;border-radius:4px;font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeResetBtn">🔄 Yeniden Başlat (Trade #1)</button>
         </div>
       </div>
+      </div>
+      <div class="panelcard">
       <div class="ph"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></div>
-      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
+      <div style="padding:8px 9px">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="backtestHint">Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR — sadece "bu kalıp bu grafikte geçmişte işe yaramış mı" sorusuna cevap verir.</div>
         <div id="backtestBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
+      </div>
+      <div class="panelcard">
       <div class="ph"><b data-i18n="stratLive_title">📊 GERÇEK STRATEJİ PERFORMANSI (canlı takip)</b><span class="badge" id="stratLiveBadge">—</span></div>
-      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
+      <div style="padding:8px 9px">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="stratLiveHint">Bu terminalin ürettiği ve TP/SL'ye ulaştığı GERÇEK sinyallerden — hangi strateji burada gerçekten kazandırdı/kaybettirdi, kalıcı olarak hatırlanır. En az 3 işlem birikmeden gösterilmez.</div>
         <div id="stratLiveBody"><p style="color:var(--muted);font-size:8px">—</p></div>
+      </div>
       </div>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
