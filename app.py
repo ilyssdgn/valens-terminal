@@ -644,6 +644,8 @@ const I18N = {
   riskWarnDetail:(pnl,pct)=>'⚠ Bugünkü kayıp günlük limitin %'+pct+'\'ine ulaştı ('+pnl+'$) — dikkatli olun.',
   riskBlockDetail:(pnl)=>'🛑 Bugünkü kayıp güvenlik eşiğini aştı ($'+pnl+') — yeni işlem ARANMIYOR. Yarın sıfırlanır.',
   riskBlockedStatus:'🛑 GÜNLÜK RİSK SINIRI — yeni sinyal durduruldu',
+  cooldownStatus:(min)=>'⏸ STOP SONRASI SOĞUMA — ters yön '+min+' dk daha bekletiliyor (whipsaw koruması)',
+  cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ Az önce ters yönde STOP oldu — sahte dönüş riskine karşı '+min+' dk daha bu yönde KESİN İŞLEM açılmayacak (aynı yönde devam serbest).</span>',
   anText: p => (p.totalVotes>0 ? ('Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor.') : ('Bot şu an '+p.label+' üzerinde net bir yön bulamıyor — göstergeler/stratejiler birbiriyle çelişiyor ya da hiçbiri belirgin değil (aşağıdaki kategori dökümüne bakın).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
    ', EMA 50/'+(p.emaGolden?'200 üzeri':'200 altı')+', ATR <b>'+p.atr+'</b> (volatilite), fiyat VWAP\'ın '+(p.vwapAbove?'üzerinde':'altında')+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR '+(p.psarUp?'yükseliş':'düşüş')+' yönünde. '+
@@ -818,6 +820,8 @@ const I18N = {
   riskWarnDetail:(pnl,pct)=>"⚠ Today's loss has reached "+pct+'% of the daily limit ($'+pnl+') — be careful.',
   riskBlockDetail:(pnl)=>"🛑 Today's loss has crossed the safety threshold ($"+pnl+') — no new trades are being armed. Resets tomorrow.',
   riskBlockedStatus:'🛑 DAILY RISK LIMIT — new signals paused',
+  cooldownStatus:(min)=>'⏸ POST-STOP COOLDOWN — opposite direction held for '+min+' more min (whipsaw guard)',
+  cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ This direction just got STOPPED OUT — to avoid a false reversal, no new CONFIRMED TRADE this direction for '+min+' more min (continuing the same direction is still allowed).</span>',
   anText: p => (p.totalVotes>0 ? ('The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score.') : ('The bot cannot find a clear direction for '+p.label+' right now — indicators/strategies conflict or none are decisive (see the category breakdown below).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
    ', EMA 50/'+(p.emaGolden?'above 200':'below 200')+', ATR <b>'+p.atr+'</b> (volatility), price is '+(p.vwapAbove?'above':'below')+' VWAP'+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR pointing '+(p.psarUp?'up':'down')+'. '+
@@ -1087,6 +1091,20 @@ function logArmedTrade(sym,dir,entry,tp,sl){
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveTradeStore(sym,store);
 }
+// ============ STOP SONRASI SOĞUMA (whipsaw koruması) ============
+// Kullanıcı geri bildirimi (gerçek örnek): %97 güvenli BUY stop oldu, hemen ardından %74 güvenli
+// SELL arm oldu — SL'e takılıp aynı anda TERS yöne dönmek klasik bir "whipsaw" (sahte kırılım/
+// dönüş) tuzağıdır: SL'i tetikleyen ani hareket, henüz oturmamış bir tepkiyi gerçek trend dönüşü
+// gibi gösterebilir. Mum kilidi SADECE aynı mum içindeki titreşimi önlüyordu — yeni mum başladığında
+// hiçbir "az önce burada kaybettik" hafızası yoktu. Şimdi bir sembolde STOP olduğunda kaydediliyor;
+// botTick bunu okuyup TERS yöndeki yeni KESİN İŞLEM'i bir süre bekletiyor (aynı yönde devam serbest).
+function stopCooldownKey(sym){ return 'valens_lastloss_'+sym.replace(/[:\/]/g,'_'); }
+function recordStopLoss(sym,dir){
+  try{ localStorage.setItem(stopCooldownKey(sym), JSON.stringify({dir,ts:Date.now()})); }catch(e){}
+}
+function getStopCooldown(sym){
+  try{ const raw=localStorage.getItem(stopCooldownKey(sym)); return raw?JSON.parse(raw):null; }catch(e){ return null; }
+}
 function updateTradeOutcomes(sym,lastPrice){
   const store=loadTradeStore(sym);
   let changed=false;
@@ -1094,10 +1112,10 @@ function updateTradeOutcomes(sym,lastPrice){
     if(t.resolved)return;
     if(t.dir>0){
       if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';changed=true;}
-      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';changed=true;}
+      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);}
     }else if(t.dir<0){
       if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';changed=true;}
-      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';changed=true;}
+      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);}
     }
   });
   if(changed)saveTradeStore(sym,store);
@@ -1627,6 +1645,14 @@ function botTick(){
   }
  }
 
+ const COOLDOWN_MIN = 20;
+ const lastStop = getStopCooldown(CUR);
+ let cooldownActive = false, cooldownRemainMin = 0;
+ if(lastStop && armed && rawDir===-lastStop.dir){
+  const elapsedMin = (Date.now()-lastStop.ts)/60000;
+  if(elapsedMin < COOLDOWN_MIN){ cooldownActive=true; cooldownRemainMin=Math.ceil(COOLDOWN_MIN-elapsedMin); armed=false; }
+ }
+
  let sigText='◇ GÖZLEM', sigColor='var(--gold)';
  if(rawDir>0)sigText='▲ BUY'; else if(rawDir<0)sigText='▼ SELL';
  if(armed){sigText=rawDir>0?'▲ BUY':'▼ SELL';sigColor=rawDir>0?'var(--green)':'var(--red)';}
@@ -1635,6 +1661,7 @@ function botTick(){
  if(sigWhyEl){
   let whyHtml = best ? t('winningCandidateLine')(best.label, conf) : t('noCandidateLine');
   if(conflicted) whyHtml += ' <span style="color:#ffb27a">'+t('conflictWarning')+'</span>';
+  if(cooldownActive) whyHtml += t('cooldownWhyNote')(cooldownRemainMin);
   sigWhyEl.innerHTML = whyHtml;
  }
 
@@ -1744,6 +1771,7 @@ function botTick(){
  const tg=document.getElementById('trigger');
  if(armed){tg.className='trigger armed';tg.textContent=t('armedTrigger')(rawDir>0?'BUY':'SELL',conf);}
  else if(technicallyArmed && riskBlocked){tg.className='trigger wait';tg.textContent=t('riskBlockedStatus');}
+ else if(cooldownActive){tg.className='trigger wait';tg.textContent=t('cooldownStatus')(cooldownRemainMin);}
  else if(conflicted){tg.className='trigger wait';tg.textContent=t('conflictBadge')+' · '+t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
  else{tg.className='trigger wait';tg.textContent=t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
 
@@ -1825,7 +1853,7 @@ function botTick(){
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
-   scStatusEl.textContent = (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : t('waitStatus')(THRESHOLD,conf);
+   scStatusEl.textContent = (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
  }
 
