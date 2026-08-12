@@ -174,6 +174,10 @@ details.panelgroup{border-bottom:none}
 .statusdot.off{background:var(--red);color:var(--red)}
 .statusdot.mid{background:var(--gold);color:var(--gold)}
 .statusdot.na{background:var(--muted);color:var(--muted);box-shadow:none}
+.gaugerow{display:flex;gap:13px;padding:9px 13px;background:#07101d;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:center;flex-shrink:0}
+.gauge{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:32px}
+.statusdot.big{width:15px;height:15px;margin-right:0}
+.gauge small{font:8px 'IBM Plex Mono';color:var(--muted);letter-spacing:.3px}
 .ph b{font-size:10px;color:var(--gold);letter-spacing:1.2px}.badge{font:9px 'IBM Plex Mono';color:var(--gold);border:1px solid rgba(212,175,55,.3);padding:2px 6px;border-radius:9px}
 .simwarn{font:8px 'IBM Plex Mono';color:#ffb27a;padding:4px 12px;background:rgba(255,120,60,.08);border-bottom:1px solid var(--line)}
 .netdelta{margin:8px;padding:8px 10px;border-radius:5px;font:700 12px 'IBM Plex Mono';text-align:center;border:1px solid var(--line);background:var(--panel2);letter-spacing:.5px}
@@ -298,8 +302,7 @@ iframe{height:100%;width:100%;border:0}
           <div id="goalDetail" style="font-size:9px;color:var(--muted);margin-top:5px;line-height:1.6">—</div>
         </div>
       </div>
-      <details class="panelgroup">
-      <summary class="ph collapsible"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ (manuel onaylı)</b><span class="badge" id="mt5BridgeBadge">—</span></summary>
+      <div class="ph"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ (manuel onaylı)</b><span class="badge" id="mt5BridgeBadge">—</span></div>
       <div style="padding:9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="mt5BridgeHint">Diğer bilgisayarınızda valens_mt5_executor.py çalışıyorsa buraya bağlanın. Otomatik gönderim YOK — her KESİN İŞLEM'de burada bir "Gönder" butonu belirir, siz onaylamadan hiçbir emir MT5'e gitmez. ⚠ Bu uygulama Streamlit Cloud gibi https bir adreste açıksa, sade http:// LAN adresine tarayıcı "mixed content" güvenliğiyle bağlanamayabilir — en güvenilir yöntem bu app.py'yi de o bilgisayarda/aynı ağda lokal çalıştırmaktır (streamlit run app.py).</div>
         <div style="display:flex;gap:6px;margin-bottom:7px">
@@ -314,9 +317,7 @@ iframe{height:100%;width:100%;border:0}
           <button id="mt5SendBtn" style="width:100%;padding:8px;background:var(--gold);color:#07101b;border:0;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="mt5SendBtnLabel">⚡ Bu Sinyali MT5'e Gönder (Onayla)</button>
         </div>
       </div>
-      </details>
-      <details class="panelgroup">
-      <summary class="ph collapsible"><b data-i18n="challenge_title">🎯 CHALLENGE MODU</b><span class="badge" id="challengeBadge">—</span></summary>
+      <div class="ph"><b data-i18n="challenge_title">🎯 CHALLENGE MODU</b><span class="badge" id="challengeBadge">—</span></div>
       <div style="padding:9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="challengeHint">Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
@@ -337,21 +338,16 @@ iframe{height:100%;width:100%;border:0}
           <button id="chResetBtn" style="width:100%;background:transparent;color:var(--gold);border:1px solid var(--line);padding:7px;border-radius:4px;font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeResetBtn">🔄 Yeniden Başlat (Trade #1)</button>
         </div>
       </div>
-      </details>
-      <details class="panelgroup">
-      <summary class="ph collapsible"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></summary>
+      <div class="ph"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></div>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="backtestHint">Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR — sadece "bu kalıp bu grafikte geçmişte işe yaramış mı" sorusuna cevap verir.</div>
         <div id="backtestBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
-      </details>
-      <details class="panelgroup">
-      <summary class="ph collapsible"><b data-i18n="stratLive_title">📊 GERÇEK STRATEJİ PERFORMANSI (canlı takip)</b><span class="badge" id="stratLiveBadge">—</span></summary>
+      <div class="ph"><b data-i18n="stratLive_title">📊 GERÇEK STRATEJİ PERFORMANSI (canlı takip)</b><span class="badge" id="stratLiveBadge">—</span></div>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="stratLiveHint">Bu terminalin ürettiği ve TP/SL'ye ulaştığı GERÇEK sinyallerden — hangi strateji burada gerçekten kazandırdı/kaybettirdi, kalıcı olarak hatırlanır. En az 3 işlem birikmeden gösterilmez.</div>
         <div id="stratLiveBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
-      </details>
       <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
       <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
       <div class="netdelta" id="netDelta">NET DELTA: — </div>
@@ -361,6 +357,24 @@ iframe{height:100%;width:100%;border:0}
     <section class="center">
       <div class="megaalert" id="fullAlignmentBanner" style="border-color:var(--gold);background:linear-gradient(90deg,rgba(212,175,55,.22),rgba(0,200,150,.12))"><span style="font-size:18px">🎯</span><div><b id="faBannerTitle" data-i18n="fullAlignmentTitle">TAM UYUM — KESİN İŞLEM</b><br><span id="faBannerBody">—</span></div></div>
       <div class="megaalert" id="megaAlert"><span style="font-size:16px">🚨</span><div><b id="megaAlertTitle" data-i18n="mega_alert_title">YÜKSEK POTANSİYELLİ SCALP</b><br><span id="megaAlertBody">—</span></div></div>
+
+      <div class="gaugerow" id="gaugeRow">
+        <div class="gauge"><i class="statusdot big na" id="gd_rsi"></i><small>RSI</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_macd"></i><small>MACD</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_ema"></i><small>EMA</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_boll"></i><small>BOLL</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_stoch"></i><small>STOCH</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_adx"></i><small>ADX</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_wr"></i><small>W%R</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_cci"></i><small>CCI</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_psar"></i><small>SAR</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_vwap"></i><small>VWAP</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_trend"></i><small data-i18n="gaugeTrend">TREND</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_pattern"></i><small data-i18n="gaugeCandle">MUM</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_sr"></i><small>S/R</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_fib"></i><small>FIB</small></div>
+        <div class="gauge"><i class="statusdot big na" id="gd_news"></i><small data-i18n="gaugeNews">HABER</small></div>
+      </div>
 
       <div class="decision-desk">
         <div class="signal-main">
@@ -611,6 +625,7 @@ const I18N = {
   noLastSignal:'Henüz bu seviyede sinyal verilmedi.',
   lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RİSK YÖNETİCİSİ', risk_balance:'Bakiye ($)', risk_daily:'Günlük Kayıp Limiti (%)',
+  gaugeTrend:'TREND', gaugeCandle:'MUM', gaugeNews:'HABER',
   mt5_bridge_title:'🔌 MT5 KÖPRÜSÜ (manuel onaylı)',
   mt5BridgeHint:'Diğer bilgisayarınızda valens_mt5_executor.py çalışıyorsa buraya bağlanın. Otomatik gönderim YOK — her KESİN İŞLEM\'de burada bir "Gönder" butonu belirir, siz onaylamadan hiçbir emir MT5\'e gitmez.',
   mt5BridgeToggleOff:'🔌 Bağlan', mt5BridgeToggleOn:'⏸ Bağlantıyı Kes',
@@ -796,6 +811,7 @@ const I18N = {
   noLastSignal:'No signal has been given at this level yet.',
   lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RISK GOVERNOR', risk_balance:'Balance ($)', risk_daily:'Daily Loss Limit (%)',
+  gaugeTrend:'TREND', gaugeCandle:'CANDLE', gaugeNews:'NEWS',
   mt5_bridge_title:'🔌 MT5 BRIDGE (manual confirm)',
   mt5BridgeHint:"If valens_mt5_executor.py is running on your other PC, connect here. No auto-send — every CONFIRMED TRADE shows a Send button here, nothing reaches MT5 until you approve it.",
   mt5BridgeToggleOff:'🔌 Connect', mt5BridgeToggleOn:'⏸ Disconnect',
@@ -1819,6 +1835,15 @@ function botTick(){
  set('iCci', cci.toFixed(1), cci>100?1:cci<-100?-1:0);
  set('iPsar', (psar?(psar.isUp?t('psarUpLbl'):t('psarDownLbl')):'—'), psar?(psar.isUp?1:-1):0);
  set('iPivot', pivots?('P '+fmt(pivots.pp)+' / R1 '+fmt(pivots.r1)+' / S1 '+fmt(pivots.s1)):'—', 0);
+
+ // ---- ÜST DURUM GÖSTERGE ŞERİDİ (renkli daireler) — aynı 15 klasik oy'un (votes) görsel özeti,
+ // referans terminal görselindeki kırmızı/sarı/yeşil gösterge sırasına benzer. ----
+ const gaugeMap={rsi:'gd_rsi',macd:'gd_macd',ema:'gd_ema',boll:'gd_boll',stoch:'gd_stoch',adx:'gd_adx',wr:'gd_wr',cci:'gd_cci',psar:'gd_psar',vwap:'gd_vwap',trend:'gd_trend',pattern:'gd_pattern',sr:'gd_sr',fib:'gd_fib',news:'gd_news'};
+ Object.keys(gaugeMap).forEach(k=>{
+  const el=document.getElementById(gaugeMap[k]); if(!el) return;
+  const v=votes[k]||0;
+  el.className='statusdot big '+(v>0?'on':v<0?'off':'na');
+ });
 
  // ---- Kategori kategori özet: indikatörler / stratejiler / grafik yorumu, kazanan yönü destekliyor mu? ----
  function computeCategoryStats(){
