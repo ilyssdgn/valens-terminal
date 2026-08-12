@@ -299,26 +299,9 @@ iframe{height:100%;width:100%;border:0}
         </div>
       </div>
       <details class="panelgroup">
-      <summary class="ph collapsible"><b data-i18n="mt5_bridge_title">🔌 MT5 KÖPRÜSÜ</b><span class="badge" id="mt5BridgeBadge">—</span></summary>
-      <div style="padding:9px;border-bottom:1px solid var(--line)">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="mt5BridgeHint">PC'nizde valens_mt5_executor.py çalışıyorsa, KESİN İŞLEM sinyalleri buradan otomatik MT5'e gönderilir. Kapalıyken hiçbir şey gönderilmez.</div>
-        <div style="display:flex;gap:6px;margin-bottom:7px">
-          <button id="mt5BridgeToggle" style="flex:1;padding:7px;border-radius:4px;border:1px solid var(--line);background:#07101c;color:var(--text);font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="mt5BridgeToggleOff">🔌 Köprüyü Etkinleştir</button>
-        </div>
-        <div id="mt5BridgeStatus" style="font-size:8px;color:var(--muted);line-height:1.5">—</div>
-      </div>
-      </details>
-      <details class="panelgroup">
-      <summary class="ph collapsible"><b data-i18n="strategy_stats_title">📊 GERÇEK STRATEJİ PERFORMANSI</b><span class="badge" id="strategyStatsBadge" data-i18n="strategyStatsSource">MT5</span></summary>
-      <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="strategyStatsHint">MT5 köprüsünden gelen GERÇEK kapanan işlemlere göre — simülasyon değil. En az 5 işlem birikmeden karar motorunu etkilemez.</div>
-        <div id="strategyStatsBody"><p style="color:var(--muted);font-size:8px">—</p></div>
-      </div>
-      </details>
-      <details class="panelgroup">
       <summary class="ph collapsible"><b data-i18n="backtest_title">🔬 GEÇMİŞ VERİ TESTİ (backtest)</b><span class="badge" id="backtestBadge">—</span></summary>
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="backtestHint">Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR ve MT5'teki canlı işlem takibinden AYRIDIR — sadece "bu kalıp bu grafikte geçmişte işe yaramış mı" sorusuna cevap verir.</div>
+        <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="backtestHint">Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR — sadece "bu kalıp bu grafikte geçmişte işe yaramış mı" sorusuna cevap verir.</div>
         <div id="backtestBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
       </details>
@@ -571,7 +554,7 @@ const I18N = {
   employmentFamilyNote:'📌 Bu, geniş "istihdam ailesi" verilerinden biri — JOLTS (açık iş sayısı), ADP, NFP (tarım dışı istihdam), İşsizlik Başvuruları ve İşsizlik Oranı birbiriyle ilişkilidir ve genelde birkaç gün arayla art arda gelir (ör. JOLTS → birkaç gün sonra İşsizlik Başvuruları → ayın ilk Cuma\'sı NFP). Piyasa bunları TEK TEK değil, biriktirdiği genel "işgücü piyasası zayıflıyor mu güçleniyor mu" resmine göre yorumlar — art arda gelen birkaç zayıf/güçlü veri, tek bir veriden daha belirleyicidir.',
   ruleGdp:'GSYH (GDP)', ruleRetail:'Perakende satışlar', rulePmi:'PMI', ruleRate:'Faiz kararı', ruleTrade:'Dış ticaret dengesi',
   noLiveFeedTitle:'● CANLI VERİ YOK', noLiveFeedDesc:"Bu enstrüman için Binance feed'i yok — TwelveData/OANDA API gerekir", noLiveShort:'canlı veri yok',
-  goldOffsetLine:(sign,val)=>'PAXG proxy vs gerçek spot altın farkı: '+sign+val+'$ (MT5/OANDA ile karşılaştırırken bu farkı hesaba katın — ticker fiyatı zaten düzeltilmiştir, ama grafikteki S/R/giriş seviyeleri henüz düzeltilmemiştir)',
+  goldOffsetLine:(sign,val)=>'PAXG proxy vs gerçek spot altın farkı: '+sign+val+'$ (ticker fiyatı ve giriş/stop/hedef sayıları bu farka göre otomatik düzeltilir; sadece grafik üzerindeki mum/S-R çizgileri ham PAXG ekseninde kalır)',
   tickerEconFallback:'Ekonomik takvim için sağ panele bakın.', tickerDisclaimer:'Kurumsal akış ve haber verileri doğrulama gerektirir.',
   tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
@@ -627,27 +610,12 @@ const I18N = {
   noLastSignal:'Henüz bu seviyede sinyal verilmedi.',
   lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RİSK YÖNETİCİSİ', risk_balance:'Bakiye ($)', risk_daily:'Günlük Kayıp Limiti (%)',
-  mt5_bridge_title:'🔌 MT5 KÖPRÜSÜ',
-  mt5BridgeHint:"PC'nizde valens_mt5_executor.py çalışıyorsa, KESİN İŞLEM sinyalleri buradan otomatik MT5'e gönderilir. Kapalıyken hiçbir şey gönderilmez.",
-  mt5BridgeToggleOff:'🔌 Köprüyü Etkinleştir', mt5BridgeToggleOn:'⏸ Köprüyü Durdur',
-  mt5BridgeBadgeOn:'AKTİF', mt5BridgeBadgeOff:'KAPALI',
-  mt5BridgeConnectedNote:'Köprü aktif — KESİN İŞLEM sinyalleri MT5\'e gönderilecek (PC\'nizde script çalışıyor olmalı).',
-  mt5BridgeStoppedNote:'Köprü durduruldu — sinyaller artık gönderilmeyecek.',
-  mt5BridgeUnreachable:'⚠ Yerel köprüye ulaşılamıyor — PC\'nizde valens_mt5_executor.py çalışıyor mu kontrol edin.',
-  mt5BridgeExecuted:'✓ Son sinyal MT5\'e gönderildi ve işlem açıldı.',
-  mt5BridgeSkipped:(reason)=>'Son sinyal MT5\'e ulaştı ama işlem AÇILMADI (sebep: '+reason+').',
-  strategy_stats_title:'📊 GERÇEK STRATEJİ PERFORMANSI', strategyStatsSource:'MT5',
-  strategyStatsHint:'MT5 köprüsünden gelen GERÇEK kapanan işlemlere göre — simülasyon değil. En az 5 işlem birikmeden karar motorunu etkilemez.',
-  strategyStatsEmpty:'Henüz kapanmış gerçek işlem yok — veri biriktikçe burada görünecek.',
-  strategyStatsLowSample:'az örneklem, henüz etkisiz',
-  strategyStatsLegacy:'eski veri',
-  strategyStatsPF:'KF', strategyStatsAvg:'Ort. kazanç/kayıp',
-  confSourceLive:'Güven, gerçek MT5 işlem sonuçlarına göre ayarlandı', confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
+  confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
   regimeBonus:'Bu strateji şu anki piyasa rejimine UYGUN — güven artırıldı', regimePenalty:'Bu strateji şu anki piyasa rejimine UYMUYOR — güven düşürüldü',
   backtest_title:'🔬 GEÇMİŞ VERİ TESTİ (backtest)',
-  backtestHint:'Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP\'ye mi SL\'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR ve MT5\'teki canlı işlem takibinden AYRIDIR.',
+  backtestHint:'Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP\'ye mi SL\'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR.',
   backtestNotEnoughData:'Yeterli geçmiş veri birikmedi (en az ~350 mum gerekir).',
   backtestNoSignals:'Bu ~300 mumda, en az 3 kez ateşlenen bir strateji bulunamadı.',
   backtestCandleCount:(n)=>'son '+n+' mum',
@@ -760,7 +728,7 @@ const I18N = {
   employmentFamilyNote:'📌 This is one of the broader "employment family" releases — JOLTS (job openings), ADP, NFP (payrolls), Jobless Claims, and the Unemployment Rate are all related and typically release a few days apart (e.g. JOLTS → Jobless Claims a few days later → NFP on the first Friday of the month). Markets tend to read these as a CUMULATIVE picture of labor-market strength/weakness rather than judging any single release in isolation — several consecutive weak/strong prints carry more weight than one data point.',
   ruleGdp:'GDP', ruleRetail:'Retail sales', rulePmi:'PMI', ruleRate:'Rate decision', ruleTrade:'Trade balance',
   noLiveFeedTitle:'● NO LIVE DATA', noLiveFeedDesc:'No Binance feed for this instrument — a TwelveData/OANDA API is required', noLiveShort:'no live data',
-  goldOffsetLine:(sign,val)=>'PAXG proxy vs real spot gold gap: '+sign+val+'$ (factor this in when comparing to MT5/OANDA — the ticker price is already corrected, but chart S/R and entry levels are not yet corrected)',
+  goldOffsetLine:(sign,val)=>'PAXG proxy vs real spot gold gap: '+sign+val+'$ (the ticker price and entry/stop/target numbers are auto-corrected for this gap; only the on-chart candles/S-R lines stay on the raw PAXG axis)',
   tickerEconFallback:'See the right panel for the economic calendar.', tickerDisclaimer:'Institutional flow and news data require verification.',
   tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
@@ -816,27 +784,12 @@ const I18N = {
   noLastSignal:'No signal has been given at this level yet.',
   lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RISK GOVERNOR', risk_balance:'Balance ($)', risk_daily:'Daily Loss Limit (%)',
-  mt5_bridge_title:'🔌 MT5 BRIDGE',
-  mt5BridgeHint:"If valens_mt5_executor.py is running on your PC, CONFIRMED TRADE signals are auto-sent to MT5 from here. Nothing is sent while off.",
-  mt5BridgeToggleOff:'🔌 Enable Bridge', mt5BridgeToggleOn:'⏸ Stop Bridge',
-  mt5BridgeBadgeOn:'ACTIVE', mt5BridgeBadgeOff:'OFF',
-  mt5BridgeConnectedNote:'Bridge active — CONFIRMED TRADE signals will be sent to MT5 (script must be running on your PC).',
-  mt5BridgeStoppedNote:'Bridge stopped — signals will no longer be sent.',
-  mt5BridgeUnreachable:"⚠ Can't reach the local bridge — check that valens_mt5_executor.py is running on your PC.",
-  mt5BridgeExecuted:'✓ Last signal was sent to MT5 and a trade was opened.',
-  mt5BridgeSkipped:(reason)=>'Last signal reached MT5 but no trade was opened (reason: '+reason+').',
-  strategy_stats_title:'📊 REAL STRATEGY PERFORMANCE', strategyStatsSource:'MT5',
-  strategyStatsHint:'Based on REAL closed trades from the MT5 bridge — not simulated. Needs 5+ trades before it affects the decision engine.',
-  strategyStatsEmpty:'No closed real trades yet — will populate as data accumulates.',
-  strategyStatsLowSample:'small sample, not yet influencing',
-  strategyStatsLegacy:'legacy data',
-  strategyStatsPF:'PF', strategyStatsAvg:'Avg win/loss',
-  confSourceLive:'Confidence adjusted using real MT5 trade results', confSourceBacktest:'Confidence adjusted using historical backtest results',
+  confSourceBacktest:'Confidence adjusted using historical backtest results',
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
   regimeBonus:'This strategy FITS the current market regime — confidence increased', regimePenalty:'This strategy does NOT fit the current market regime — confidence decreased',
   backtest_title:'🔬 HISTORICAL BACKTEST',
-  backtestHint:'Looks at the ~300 REAL past candles on this chart and checks, for every point in the past where each strategy actually fired, whether price reached TP or SL first. This is NOT a random/possible-future projection and is SEPARATE from live MT5 trade tracking.',
+  backtestHint:'Looks at the ~300 REAL past candles on this chart and checks, for every point in the past where each strategy actually fired, whether price reached TP or SL first. This is NOT a random/possible-future projection.',
   backtestNotEnoughData:'Not enough historical data yet (needs at least ~350 candles).',
   backtestNoSignals:'No strategy fired at least 3 times in these ~300 candles.',
   backtestCandleCount:(n)=>'last '+n+' candles',
@@ -1456,6 +1409,12 @@ function botTick(){
  if(!cr.indicators){ noLiveDataUI('loading'); return; }
 
  const {rsi,macd,ema50,ema200,bollPct,stoch,adx,atr,vwap,williamsR,cci,psar,pivots,lastClose:last}=cr.indicators;
+ // ---- GERÇEK SPOT DÜZELTMESİ: XAU/USD grafiği Binance'ın PAXG proxy'sinden geliyor, gerçek spot
+ // altından birkaç dolar farklı olabilir (updateGoldOffset() periyodik ölçer). Giriş/stop/hedef
+ // sayıları ve açık işlem takibi (updateTradeOutcomes) AYNI düzeltilmiş baza göre hesaplanmalı —
+ // aksi halde kayıt anında kullanılan baz ile sonraki tick'lerdeki TP/SL kontrolü tutarsız olur.
+ const goldAdj = (CUR==='OANDA:XAUUSD') ? (window.valensGoldOffset||0) : 0;
+ const adjLast = last + goldAdj;
 
  // Haber yönü: gerçek zamanlı takvimden (bugün açıklanan, beklenti-vs-gerçekleşen) hesaplanan
  // bias varsa ONU kullan; yoksa (API anahtarı yoksa ya da bugün ilgili haber yoksa) elle
@@ -1580,34 +1539,30 @@ function botTick(){
   const family = STRATEGY_FAMILY[tag.key] || 'neutral';
   const regimeAdj = regimeAdjustment(family, tag.dir, marketRegime);
   if(regimeAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+regimeAdj)));
-  // ---- GERÇEK MT5 PERFORMANSINA GÖRE DİNAMİK AYARLAMA (1. öncelik) ----
-  // window.valensStrategyStats, MT5 köprüsünden (gerçek kapanan işlemlerden, simülasyon değil)
-  // periyodik çekilen per-strateji kazanma oranını içerir. En az 5 GERÇEK kapanmış işlem
-  // birikmeden hiçbir ayarlama yapılmaz — küçük örneklemin önceliği çarpıtmasını önler.
-  // %50 kazanma oranı = ayarlama yok; %100'e yaklaştıkça +10'a kadar bonus; %0'a yaklaştıkça
-  // -10'a kadar ceza. Böylece "gerçekte en kârlı olan stratejiler" öne çıkar.
-  const realStats = window.valensStrategyStats && window.valensStrategyStats[label];
+  // ---- GEÇMİŞ VERİ TESTİNE (BACKTEST) GÖRE DİNAMİK AYARLAMA ----
+  // window.valensBacktestResults, bu grafikteki GERÇEKTEN YAŞANMIŞ son ~300 mumda her stratejinin
+  // geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaştığını hesaplar (runHistoricalBacktest).
+  // DÜZELTME (gerçek canlı veriyle doğrulandı): eskiden "kazanma oranı" HER strateji için %50'ye göre
+  // ölçekleniyordu. Ama SL:TP oranı stratejiye göre değişiyor — standart strateji 1:2 (kazanma %33.3
+  // üzerinde ZATEN kârlı), scalpOrb ise 1.6:0.5 (kazanma %76.2 altında ZARARLI). Sonuç: gerçekte kârlı
+  // (ör. %40-48 kazanan, 1:2'de kârlı) stratejiler yanlışlıkla cezalandırılıyor, gerçekte zararsız
+  // görünen ama o R:R'de aslında zararda olan stratejiler yeterince cezalandırılmıyordu — güven skoru
+  // GERÇEK kârlılıktan kopuktu. Şimdi her stratejinin KENDİ başabaş oranına göre "edge" (kazanma oranı
+  // − başabaş) hesaplanıyor; en az 5 sinyal gerekir, örneklem arttıkça (kademeli, 20+'da tam ağırlık)
+  // etki güçleniyor.
   let realWinRate = null, source = null;
-  if(realStats && realStats.trades>=5 && realStats.win_rate!=null){
-   realWinRate = realStats.win_rate;
-   const adj = Math.max(-10, Math.min(10, (realWinRate-0.5)*20));
+  const bt = window.valensBacktestResults && window.valensBacktestResults[tag.key];
+  if(bt && bt.trades>=5){
+   const btWinRate = bt.wins/bt.trades;
+   realWinRate = btWinRate;
+   const breakeven = (tag.key==='scalpOrb') ? (1.6/(1.6+0.5)) : (1/3); // SL/(SL+TP), botTick'teki gerçek SL/TP oranlarıyla eşleşir
+   const edge = btWinRate - breakeven;
+   const sampleWeight = Math.min(1, bt.trades/20); // <20 sinyalde kademeli, 20+'da tam güven
+   const adj = Math.max(-18, Math.min(12, edge*55*sampleWeight));
    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
-   source = 'live';
-  } else {
-   // ---- YEDEK: GEÇMİŞ VERİ TESTİ (2. öncelik) — gerçek MT5 verisi henüz yeterli değilse (5 işlem
-   // birikmediyse), önceden SADECE panelde gösterilen ama karara hiç katılmayan backtest sonucunu
-   // kullanıyoruz. Gerçek para/gerçek kayma içermediği için canlıdan DAHA AZ ağırlıklı (±6, ±10 değil)
-   // ve daha yüksek bir örneklem eşiği (5) istiyoruz — yine de "boşu boşuna duran" bir panel olmaktan
-   // çıkıp gerçekten karara katkı sağlıyor.
-   const bt = window.valensBacktestResults && window.valensBacktestResults[tag.key];
-   if(bt && bt.trades>=5){
-    const btWinRate = bt.wins/bt.trades;
-    const adj = Math.max(-6, Math.min(6, (btWinRate-0.5)*12));
-    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
-    source = 'backtest';
-   }
+   source = 'backtest';
   }
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:realStats?realStats.trades:0, confSource:source, regime:marketRegime, family});
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family});
  });
  // Kullanıcının manuel öğrettiği ve yeterince (3+, başarısızlığın 2 katı) başarılı olmuş kalıplar —
  // güven, o kalıbın GERÇEK izlenen başarı oranına göre ölçeklenir (uydurma değil).
@@ -1686,8 +1641,7 @@ function botTick(){
  const tagEl=document.getElementById('strategyTagLine');
  if(tagEl){
   if(candidates.length){
-   const srcMark=(c)=> c.confSource==='live' ? ' <span style="color:var(--green)" title="'+t('confSourceLive')+'">●</span>'
-     : c.confSource==='backtest' ? ' <span style="color:var(--blue)" title="'+t('confSourceBacktest')+'">◐</span>' : '';
+   const srcMark=(c)=> c.confSource==='backtest' ? ' <span style="color:var(--blue)" title="'+t('confSourceBacktest')+'">◐</span>' : '';
    const regimeMark=(c)=>{
     if(!c.family || c.family==='neutral' || !c.regime) return '';
     const adj = regimeAdjustment(c.family, c.dir, c.regime);
@@ -1828,39 +1782,17 @@ function botTick(){
     if(scTP > reachableDistance) scTP = Math.max(reachableDistance, scSL*0.5); // asgari anlamlı bir hedef kalsın
    }
    const swSL = atr ? atr*3.0 : cfg.swSL, swTP = atr ? atr*6.0 : cfg.swTP;
-   const scEntryPx=last, scStopPx=last-d*scSL, scTpPx=last+d*scTP;
-   const swStopPx=last-d*swSL, swTpPx=last+d*swTP;
+   const scEntryPx=adjLast, scStopPx=adjLast-d*scSL, scTpPx=adjLast+d*scTP;
+   const swStopPx=adjLast-d*swSL, swTpPx=adjLast+d*swTP;
 
    document.getElementById('scEntry').textContent=fmt(scEntryPx);
    document.getElementById('scStop').textContent=fmt(scStopPx);
    document.getElementById('scTp').textContent=fmt(scTpPx);
-   document.getElementById('swEntry').textContent=fmt(last);
+   document.getElementById('swEntry').textContent=fmt(adjLast);
    document.getElementById('swStop').textContent=fmt(swStopPx);
    document.getElementById('swTp').textContent=fmt(swTpPx);
    scStatusEl.className='trade-status armed';
    scStatusEl.textContent=t('confirmedStatus')(rawDir>0?'BUY':'SELL',conf,utc());
-   // ---- MT5 KÖPRÜSÜ: KESİN İŞLEM her arm olduğunda, PC'nizde çalışan yerel köprü script'ine
-   // (varsa) sinyali gönderir. Köprü çalışmıyorsa/kurulu değilse bu sessizce başarısız olur —
-   // terminalin geri kalanını ETKİLEMEZ. Sadece XAU/USD için, ve sadece scalp seviyeleriyle. ----
-   if(window.valensCurSym==='OANDA:XAUUSD' && window.valensMT5BridgeEnabled){
-    // DÜZELTME: önceden anahtar CANLI (dalgalanan) fiyata bağlıydı — fiyat her ~3 saniyede bir
-    // kuruş bile kıpırdasa yeni bir "sinyal" sanılıp tekrar tekrar emir gönderiliyordu (bu "50 emir"
-    // sorununun kök nedeniydi). Şimdi anahtar SABİT mum zaman damgasına + kazanan stratejiye bağlı —
-    // aynı mum süresince (ör. 15dk boyunca), aynı strateji armed kaldığı sürece sinyal SABİT kalır,
-    // sadece mum gerçekten değiştiğinde (yeni bir kurulum oluştuğunda) yeni sinyal sayılır.
-    const candleTime = cr.candleTime || Math.floor(Date.now()/1000);
-    const sigId = rawDir+'-'+(best?best.key:'none')+'-'+candleTime;
-    fetch('http://127.0.0.1:8899/signal', {
-     method:'POST', headers:{'Content-Type':'application/json'},
-     body: JSON.stringify({dir:rawDir, entry:scEntryPx, stop:scStopPx, tp:scTpPx, confidence:conf, label:(best?best.label:'?'), signal_id:sigId})
-    }).then(r=>r.json()).then(res=>{
-     const el=document.getElementById('mt5BridgeStatus');
-     if(el) el.textContent = res.executed ? t('mt5BridgeExecuted') : t('mt5BridgeSkipped')(res.reason||'?');
-    }).catch(()=>{
-     const el=document.getElementById('mt5BridgeStatus');
-     if(el) el.textContent = t('mt5BridgeUnreachable');
-    });
-   }
    const tpNoteEl=document.getElementById('scTightTpNote');
    if(tpNoteEl){
     if(isTightTpOrb){
@@ -1872,7 +1804,7 @@ function botTick(){
 
    // ---- Gerçek $ hedef potansiyeli (SİZİN planladığınız 0.8-1.2 lot aralığıyla) — GARANTİ DEĞİL, sadece TP'ye ulaşırsa oluşacak projeksiyon ----
    const rs=loadRiskSettings(), lotMin=parseFloat(rs.lotMin)||0.8, lotMax=parseFloat(rs.lotMax)||1.2, lotAvg=(lotMin+lotMax)/2;
-   const scDist=Math.abs(scTpPx-scEntryPx), swDist=Math.abs(swTpPx-last);
+   const scDist=Math.abs(scTpPx-scEntryPx), swDist=Math.abs(swTpPx-adjLast);
    const scTpUsdMin=scDist*cfg.contractSize*lotMin, scTpUsdMax=scDist*cfg.contractSize*lotMax, scTpUsdAvg=scDist*cfg.contractSize*lotAvg;
    const swTpUsdMin=swDist*cfg.contractSize*lotMin, swTpUsdMax=swDist*cfg.contractSize*lotMax;
    document.getElementById('scPnl').textContent = t('targetHitRange')(Math.round(scTpUsdMin).toLocaleString('en-US'),Math.round(scTpUsdMax).toLocaleString('en-US'),lotMin,lotMax);
@@ -1889,7 +1821,7 @@ function botTick(){
 
    logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx);
    recordLastSignal(CUR,'scalp',rawDir,scEntryPx,scTpPx,scStopPx);
-   recordLastSignal(CUR,'swing',rawDir,last,swTpPx,swStopPx);
+   recordLastSignal(CUR,'swing',rawDir,adjLast,swTpPx,swStopPx);
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
@@ -1897,7 +1829,7 @@ function botTick(){
    alertBox.classList.remove('show');
  }
 
- updateTradeOutcomes(CUR, last);
+ updateTradeOutcomes(CUR, adjLast);
  updateWinRateUI();
  updateLastSignalUI();
  updateRiskUI();
@@ -1936,7 +1868,7 @@ document.querySelectorAll('.market').forEach(x=>x.onclick=()=>{
 // fiyatıyla karşılaştırıldığında "tutarsız/eski" görünüyordu. Artık gerçek Binance verisinden,
 // şu an hangi enstrümanı izlediğinizden BAĞIMSIZ olarak periyodik çekiliyor.
 const TICKER_MAP={'OANDA:XAUUSD':'PAXGUSDT','BINANCE:BTCUSDT':'BTCUSDT','OANDA:EURUSD':'EURUSDT'};
-// XAU/USD grafiğimiz Binance'ın PAXG (tokenize altın) proxy'sinden geliyor — bu, gerçek MT5/OANDA spot
+// XAU/USD grafiğimiz Binance'ın PAXG (tokenize altın) proxy'sinden geliyor — bu, gerçek spot
 // altınından FARKLI bir piyasadır (kripto arz-talebine göre "prim/iskonto" ile işlem görür, belgelenmiş,
 // beklenen bir davranıştır, hata değildir). Gerçek karşılaştırma yapabilmeniz için PAXG ile gerçek spot
 // arasındaki CANLI farkı ayrıca çekip şeffafça gösteriyoruz; ticker'da GERÇEK spot-eşdeğeri fiyat gösterilir.
@@ -1989,49 +1921,6 @@ updateGoldOffset().then(updateTickerBar);
 setInterval(updateGoldOffset, 45000); // xaus.com adil kullanım kuralı: en az 30sn — 45sn kullanıyoruz
 setInterval(updateTickerBar, 15000);
 
-// ---- GERÇEK STRATEJİ PERFORMANSI (MT5 köprüsünden) ----
-// Köprü, her kapanan gerçek işlemi hangi stratejinin açtığını bilerek kaydediyor. Burada bu
-// verileri periyodik çekip hem karar motoruna (yukarıdaki confidence ayarlaması) besliyoruz
-// hem de kullanıcıya görünür bir panelde gösteriyoruz.
-window.valensStrategyStats = {};
-async function updateStrategyStats(){
- if(!window.valensMT5BridgeEnabled) return;
- try{
-  const r = await fetch('http://127.0.0.1:8899/strategy_stats');
-  const data = await r.json();
-  if(data && data.strategies){
-   window.valensStrategyStats = data.strategies;
-   renderStrategyStatsPanel(data.strategies);
-  }
- }catch(e){ /* köprü şu an erişilemezse sessizce eski veriyi koru */ }
-}
-function renderStrategyStatsPanel(strategies){
- const el = document.getElementById('strategyStatsBody');
- if(!el) return;
- const entries = Object.entries(strategies).filter(([,s])=>s.trades>0)
-   .sort((a,b)=>(b[1].profit_factor||-999)-(a[1].profit_factor||-999));
- if(entries.length===0){ el.innerHTML='<p style="color:var(--muted);font-size:8px">'+t('strategyStatsEmpty')+'</p>'; return; }
- el.innerHTML = entries.map(([label,s])=>{
-  const pct = s.win_rate!=null ? Math.round(s.win_rate*100) : '—';
-  const isLegacy = !!s.legacy_data;
-  const pf = isLegacy ? t('strategyStatsLegacy') : (s.profit_factor==null ? '—' : (s.profit_factor===Infinity ? '∞' : s.profit_factor.toFixed(2)));
-  // KAR FAKTÖRÜ >1 kârlı, <1 zararlı demektir — kazanma oranından BAĞIMSIZ olarak asıl gerçeği gösterir.
-  const pfColor = isLegacy ? 'var(--muted)' : (s.profit_factor==null) ? 'var(--muted)' : (s.profit_factor>=1 ? 'var(--green)' : 'var(--red)');
-  const dotClass = isLegacy ? 'na' : s.profit_factor==null ? 'na' : (s.profit_factor>=1.3 ? 'on' : s.profit_factor>=1 ? 'mid' : 'off');
-  const profitColor = s.total_profit>=0 ? 'var(--green)' : 'var(--red)';
-  const enough = s.trades>=5;
-  const avgLine = (!isLegacy && (s.avg_win!=null||s.avg_loss!=null)) ?
-    ('<div style="font-size:7px;color:var(--muted)">'+t('strategyStatsAvg')+': +$'+(s.avg_win!=null?s.avg_win.toFixed(0):'—')+' / -$'+(s.avg_loss!=null?s.avg_loss.toFixed(0):'—')+'</div>') : '';
-  return '<div style="padding:3px 0;border-bottom:1px solid var(--line)">'+
-   '<div style="display:flex;justify-content:space-between;font-size:8px">'+
-   '<span><span class="statusdot '+dotClass+'"></span>'+label+(enough?'':' <i style="color:var(--muted)">('+t('strategyStatsLowSample')+')</i>')+'</span>'+
-   '<span>'+t('strategyStatsPF')+' <b style="color:'+pfColor+'">'+pf+'</b> · %'+pct+' ('+s.trades+') <b style="color:'+profitColor+'">$'+s.total_profit.toFixed(0)+'</b></span>'+
-   '</div>'+avgLine+
-   '</div>';
- }).join('');
-}
-setInterval(updateStrategyStats, 60000); // dakikada bir — gereksiz sık sorgulamaya gerek yok
-setTimeout(updateStrategyStats, 5000);
 
 // ---- GEÇMİŞ VERİ TESTİ (backtest) paneli — window.valensRenderBacktestPanel, chart engine script'i
 // runHistoricalBacktest() sonucunu hesapladığında çağırır. Kazanma oranına göre sıralar, en az 3
@@ -2069,26 +1958,6 @@ document.querySelectorAll('.tab').forEach(x=>x.onclick=()=>{
  document.querySelectorAll('.tab').forEach(y=>y.classList.remove('active')); x.classList.add('active');
 });
 
-window.valensMT5BridgeEnabled = false;
-document.getElementById('mt5BridgeToggle').addEventListener('click', ()=>{
- const btn=document.getElementById('mt5BridgeToggle');
- const statusEl=document.getElementById('mt5BridgeStatus');
- const badgeEl=document.getElementById('mt5BridgeBadge');
- const turningOn = !window.valensMT5BridgeEnabled;
- fetch('http://127.0.0.1:8899/'+(turningOn?'start':'stop'), {method:'POST'})
-  .then(r=>r.json())
-  .then(res=>{
-   window.valensMT5BridgeEnabled = !!res.running;
-   btn.textContent = window.valensMT5BridgeEnabled ? t('mt5BridgeToggleOn') : t('mt5BridgeToggleOff');
-   badgeEl.textContent = window.valensMT5BridgeEnabled ? t('mt5BridgeBadgeOn') : t('mt5BridgeBadgeOff');
-   badgeEl.style.color = window.valensMT5BridgeEnabled ? 'var(--green)' : 'var(--muted)';
-   statusEl.textContent = window.valensMT5BridgeEnabled ? t('mt5BridgeConnectedNote') : t('mt5BridgeStoppedNote');
-  })
-  .catch(()=>{
-   statusEl.textContent = t('mt5BridgeUnreachable');
-   badgeEl.textContent = t('mt5BridgeBadgeOff'); badgeEl.style.color='var(--red)';
-  });
-});
 document.getElementById('langToggle').addEventListener('click', ()=>{
  LANG = LANG==='tr' ? 'en' : 'tr';
  try{ localStorage.setItem('valens_lang', LANG); }catch(e){}
@@ -3230,8 +3099,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // yaklaşım her zaman şans eseri yukarı giden bir yol bulur, sahte güven yaratır. Bunun yerine, terminalin
  // zaten elinde olan GERÇEKTEN YAŞANMIŞ geçmiş mumlar üzerinde, her stratejinin (hem AL hem SAT) geçmişte
  // ateşlendiği HER noktayı bulup, o andan sonra fiyatın GERÇEKTE TP'ye mi SL'ye mi önce ulaştığını
- // (canlıdaki AYNI ATR formülüyle) kontrol eder. Canlı MT5 takibinden (gerçek açılan işlemler) TAMAMEN
- // AYRI ve farklı bir şeydir — o yüzden ayrı, net etiketli bir panelde gösterilir, asla karıştırılmaz.
+ // (canlıdaki AYNI ATR formülüyle) kontrol eder — net etiketli, ayrı bir panelde gösterilir.
  function runHistoricalBacktest(){
   if(ohlc.length<350) return null;
   const WARMUP=250; // uzun-lookback'li stratejiler (BOS/CHoCH, TTM Squeeze vb.) için yeterli geçmiş bırak
