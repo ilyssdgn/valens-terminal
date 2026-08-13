@@ -324,6 +324,16 @@ iframe{height:100%;width:100%;border:0}
             <label style="font:8px 'IBM Plex Mono';color:var(--muted);flex:1"><span data-i18n="mt5LotLabel">Gönderilecek lot</span><input id="mt5SendLot" type="number" step="0.01" min="0.01" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
           </div>
           <button id="mt5SendBtn" style="width:100%;padding:8px;background:var(--gold);color:#07101b;border:0;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="mt5SendBtnLabel">⚡ Bu Sinyali MT5'e Gönder (Onayla)</button>
+          <div style="border-top:1px dashed var(--line);margin-top:9px;padding-top:8px">
+            <label style="display:flex;align-items:center;gap:6px;font:8px 'IBM Plex Mono';color:var(--muted);cursor:pointer;margin-bottom:6px">
+              <input id="mt5AutoSend" type="checkbox" style="width:13px;height:13px;cursor:pointer">
+              <span data-i18n="mt5AutoSendLabel">🤖 Otomatik Gönder — SADECE DEMO hesap için (onay beklemeden gönderir)</span>
+            </label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font:8px 'IBM Plex Mono';color:var(--muted);flex:1"><span data-i18n="mt5AutoMinConfLabel">Min. güven (%)</span><input id="mt5AutoMinConf" type="number" step="1" min="50" max="99" value="90" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
+            </div>
+            <div style="font-size:8px;color:#ffb27a;margin-top:6px" data-i18n="mt5AutoSendWarn">⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.</div>
+          </div>
         </div>
       </div>
       </div>
@@ -653,6 +663,9 @@ const I18N = {
   mt5BridgeExecuted:'✓ Gönderildi, MT5\'te işlem açıldı.',
   mt5BridgeSkipped:(reason)=>'Köprüye ulaştı ama işlem AÇILMADI (sebep: '+reason+').',
   mt5LotLabel:'Gönderilecek lot', mt5SendBtnLabel:'⚡ Bu Sinyali MT5\'e Gönder (Onayla)', mt5SendBtnSending:'Gönderiliyor…', mt5SendBtnSent:'✓ Gönderildi (bu sinyal için)',
+  mt5AutoSendLabel:'🤖 Otomatik Gönder — SADECE DEMO hesap için (onay beklemeden gönderir)',
+  mt5AutoMinConfLabel:'Min. güven (%)',
+  mt5AutoSendWarn:'⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.',
   challenge_title:'🎯 CHALLENGE MODU', challengeBadgeBase:(n)=>'Trade #'+n,
   challengeHint:'Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge\'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).',
   challengeStartBal:'Başlangıç ($)', challengeTargetBal:'Hedef ($)', challengeGrowth:'İşlem Başı Büyüme (%)', challengeMove:'Hedef Hareket ($)',
@@ -678,7 +691,7 @@ const I18N = {
     'Hedefe ulaşmak için günde ortalama <b>'+paceNeeded+'</b> gerekir — şu ana kadarki gerçek tempo: <b>'+paceActual+'/gün</b>. '+
     'Bu bir tahmindir, gerçek lot her işlemde kaydedilmediği için ortalama lot ('+t('avgLotNote')+') ile hesaplanır; garanti değildir.',
   avgLotNote:'lot aralığınızın ortalaması',
-  trade_log_title:'📒 SİNYAL KAR/ZARAR TAKİBİ',
+  trade_log_title:'📒 SİNYAL KAR/ZARAR TAKİBİ', tradeLogConfirmCandles:'mum onayı',
   tradeLogBadge:(n)=>n+' İŞLEM',
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
   tradeLogEmpty:'Henüz sonuçlanan bir sinyal yok — bir sinyal TP veya SL\'ye ulaştığında burada listelenecek.',
@@ -697,6 +710,8 @@ const I18N = {
   riskBlockedStatus:'🛑 GÜNLÜK RİSK SINIRI — yeni sinyal durduruldu',
   cooldownStatus:(min)=>'⏸ STOP SONRASI SOĞUMA — ters yön '+min+' dk daha bekletiliyor (whipsaw koruması)',
   cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ Az önce ters yönde STOP oldu — sahte dönüş riskine karşı '+min+' dk daha bu yönde KESİN İŞLEM açılmayacak (aynı yönde devam serbest).</span>',
+  confirmStatus:(have,need,dir)=>'🕐 MUM KAPANIŞ ONAYI BEKLENİYOR — '+dir+' · '+have+'/'+need+' mum',
+  confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 Bu sinyal henüz sadece '+have+'/'+need+' mum tarafından doğrulandı — mum kapanıp bir SONRAKİ mum da aynı yönü desteklerse KESİN İŞLEM sayılacak (aynı mumun ilk okuması tek başına yeterli değil, sahte titreşim riskine karşı).</span>',
   anText: p => (p.totalVotes>0 ? ('Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor.') : ('Bot şu an '+p.label+' üzerinde net bir yön bulamıyor — göstergeler/stratejiler birbiriyle çelişiyor ya da hiçbiri belirgin değil (aşağıdaki kategori dökümüne bakın).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
    ', EMA 50/'+(p.emaGolden?'200 üzeri':'200 altı')+', ATR <b>'+p.atr+'</b> (volatilite), fiyat VWAP\'ın '+(p.vwapAbove?'üzerinde':'altında')+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR '+(p.psarUp?'yükseliş':'düşüş')+' yönünde. '+
@@ -839,6 +854,9 @@ const I18N = {
   mt5BridgeExecuted:'✓ Sent, trade opened in MT5.',
   mt5BridgeSkipped:(reason)=>'Reached the bridge but no trade was opened (reason: '+reason+').',
   mt5LotLabel:'Lot to send', mt5SendBtnLabel:'⚡ Send This Signal to MT5 (Confirm)', mt5SendBtnSending:'Sending…', mt5SendBtnSent:'✓ Sent (for this signal)',
+  mt5AutoSendLabel:'🤖 Auto-Send — DEMO accounts ONLY (sends without waiting for approval)',
+  mt5AutoMinConfLabel:'Min. confidence (%)',
+  mt5AutoSendWarn:"⚠ While this is checked, EVERY trade is sent to the real MT5 account without waiting for approval. Only use this on a demo/test account — keep it OFF with real money.",
   challenge_title:'🎯 CHALLENGE MODE', challengeBadgeBase:(n)=>'Trade #'+n,
   challengeHint:"After each winning trade the balance compounds by the target growth %, and a lot size is suggested from that. ⚠ This model assumes an UNBROKEN win streak — real markets don't guarantee that. A single loss STOPS the challenge (it does not auto-reset — that's your call).",
   challengeStartBal:'Start ($)', challengeTargetBal:'Target ($)', challengeGrowth:'Growth Per Trade (%)', challengeMove:'Target Move ($)',
@@ -864,7 +882,7 @@ const I18N = {
     'Reaching the target needs an average of <b>'+paceNeeded+'</b>/day — your actual tracked pace so far: <b>'+paceActual+'</b>/day. '+
     'This is an estimate — actual lot size isn\'t logged per trade, so it uses the average of your lot range ('+t('avgLotNote')+'); not a guarantee.',
   avgLotNote:'the average of your lot range',
-  trade_log_title:'📒 SIGNAL P&L TRACKING',
+  trade_log_title:'📒 SIGNAL P&L TRACKING', tradeLogConfirmCandles:'candle confirmation',
   tradeLogBadge:(n)=>n+' TRADES',
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
   tradeLogEmpty:'No signal has resolved yet — trades will appear here once TP or SL is reached.',
@@ -883,6 +901,8 @@ const I18N = {
   riskBlockedStatus:'🛑 DAILY RISK LIMIT — new signals paused',
   cooldownStatus:(min)=>'⏸ POST-STOP COOLDOWN — opposite direction held for '+min+' more min (whipsaw guard)',
   cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ This direction just got STOPPED OUT — to avoid a false reversal, no new CONFIRMED TRADE this direction for '+min+' more min (continuing the same direction is still allowed).</span>',
+  confirmStatus:(have,need,dir)=>'🕐 WAITING FOR CANDLE-CLOSE CONFIRMATION — '+dir+' · '+have+'/'+need+' candles',
+  confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 This signal is only confirmed by '+have+'/'+need+' candle(s) so far — once this candle closes and the NEXT one still agrees, it becomes a CONFIRMED TRADE (a single candle\'s first reading alone is not enough, to guard against noise).</span>',
   anText: p => (p.totalVotes>0 ? ('The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score.') : ('The bot cannot find a clear direction for '+p.label+' right now — indicators/strategies conflict or none are decisive (see the category breakdown below).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
    ', EMA 50/'+(p.emaGolden?'above 200':'below 200')+', ATR <b>'+p.atr+'</b> (volatility), price is '+(p.vwapAbove?'above':'below')+' VWAP'+
    ', Williams %R <b>'+p.williamsR+'</b>, CCI <b>'+p.cci+'</b>, Parabolic SAR pointing '+(p.psarUp?'up':'down')+'. '+
@@ -1143,14 +1163,29 @@ const TRADE_STORE_PREFIX='valens_trades_';
 function getTradeKey(sym){return TRADE_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
 function loadTradeStore(sym){try{const raw=localStorage.getItem(getTradeKey(sym));if(!raw)return{trades:[]};return JSON.parse(raw);}catch(e){return{trades:[]};}}
 function saveTradeStore(sym,store){try{localStorage.setItem(getTradeKey(sym),JSON.stringify(store));}catch(e){}}
-function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel){
+function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context){
   const store=loadTradeStore(sym);
   store.trades=store.trades||[];
   const openTrade=store.trades.find(t=>!t.resolved);
   if(openTrade)return; // aynı anda tek açık takip — üst üste her tick'te yeni kayıt açılmaz
-  store.trades.push({ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null});
+  store.trades.push({ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null});
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveTradeStore(sym,store);
+}
+// ---- İşlem anındaki GERÇEK gerekçeyi (rejim, kaç indikatör destekledi, S/R/mum durumu, kaç mum
+// onayladı) okunaklı bir cümleye çevirir — kullanıcı isteği: "hangi strateji, hangi şartlar altında
+// çalıştı, ilerde bilelim" diye kalıcı olarak trade log'a yazılır (sadece o an ekranda görünüp
+// kaybolmasın diye).
+function describeTradeContext(ctx){
+  if(!ctx) return '';
+  const regimeLabel = ctx.regime==='trendUp'?t('regimeTrendUp'):ctx.regime==='trendDown'?t('regimeTrendDown'):ctx.regime==='ranging'?t('regimeRanging'):ctx.regime==='trendFlat'?t('regimeTrendFlat'):t('regimeUnclear');
+  const parts=[t('regimePrefix')+' '+regimeLabel];
+  parts.push(t('catIndicators')+' '+ctx.agreeCount+'/'+ctx.totalVotes);
+  if(ctx.trend) parts.push(ctx.trend>0?t('trendUp'):t('trendDown'));
+  if(ctx.srText) parts.push(ctx.srText);
+  if(ctx.patternName) parts.push(ctx.patternName);
+  parts.push(ctx.confirmedCandles+' '+t('tradeLogConfirmCandles'));
+  return parts.join(' · ');
 }
 // ============ STOP SONRASI SOĞUMA (whipsaw koruması) ============
 // Kullanıcı geri bildirimi (gerçek örnek): %97 güvenli BUY stop oldu, hemen ardından %74 güvenli
@@ -1358,8 +1393,12 @@ function renderChallengePanel(){
   const {profitTarget, lot}=challengeSuggestedLot(s);
   const nextBal=s.currentBalance+profitTarget;
   body.innerHTML=t('challengeBodyLine')(s.tradeNum, s.currentBalance.toFixed(2), nextBal.toFixed(2), profitTarget.toFixed(2), lot.toFixed(2), s.moveUsd);
+  // Otomatik gönder modunda (ör. arkadaşın demo hesabı, sabit 0.1 lot) kullanıcının kendi girdiği
+  // sabit lotu challenge önerisiyle EZMİYORUZ — ikisi farklı amaçlar (challenge takibi vs sabit-lot
+  // veri toplama), aynı anda çakışmasınlar diye auto-send açıkken bu alana dokunulmuyor.
+  const mt5AutoOn=document.getElementById('mt5AutoSend');
   const mt5LotEl=document.getElementById('mt5SendLot');
-  if(mt5LotEl && document.activeElement!==mt5LotEl) mt5LotEl.value=lot.toFixed(2);
+  if(mt5LotEl && document.activeElement!==mt5LotEl && !(mt5AutoOn&&mt5AutoOn.checked)) mt5LotEl.value=lot.toFixed(2);
 }
 (function wireChallengeForm(){
   ['chStart','chTarget','chGrowth','chMove'].forEach(id=>{
@@ -1432,24 +1471,28 @@ function updateMT5UIConnected(connected){
     });
   });
   if(sendBtn) sendBtn.addEventListener('click', ()=>{
-    const url=mt5Url(); if(!url || !window.valensMT5Connected) return;
-    const sig=window.valensPendingSignal; if(!sig) return;
     const lot=parseFloat(document.getElementById('mt5SendLot').value)||0;
-    const status=document.getElementById('mt5BridgeStatus');
-    sendBtn.disabled=true; sendBtn.textContent=t('mt5SendBtnSending');
-    fetch(url+'/signal', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({dir:sig.dir, entry:sig.entry, stop:sig.stop, tp:sig.tp, confidence:sig.confidence, label:sig.label, lot, signal_id:sig.sigId})
-    }).then(r=>r.json()).then(res=>{
-      if(status) status.textContent = res.executed ? t('mt5BridgeExecuted') : t('mt5BridgeSkipped')(res.reason||'?');
-      window.valensLastSentSigId=sig.sigId;
-      sendBtn.textContent=t('mt5SendBtnSent');
-    }).catch(()=>{
-      if(status) status.textContent=t('mt5BridgeUnreachable');
-      sendBtn.disabled=false; sendBtn.textContent=t('mt5SendBtnLabel');
-    });
+    sendSignalToMT5(window.valensPendingSignal, lot);
   });
 })();
+// ---- Ortak gönderme fonksiyonu — hem manuel "Gönder" butonu hem de otomatik (demo/veri toplama)
+// modu AYNI yolu kullanır, davranış hiçbir zaman ikisi arasında farklılaşmaz. ----
+function sendSignalToMT5(sig, lot){
+  const url=mt5Url(); if(!url || !window.valensMT5Connected || !sig) return;
+  const sendBtn=document.getElementById('mt5SendBtn'), status=document.getElementById('mt5BridgeStatus');
+  if(sendBtn){ sendBtn.disabled=true; sendBtn.textContent=t('mt5SendBtnSending'); }
+  fetch(url+'/signal', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({dir:sig.dir, entry:sig.entry, stop:sig.stop, tp:sig.tp, confidence:sig.confidence, label:sig.label, lot, signal_id:sig.sigId})
+  }).then(r=>r.json()).then(res=>{
+    if(status) status.textContent = res.executed ? t('mt5BridgeExecuted') : t('mt5BridgeSkipped')(res.reason||'?');
+    window.valensLastSentSigId=sig.sigId;
+    if(sendBtn) sendBtn.textContent=t('mt5SendBtnSent');
+  }).catch(()=>{
+    if(status) status.textContent=t('mt5BridgeUnreachable');
+    if(sendBtn){ sendBtn.disabled=false; sendBtn.textContent=t('mt5SendBtnLabel'); }
+  });
+}
 
 // ============ SİNYAL KAR/ZARAR GÜNLÜĞÜ ============
 // Bot her "armed" (net BUY/SELL) sinyal verdiğinde o anki grafikten aldığı gerçek giriş/TP/SL
@@ -1482,9 +1525,11 @@ function updateTradeLogUI(){
     const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
     const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
     const hitPx = win?tr.tp:tr.sl;
+    const ctxLine = tr.context ? describeTradeContext(tr.context) : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
       '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+(tr.stratLabel?' <span style="color:var(--muted)">· '+tr.stratLabel+'</span>':'')+
-      '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span></div>'+
+      '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span>'+
+      (ctxLine?'<br><span style="color:var(--muted);font-size:8px">'+ctxLine+'</span>':'')+'</div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
   }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
@@ -1783,7 +1828,7 @@ function botTick(){
  const curCandleTime = cr.candleTime || 0;
  const lock = window.valensCandleLock;
  if(!lock){
-  if(armed) window.valensCandleLock = {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label};
+  if(armed) window.valensCandleLock = {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label, confirmedCandles:1};
  } else if(lock.candleTime === curCandleTime){
   // AYNI mum — kilitli yönü/güveni koru, bu tick'in taze (muhtemelen gürültülü) sonucunu YOK SAY
   rawDir = lock.dir; conf = lock.conf;
@@ -1795,11 +1840,24 @@ function botTick(){
  } else {
   // YENİ mum başlamış — taze hesaplama kilidi destekliyor mu?
   if(armed && rawDir===lock.dir){
-   window.valensCandleLock = {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label}; // devam, fiyat güncellendi
+   // AYNI yön yeni mumda da tekrar ateşlendi — bu bir "onay mumu" sayılır, sayaç artar.
+   window.valensCandleLock = {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label, confirmedCandles:(lock.confirmedCandles||1)+1};
   } else {
-   window.valensCandleLock = armed ? {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label} : null; // desteklemedi, kilit serbest
+   window.valensCandleLock = armed ? {candleTime:curCandleTime, dir:rawDir, conf, bestKey:best.key, bestLabel:best.label, confirmedCandles:1} : null; // desteklemedi, kilit serbest
   }
  }
+
+ // ---- MUM KAPANIŞ ONAYI — kullanıcı geri bildirimi: "aynı mumda %90 BUY, hemen %90 SELL'e
+ // dönebiliyor". Yukarıdaki kilit AYNI mum içindeki titreşimi zaten engelliyordu, ama tek bir
+ // mumun (özellikle kısa zaman aralıklarında saniyeler süren) ilk okumasını hemen "KESİN İŞLEM"
+ // sayıp göndermek riskliydi. Artık bir sinyal ilk ateşlendiğinde HEMEN gönderilmiyor — mum
+ // GERÇEKTEN kapanıp YENİ bir mum AYNI yönü doğrulamadan (2. mum) gerçek KESİN İŞLEM sayılmıyor.
+ // Aynı yönde devam ederse sayaç büyümeye devam eder, TERS yön gelirse kilit sıfırlanıp yeniden
+ // 1'den başlar (yukarıdaki blok zaten bunu yapıyor).
+ const REQUIRED_CONFIRM_CANDLES = 2;
+ const confirmedCandles = window.valensCandleLock ? (window.valensCandleLock.confirmedCandles||1) : 0;
+ const awaitingConfirmation = armed && confirmedCandles < REQUIRED_CONFIRM_CANDLES;
+ if(awaitingConfirmation) armed = false;
 
  const COOLDOWN_MIN = 20;
  const lastStop = getStopCooldown(CUR);
@@ -1817,6 +1875,7 @@ function botTick(){
  if(sigWhyEl){
   let whyHtml = best ? t('winningCandidateLine')(best.label, conf) : t('noCandidateLine');
   if(conflicted) whyHtml += ' <span style="color:#ffb27a">'+t('conflictWarning')+'</span>';
+  if(awaitingConfirmation) whyHtml += t('confirmWhyNote')(confirmedCandles, REQUIRED_CONFIRM_CANDLES);
   if(cooldownActive) whyHtml += t('cooldownWhyNote')(cooldownRemainMin);
   sigWhyEl.innerHTML = whyHtml;
  }
@@ -1936,6 +1995,7 @@ function botTick(){
  const tg=document.getElementById('trigger');
  if(armed){tg.className='trigger armed';tg.textContent=t('armedTrigger')(rawDir>0?'BUY':'SELL',conf);}
  else if(technicallyArmed && riskBlocked){tg.className='trigger wait';tg.textContent=t('riskBlockedStatus');}
+ else if(awaitingConfirmation){tg.className='trigger wait';tg.textContent=t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL');}
  else if(cooldownActive){tg.className='trigger wait';tg.textContent=t('cooldownStatus')(cooldownRemainMin);}
  else if(conflicted){tg.className='trigger wait';tg.textContent=t('conflictBadge')+' · '+t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
  else{tg.className='trigger wait';tg.textContent=t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
@@ -2012,7 +2072,9 @@ function botTick(){
      document.getElementById('megaAlertBody').textContent=t('megaAlertBodyRange')(fmt(scEntryPx),fmt(scStopPx),fmt(scTpPx),Math.round(scTpUsdMin).toLocaleString('en-US'),Math.round(scTpUsdMax).toLocaleString('en-US'),lotMin,lotMax);
    } else { alertBox.classList.remove('show'); }
 
-   logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx, best?best.key:null, best?best.label:null);
+   logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx, best?best.key:null, best?best.label:null, {
+    regime: marketRegime, agreeCount, totalVotes, trend: cr.trend||0, srText: cr.srText||'', patternName: cr.patternName||'', confirmedCandles
+   });
    recordLastSignal(CUR,'scalp',rawDir,scEntryPx,scTpPx,scStopPx);
    recordLastSignal(CUR,'swing',rawDir,adjLast,swTpPx,swStopPx);
    // ---- MT5 KÖPRÜSÜ (manuel onaylı): bekleyen sinyali güncelle, gönder butonunun durumunu ayarla.
@@ -2026,10 +2088,21 @@ function botTick(){
     if(window.valensLastSentSigId===sigId){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5SendBtnSent'); }
     else { mt5SendBtn.disabled=false; mt5SendBtn.textContent=t('mt5SendBtnLabel'); }
    }
+   // ---- OTOMATİK GÖNDER (demo/veri toplama modu) — kullanıcı açıkça işaretlemişse, bağlıysa,
+   // güven eşiğini karşılıyorsa VE bu sinyal daha önce gönderilmemişse, onay beklemeden gönderir.
+   // Kapalıyken (varsayılan) hiçbir şey değişmez, davranış manuel-onaylı moddan farksızdır.
+   const autoChk=document.getElementById('mt5AutoSend');
+   if(autoChk && autoChk.checked && window.valensMT5Connected && window.valensLastSentSigId!==sigId){
+    const minConf=parseFloat(document.getElementById('mt5AutoMinConf').value)||90;
+    if(conf>=minConf){
+     const autoLot=parseFloat(document.getElementById('mt5SendLot').value)||0.1;
+     sendSignalToMT5(window.valensPendingSignal, autoLot);
+    }
+   }
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
-   scStatusEl.textContent = (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
+   scStatusEl.textContent = (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : awaitingConfirmation ? t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
    window.valensPendingSignal = null;
    const mt5SendBtnIdle=document.getElementById('mt5SendBtn');
