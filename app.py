@@ -599,6 +599,7 @@ const I18N = {
   tickerEconFallback:'Ekonomik takvim için sağ panele bakın.', tickerDisclaimer:'Kurumsal akış ve haber verileri doğrulama gerektirir.',
   tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
+  fvgTop:'FVG Üst', fvgBottom:'FVG Alt', fvgCE:'FVG %50 (CE)', fvgEntry:'FVG Giriş',
   mainResistance:'Ana Direnç (1H)', mainSupport:'Ana Destek (1H)', srNearMainSupport:'ana desteğe (1H) yakın', srNearMainResistance:'ana dirence (1H) yakın',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
   tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
@@ -790,6 +791,7 @@ const I18N = {
   tickerEconFallback:'See the right panel for the economic calendar.', tickerDisclaimer:'Institutional flow and news data require verification.',
   tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
+  fvgTop:'FVG Top', fvgBottom:'FVG Bottom', fvgCE:'FVG 50% (CE)', fvgEntry:'FVG Entry',
   mainResistance:'Main Resistance (1H)', mainSupport:'Main Support (1H)', srNearMainSupport:'near main support (1H)', srNearMainResistance:'near main resistance (1H)',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
   tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
@@ -1787,7 +1789,7 @@ function botTick(){
    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
    source = 'backtest';
   }
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family});
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, fvgZone:tag.fvgZone||null});
  });
 
  let best=null;
@@ -1897,6 +1899,16 @@ function botTick(){
    const regimeLabel = marketRegime==='trendUp'?t('regimeTrendUp'):marketRegime==='trendDown'?t('regimeTrendDown'):marketRegime==='ranging'?t('regimeRanging'):marketRegime==='trendFlat'?t('regimeTrendFlat'):t('regimeUnclear');
    tagEl.style.display='block'; tagEl.innerHTML='<div style="color:var(--muted);margin-bottom:2px">'+t('regimePrefix')+' <b style="color:var(--gold)">'+regimeLabel+'</b></div>'+t('strategyTagPrefix')+parts.join(' · ');
   } else { tagEl.style.display='none'; tagEl.textContent=''; }
+ }
+
+ // FVG (Fair Value Gap) stratejisi grafikte AYRI bir script/canvas bağlamında (chart motoru)
+ // çizildiği için buradan doğrudan cs.createPriceLine çağrılamıyor — window.valensDrawFVGZone /
+ // valensClearFVGZone köprü fonksiyonları (aşağıda chart motorunda tanımlı) üzerinden haberleşiyor,
+ // tıpkı window.valensRenderBacktestPanel gibi mevcut diğer köprülerle aynı desen.
+ if(best && best.key==='fvgRetest' && best.fvgZone && window.valensDrawFVGZone){
+  window.valensDrawFVGZone(best.fvgZone, best.dir);
+ } else if(window.valensClearFVGZone){
+  window.valensClearFVGZone();
  }
 
  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
@@ -2553,7 +2565,14 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
- let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[];
+ let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[],fvgZoneLines=[],fvgMarker=null;
+ // patternMarkers (mum formasyonları) VE fvgMarker (FVG giriş noktası) aynı cs.setMarkers() çağrısını
+ // paylaşıyor — lightweight-charts setMarkers() önceki listeyi tamamen DEĞİŞTİRİR, birleştirmez.
+ // Bu yüzden ikisini de tutan tek bir yer olmalı, yoksa biri diğerini görünmez şekilde silerdi.
+ function refreshAllMarkers(){
+  const all = fvgMarker ? patternMarkers.concat([fvgMarker]).sort((a,b)=>a.time-b.time) : patternMarkers;
+  cs.setMarkers(all);
+ }
  // ---- HAFTA SONU/KAPALI PİYASA MUM RENKLENDİRMESİ — kullanıcı gerçek ekran görüntüsüyle gösterdi:
  // XAU/USD piyasası GERÇEKTE kapalıyken (hafta sonu), grafiğimiz PAXG'nin (7/24 açık kripto) hareketini
  // göstermeye devam ediyor ve bu, gerçek altınla hiç ilgisi olmayan sahte bir teknik görünüm (kırılan
@@ -3217,18 +3236,23 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const w=a.slice(-lookback-2,-1); let fvgs=[];
   for(let i=1;i<w.length-1;i++){
    const c1=w[i-1], c3=w[i+1];
-   if(c1.high<c3.low) fvgs.push({dir:1, top:c3.low, bottom:c1.high});
-   else if(c1.low>c3.high) fvgs.push({dir:-1, top:c1.low, bottom:c3.high});
+   if(c1.high<c3.low) fvgs.push({dir:1, top:c3.low, bottom:c1.high, ce:(c3.low+c1.high)/2});
+   else if(c1.low>c3.high) fvgs.push({dir:-1, top:c1.low, bottom:c3.high, ce:(c1.low+c3.high)/2});
   }
   return fvgs;
  }
+ // ICT "CE" (Consequent Encroachment) / %50 kuralı: istatistiksel olarak fiyatın FVG'nin sadece
+ // dış kenarına değil, boşluğun TAM ORTA NOKTASINA (50%) geri dönmesi reddedilme/dönüş olasılığını
+ // belirgin şekilde artırır — bu videoda anlatılan tam olarak bu kavram. Eskiden kod boşluğun
+ // herhangi bir kenarına dokunmayı yeterli sayıyordu (çok daha erken/gevşek tetikleniyordu);
+ // artık fiyatın CE seviyesine ulaşmasını şart koşuyor.
  function detectFVGRetest(a){
   if(a.length<25) return null;
   const fvgs=findFVGs(a,20), curr=a[a.length-1];
   for(let i=fvgs.length-1;i>=0;i--){
    const f=fvgs[i];
-   if(f.dir>0 && curr.low<=f.top && curr.close>f.bottom && curr.close>curr.open) return {key:'fvgRetest', dir:1};
-   if(f.dir<0 && curr.high>=f.bottom && curr.close<f.top && curr.close<curr.open) return {key:'fvgRetest', dir:-1};
+   if(f.dir>0 && curr.low<=f.ce && curr.close>f.bottom && curr.close>curr.open) return {key:'fvgRetest', dir:1, fvgZone:{top:f.top, bottom:f.bottom, ce:f.ce}};
+   if(f.dir<0 && curr.high>=f.ce && curr.close<f.top && curr.close<curr.open) return {key:'fvgRetest', dir:-1, fvgZone:{top:f.top, bottom:f.bottom, ce:f.ce}};
   }
   return null;
  }
@@ -3538,6 +3562,28 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   });
   return zones;
  }
+ // ---- FVG (Fair Value Gap) %50/CE görselleştirmesi — botTick() FARKLI bir <script> bloğunda
+ // çalışıyor (cs/chart nesnelerine doğrudan erişemiyor), bu yüzden window.valensDrawFVGZone /
+ // valensClearFVGZone köprü fonksiyonları üzerinden çağrılıyor. fvgRetest stratejisi devredeyken
+ // boşluğun üst/alt kenarları kesikli çizgiyle, %50 (CE) seviyesi ise kalın altın çizgiyle,
+ // giriş mumu da bir ok işaretiyle grafikte gösterilir.
+ window.valensDrawFVGZone=function(zone, dir){
+  if(!zone) return;
+  fvgZoneLines.forEach(l=>cs.removePriceLine(l)); fvgZoneLines=[];
+  const edgeColor = dir>0 ? 'rgba(0,200,150,.75)' : 'rgba(255,80,109,.75)';
+  fvgZoneLines.push(cs.createPriceLine({price:zone.top,color:edgeColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:t('fvgTop')}));
+  fvgZoneLines.push(cs.createPriceLine({price:zone.bottom,color:edgeColor,lineWidth:1,lineStyle:2,axisLabelVisible:true,title:t('fvgBottom')}));
+  fvgZoneLines.push(cs.createPriceLine({price:zone.ce,color:'#d4af37',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('fvgCE')}));
+  const lastBar = ohlc[ohlc.length-1];
+  if(lastBar){
+   fvgMarker = {time:lastBar.time, position:dir>0?'belowBar':'aboveBar', color:'#d4af37', shape:dir>0?'arrowUp':'arrowDown', text:t('fvgEntry')};
+  }
+  refreshAllMarkers();
+ };
+ window.valensClearFVGZone=function(){
+  if(fvgZoneLines.length){ fvgZoneLines.forEach(l=>cs.removePriceLine(l)); fvgZoneLines=[]; }
+  if(fvgMarker){ fvgMarker=null; refreshAllMarkers(); }
+ };
  function analyze(isCloseTick){
   if(ohlc.length<20)return;
   // ---- HAFTA SONU/KAPALI PİYASA DONDURMA — kullanıcı gerçek ekran görüntüsüyle gösterdi: XAU/USD
@@ -3573,7 +3619,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   if(patternMarkers.length>300) patternMarkers=patternMarkers.slice(-300); // makul bir üst sınır
   patternMarkers.sort((a,b)=>a.time-b.time); // lightweight-charts zaman sırası ister
-  cs.setMarkers(patternMarkers);
+  refreshAllMarkers();
 
   const last=a[a.length-1].close;
   const closes=a.map(c=>c.close);
@@ -3783,6 +3829,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
   kelUp.setData([]); kelLo.setData([]);
   patternMarkers=[]; // farklı enstrümana geçince eski sembolün formasyon geçmişini taşıma
+  fvgZoneLines.forEach(l=>cs.removePriceLine(l)); fvgZoneLines=[]; fvgMarker=null;
   e20.setData([]); e50.setData([]);
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
@@ -3819,6 +3866,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   cs.setMarkers([]); trendSeries.setData([]); chanUp.setData([]); chanLo.setData([]);
   kelUp.setData([]); kelLo.setData([]);
   patternMarkers=[];
+  fvgZoneLines.forEach(l=>cs.removePriceLine(l)); fvgZoneLines=[]; fvgMarker=null;
   e20.setData([]); e50.setData([]);
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
