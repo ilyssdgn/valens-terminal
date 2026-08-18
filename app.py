@@ -679,6 +679,12 @@ const I18N = {
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
   regimeBonus:'Bu strateji şu anki piyasa rejimine UYGUN — güven artırıldı', regimePenalty:'Bu strateji şu anki piyasa rejimine UYMUYOR — güven düşürüldü',
+  structurePrefix:'📐 Yapı:', structureUp:'Yükselen (HH/HL)', structureDown:'Düşen (LH/LL)',
+  structureBrokenUp:'Yükselen — kırılım (BOS) ▲', structureBrokenDown:'Düşen — kırılım (BOS) ▼', structureUnclear:'Belirsiz',
+  structureBonus:'Bu strateji gerçek swing yapısına (BOS) UYGUN — güven artırıldı', structurePenalty:'Bu strateji gerçek swing yapısına (BOS) TERS — güven düşürüldü',
+  exhaustionPrefix:'🕯️ Tükeniş:', exhaustionTop:'Tepede ret mumu kümesi', exhaustionTopStrong:'Tepede GÜÇLÜ ret kümesi ▼',
+  exhaustionBottom:'Dipte ret mumu kümesi', exhaustionBottomStrong:'Dipte GÜÇLÜ ret kümesi ▲', exhaustionNone:'Yok',
+  exhaustionBonus:'Bu strateji tepe/dip ret mumu kümesiyle UYUMLU — güven artırıldı', exhaustionPenalty:'Bu strateji tükenmiş yönde devam bekliyor — güven düşürüldü',
   backtest_title:'🔬 GEÇMİŞ VERİ TESTİ (backtest)',
   backtestHint:'Şu anki grafikteki GERÇEKTEN YAŞANMIŞ son ~300 muma bakılarak, her strateji geçmişte ateşlendiği HER noktada TP\'ye mi SL\'ye mi önce ulaşmış hesaplanır. Rastgele/olası gelecek tahmini DEĞİLDİR.',
   backtestNotEnoughData:'Yeterli geçmiş veri birikmedi (en az ~350 mum gerekir).',
@@ -871,6 +877,12 @@ const I18N = {
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
   regimeBonus:'This strategy FITS the current market regime — confidence increased', regimePenalty:'This strategy does NOT fit the current market regime — confidence decreased',
+  structurePrefix:'📐 Structure:', structureUp:'Bullish (HH/HL)', structureDown:'Bearish (LH/LL)',
+  structureBrokenUp:'Bullish — break (BOS) ▲', structureBrokenDown:'Bearish — break (BOS) ▼', structureUnclear:'Unclear',
+  structureBonus:'This strategy FITS the real swing structure (BOS) — confidence increased', structurePenalty:'This strategy goes AGAINST the real swing structure (BOS) — confidence decreased',
+  exhaustionPrefix:'🕯️ Exhaustion:', exhaustionTop:'Rejection cluster at top', exhaustionTopStrong:'STRONG rejection cluster at top ▼',
+  exhaustionBottom:'Rejection cluster at bottom', exhaustionBottomStrong:'STRONG rejection cluster at bottom ▲', exhaustionNone:'None',
+  exhaustionBonus:'This strategy MATCHES the top/bottom rejection cluster — confidence increased', exhaustionPenalty:'This strategy expects continuation in an exhausted direction — confidence decreased',
   backtest_title:'🔬 HISTORICAL BACKTEST',
   backtestHint:'Looks at the ~300 REAL past candles on this chart and checks, for every point in the past where each strategy actually fired, whether price reached TP or SL first. This is NOT a random/possible-future projection.',
   backtestNotEnoughData:'Not enough historical data yet (needs at least ~350 candles).',
@@ -1730,19 +1742,48 @@ function botTick(){
   if(adxVal<18) return 'ranging';
   return 'transitional';
  }
+ // DÜZELTME (kullanıcı geri bildirimi: art arda 8 kayıp, "sistem basit bir kanal kırılımını bile
+ // okuyamıyor"): eskiden bu ceza/bonus sadece ±6 puandı — 65-85 baz güvene sahip bir dönüş stratejisi
+ // +25'e kadar confirmBoost alabildiğinden ±6 pratikte hiçbir şeyi engellemiyordu. Artık güçlü trende
+ // karşı çalışan dönüş stratejileri GERÇEKTEN caydırıcı bir ceza alıyor (aşağıda ayrıca bkz.
+ // structureAdjustment — ADX'ten bağımsız, gerçek swing yapısına dayalı İKİNCİ ve daha güçlü bir veto).
  function regimeAdjustment(family, candDir, regime){
   if(family==='neutral' || regime==='unknown' || regime==='transitional') return 0;
   const isTrending = regime==='trendUp' || regime==='trendDown';
   const trendDir = regime==='trendUp'?1:regime==='trendDown'?-1:0;
   if(isTrending){
-   if(family==='trend' && candDir===trendDir) return 6;   // duruma UYGUN: güçlü trend + trend ailesi, trend yönünde
-   if(family==='reversal' && candDir===-trendDir) return -6; // duruma UYGUN DEĞİL: güçlü trende karşı dönüş arayan strateji
+   if(family==='trend' && candDir===trendDir) return 8;    // duruma UYGUN: güçlü trend + trend ailesi, trend yönünde
+   if(family==='reversal' && candDir===-trendDir) return -14; // duruma UYGUN DEĞİL: güçlü trende karşı dönüş arayan strateji
    return 0;
   }
   if(regime==='ranging'){
    if(family==='reversal') return 6;  // duruma UYGUN: yatay piyasa + dönüş/ortalama arayan strateji
    if(family==='trend') return -6;    // duruma UYGUN DEĞİL: yatayda kırılım takibi genelde sahte çıkar
   }
+  return 0;
+ }
+ // ---- YAPI TABANLI VETO (ADX'ten BAĞIMSIZ) — ADX 18-25 "geçiş" bandında regimeAdjustment hiçbir
+ // ceza uygulamıyordu; oysa bir kanal TAM OLARAK bu bantta kırılıyor olabilir (ADX henüz güçlü trend
+ // seviyesine ulaşmadan). window.valensChartRead.structureBias gerçek swing high/low dizisinden
+ // (fraktal pivot) hesaplanır, ADX'e hiç bakmaz — bu yüzden bu boşluğu kapatır. |structureBias|===2
+ // ise son swing noktası kapanışla da kırılmış demektir (gerçek BOS) — bu durumda dönüş stratejisine
+ // çok daha sert bir ceza uygulanır.
+ function structureAdjustment(family, candDir, structureBias){
+  if(family==='neutral' || !structureBias) return 0;
+  const structDir = structureBias>0?1:-1, broke = Math.abs(structureBias)>=2;
+  if(family==='trend' && candDir===structDir) return broke?12:6;
+  if(family==='reversal' && candDir===-structDir) return broke?-22:-10;
+  return 0;
+ }
+ // ---- TÜKENİŞ KÜMESİ CEZASI/BONUSU — kullanıcı geri bildirimi: art arda "Shooting Star" oluşmuş bir
+ // tepede terminal hâlâ BUY veriyordu. window.valensChartRead.exhaustionBias (detectReversalExhaustion)
+ // yapı henüz KIRILMADAN (structureAdjustment'tan DAHA ERKEN) tepe/dip ret mumu kümesini yakalar.
+ // negatif = tepede ret kümesi (beklenen tepki AŞAĞI), pozitif = dipte ret kümesi (beklenen tepki YUKARI).
+ function exhaustionAdjustment(family, candDir, exhaustionBias){
+  if(family==='neutral' || !exhaustionBias) return 0;
+  const revDir = exhaustionBias>0?1:-1, strong = Math.abs(exhaustionBias)>=2;
+  if(family==='reversal' && candDir===revDir) return strong?14:7;    // dönüşü yakalamaya çalışan strateji — bonus
+  if(family==='trend' && candDir===-revDir) return strong?-16:-8;    // tükenmiş yönde devam bekleyen strateji — ceza
   return 0;
  }
  function confirmBoost(dir){
@@ -1766,6 +1807,10 @@ function botTick(){
   const family = STRATEGY_FAMILY[tag.key] || 'neutral';
   const regimeAdj = regimeAdjustment(family, tag.dir, marketRegime);
   if(regimeAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+regimeAdj)));
+  const structureAdj = structureAdjustment(family, tag.dir, cr.structureBias||0);
+  if(structureAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+structureAdj)));
+  const exhaustionAdj = exhaustionAdjustment(family, tag.dir, cr.exhaustionBias||0);
+  if(exhaustionAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+exhaustionAdj)));
   // ---- GEÇMİŞ VERİ TESTİNE (BACKTEST) GÖRE DİNAMİK AYARLAMA ----
   // window.valensBacktestResults, bu grafikteki GERÇEKTEN YAŞANMIŞ son ~300 mumda her stratejinin
   // geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaştığını hesaplar (runHistoricalBacktest).
@@ -1789,7 +1834,7 @@ function botTick(){
    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
    source = 'backtest';
   }
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, fvgZone:tag.fvgZone||null});
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, structureBias:cr.structureBias||0, exhaustionBias:cr.exhaustionBias||0, fvgZone:tag.fvgZone||null});
  });
 
  let best=null;
@@ -1893,11 +1938,29 @@ function botTick(){
     if(adj<0) return ' <span style="color:var(--red)" title="'+t('regimePenalty')+'">▼</span>';
     return '';
    };
+   const structureMark=(c)=>{
+    if(!c.family || c.family==='neutral' || !c.structureBias) return '';
+    const adj = structureAdjustment(c.family, c.dir, c.structureBias);
+    if(adj>0) return ' <span style="color:var(--green)" title="'+t('structureBonus')+'">◆</span>';
+    if(adj<0) return ' <span style="color:var(--red)" title="'+t('structurePenalty')+'">◇</span>';
+    return '';
+   };
+   const exhaustionMark=(c)=>{
+    if(!c.family || c.family==='neutral' || !c.exhaustionBias) return '';
+    const adj = exhaustionAdjustment(c.family, c.dir, c.exhaustionBias);
+    if(adj>0) return ' <span style="color:var(--green)" title="'+t('exhaustionBonus')+'">✳</span>';
+    if(adj<0) return ' <span style="color:var(--red)" title="'+t('exhaustionPenalty')+'">✕</span>';
+    return '';
+   };
    const parts=candidates.slice().sort((a,b)=>b.confidence-a.confidence).map(c=>
-    (c===best?'<b style="color:'+(c.dir>0?'var(--green)':'var(--red)')+'">':'')+c.label+' ('+c.confidence+'%)'+srcMark(c)+regimeMark(c)+(c===best?'</b>':'')
+    (c===best?'<b style="color:'+(c.dir>0?'var(--green)':'var(--red)')+'">':'')+c.label+' ('+c.confidence+'%)'+srcMark(c)+regimeMark(c)+structureMark(c)+exhaustionMark(c)+(c===best?'</b>':'')
    );
    const regimeLabel = marketRegime==='trendUp'?t('regimeTrendUp'):marketRegime==='trendDown'?t('regimeTrendDown'):marketRegime==='ranging'?t('regimeRanging'):marketRegime==='trendFlat'?t('regimeTrendFlat'):t('regimeUnclear');
-   tagEl.style.display='block'; tagEl.innerHTML='<div style="color:var(--muted);margin-bottom:2px">'+t('regimePrefix')+' <b style="color:var(--gold)">'+regimeLabel+'</b></div>'+t('strategyTagPrefix')+parts.join(' · ');
+   const sBias = cr.structureBias||0;
+   const structureLabel = sBias>=2?t('structureBrokenUp'):sBias===1?t('structureUp'):sBias<=-2?t('structureBrokenDown'):sBias===-1?t('structureDown'):t('structureUnclear');
+   const eBias = cr.exhaustionBias||0;
+   const exhaustionLabel = eBias<=-2?t('exhaustionTopStrong'):eBias===-1?t('exhaustionTop'):eBias>=2?t('exhaustionBottomStrong'):eBias===1?t('exhaustionBottom'):t('exhaustionNone');
+   tagEl.style.display='block'; tagEl.innerHTML='<div style="color:var(--muted);margin-bottom:2px">'+t('regimePrefix')+' <b style="color:var(--gold)">'+regimeLabel+'</b> · '+t('structurePrefix')+' <b style="color:var(--gold)">'+structureLabel+'</b> · '+t('exhaustionPrefix')+' <b style="color:var(--gold)">'+exhaustionLabel+'</b></div>'+t('strategyTagPrefix')+parts.join(' · ');
   } else { tagEl.style.display='none'; tagEl.textContent=''; }
  }
 
@@ -3229,6 +3292,64 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(curr.close<inside.low) return {key:'insideBar', dir:-1};
   return null;
  }
+ // ---- PİYASA YAPISI (Market Structure / BOS) — kullanıcı geri bildirimi: sistem ADX'e dayalı "rejim"
+ // hesabıyla açık bir kanal kırılımını ("lower high + lower low" dizisi, sonra son swing low'un da
+ // kırılması) yeterince güçlü şekilde YAKALAYAMIYORDU — ADX 18-25 "geçiş" aralığında rejim cezası hiç
+ // uygulanmıyordu, bu da tam olarak "kanal yeni kırıldı ama ADX henüz güçlü trend seviyesine ulaşmadı"
+ // anındaki dönüş/reversal stratejilerinin (likidite süpürme, iFVG, order block, POC bounce...) cezasız
+ // ateşlenebilmesine yol açıyordu. Bu fonksiyon ADX'ten TAMAMEN bağımsız, gerçek swing high/low
+ // dizisinden (fraktal pivot) yapıyı okur — dönüş: +-1 (henüz kırılmamış yapı), +-2 (son swing'i de
+ // kapanışla kırmış, yani BOS gerçekleşmiş — daha güçlü sinyal).
+ function detectSwingStructure(a, lookback){
+  const w=a.slice(-lookback); const N=3;
+  if(w.length<N*2+5) return 0;
+  let swingHighs=[], swingLows=[];
+  for(let i=N;i<w.length-N;i++){
+   const c=w[i], left=w.slice(i-N,i), right=w.slice(i+1,i+1+N);
+   if(left.every(x=>x.high<=c.high) && right.every(x=>x.high<=c.high)) swingHighs.push(c.high);
+   if(left.every(x=>x.low>=c.low) && right.every(x=>x.low>=c.low)) swingLows.push(c.low);
+  }
+  if(swingHighs.length<2 || swingLows.length<2) return 0;
+  const lastHH=swingHighs[swingHighs.length-1], prevHH=swingHighs[swingHighs.length-2];
+  const lastLL=swingLows[swingLows.length-1], prevLL=swingLows[swingLows.length-2];
+  const curr=w[w.length-1];
+  if(lastHH>prevHH && lastLL>prevLL) return curr.close>lastHH ? 2 : 1;   // yükselen yapı (HH+HL); kapanış son zirveyi de kırdıysa BOS
+  if(lastHH<prevHH && lastLL<prevLL) return curr.close<lastLL ? -2 : -1; // düşen yapı (LH+LL); kapanış son dibi de kırdıysa BOS
+  return 0;
+ }
+ // ---- TÜKENİŞ MUM KÜMESİ (reversal candle cluster) — kullanıcı geri bildirimi: grafikte üst üste
+ // birkaç "Shooting Star" oluşmuş bir tepede terminal HÂLÂ BUY veriyordu. Kök neden: `pattern(a)`
+ // SADECE en son mumu kontrol ediyor — bir kaç mum önce oluşan 3-4 tane üst üste ret mumu (shooting
+ // star/bear engulf) bir sonraki mumda tamamen UNUTULUYOR, hiçbir yerde biriktirilmiyordu. Oysa
+ // birden fazla ret mumunun aynı tepede kümelenmesi, TEK bir mumdan çok daha güçlü bir dönüş
+ // sinyalidir (deneyimli bir grafik okuyucunun tam olarak fark ettiği şey budur) — yine de bu henüz
+ // yapının (swing low/high) KIRILMASI anlamına gelmez, bu yüzden detectSwingStructure'dan bağımsız,
+ // daha ERKEN uyaran ayrı bir katman. Son `lookback` mumda, aralığın üst/alt %15'ine yakın oluşmuş
+ // kaç tane ters yön mumu (shooting star/bear engulf = tepe reddi, hammer/bull engulf = dip reddi)
+ // olduğunu sayar.
+ function detectReversalExhaustion(a, lookback){
+  const w=a.slice(-lookback);
+  if(w.length<5) return 0;
+  const hiRef=Math.max(...w.map(c=>c.high)), loRef=Math.min(...w.map(c=>c.low));
+  const range=(hiRef-loRef)||1e-9;
+  let bearScore=0, bullScore=0;
+  for(let i=1;i<w.length;i++){
+   const c=w[i], p=w[i-1];
+   const body=Math.abs(c.close-c.open);
+   const up=c.high-Math.max(c.close,c.open), lo=Math.min(c.close,c.open)-c.low;
+   const bull=c.close>c.open, bear=c.close<c.open;
+   const nearHigh=(hiRef-c.high)/range<0.15, nearLow=(c.low-loRef)/range<0.15;
+   const isShootingStar = up>body*2 && lo<body;
+   const isBearEngulf = bear && p.close>p.open && c.close<p.open && c.open>p.close;
+   const isHammer = lo>body*2 && up<body;
+   const isBullEngulf = bull && p.close<p.open && c.close>p.open && c.open<p.close;
+   if((isShootingStar||isBearEngulf) && nearHigh) bearScore++;
+   if((isHammer||isBullEngulf) && nearLow) bullScore++;
+  }
+  if(bearScore>=2 && bearScore>bullScore) return -Math.min(2, Math.ceil(bearScore/2)); // -1 tek küme, -2 güçlü küme (3+)
+  if(bullScore>=2 && bullScore>bearScore) return Math.min(2, Math.ceil(bullScore/2));
+  return 0;
+ }
  // ---- FAIR VALUE GAP (FVG) — ICT tanımı: 3 mumluk yapı, 1. mumun high/low'u ile 3. mumun low/high'ı
  // arasında boşluk (2. mum "displacement/güçlü hareket" mumu). Fiyat bu boşluğa geri dönüp (retest)
  // tepki verirse (dolmadan reddedilirse) bu klasik bir giriş noktasıdır. ----
@@ -3710,6 +3831,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     pattern: pat?(pat.d==='bull'?1:pat.d==='bear'?-1:0):0,
     patternName: pat?pat.n:'',
     srBias, srText, fibBias, fibZone, strategyTags,
+    structureBias: detectSwingStructure(a, 60),
+    exhaustionBias: detectReversalExhaustion(a, 8),
     hasLiveData:true,
     candleTime: a[a.length-1].time, // mevcut mumun SABİT zaman damgası — sinyal tekilleştirmede kullanılır
     hourlyMove: estimateHourlyMovement(a), // saatlik tipik hareket — TP ulaşılabilirlik sınırı için
