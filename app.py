@@ -1786,6 +1786,31 @@ function botTick(){
   if(family==='trend' && candDir===-revDir) return strong?-16:-8;    // tükenmiş yönde devam bekleyen strateji — ceza
   return 0;
  }
+ // ---- TP'Yİ GERÇEK YAPIYA GÖRE KES — kullanıcı örneği: SELL sinyalinin TP'si Ana Destek'in (1H)
+ // ALTINA konmuştu. TP'ye ulaşmak için fiyatın gerçek desteği KIRMASI gerekiyordu — ki kırarsa zaten
+ // muhtemelen devam eder, orada "temiz" durup TP'yi vermesi gerçekçi bir varsayım değil. Eskiden TP
+ // SADECE ATR'nin sabit bir katıydı, hiçbir gerçek destek/direnç seviyesine bakmıyordu. Artık: entry
+ // ile ham (ATR bazlı) hedef arasında GERÇEK bir S/R seviyesi varsa (Ana 1H S/R veya Dyn S/R), hedef
+ // o seviyeyi kırmadan, biraz ÖNÜNDE kesiliyor. Yapı hedefe çok yakınsa (anlamsız küçük bir hedef
+ // kalırsa) ATR bazlı hama geri dönülüyor — o durumda zaten işlemin kendisi sorgulanmalı, TP'yi
+ // yapaylaştırmak çözüm değil.
+ function clampTargetToStructure(entry, rawTp, slDist, dir, levels){
+  if(!levels) return rawTp;
+  const rawDist = Math.abs(rawTp-entry);
+  const buffer = rawDist*0.06;
+  const candidateLevels = dir>0 ? [levels.mainRes, levels.dynRes] : [levels.mainSup, levels.dynSup];
+  let nearest=null;
+  candidateLevels.forEach(lv=>{
+   if(lv==null || !isFinite(lv)) return;
+   const between = dir>0 ? (lv>entry && lv<rawTp) : (lv<entry && lv>rawTp);
+   if(!between) return;
+   if(nearest===null || Math.abs(lv-entry)<Math.abs(nearest-entry)) nearest=lv;
+  });
+  if(nearest===null) return rawTp;
+  const clamped = dir>0 ? (nearest-buffer) : (nearest+buffer);
+  if(Math.abs(clamped-entry) < slDist*0.4) return rawTp; // yapı çok yakın — anlamlı hedef kalmıyor, ATR bazlıya dön
+  return clamped;
+ }
  function confirmBoost(dir){
   const agreeing=Object.keys(votes).filter(k=>votes[k]===dir).length;
   return Math.round((agreeing/totalBaseVotes)*25); // diğer 15 gösterge de aynı yöndeyse +0..+25 ek güven
@@ -2110,8 +2135,10 @@ function botTick(){
     if(scTP > reachableDistance) scTP = Math.max(reachableDistance, scSL*0.5); // asgari anlamlı bir hedef kalsın
    }
    const swSL = atr ? atr*3.0 : cfg.swSL, swTP = atr ? atr*6.0 : cfg.swTP;
-   const scEntryPx=adjLast, scStopPx=adjLast-d*scSL, scTpPx=adjLast+d*scTP;
-   const swStopPx=adjLast-d*swSL, swTpPx=adjLast+d*swTP;
+   const scEntryPx=adjLast, scStopPx=adjLast-d*scSL;
+   const swStopPx=adjLast-d*swSL;
+   const scTpPx=clampTargetToStructure(adjLast, adjLast+d*scTP, scSL, d, cr.srLevels);
+   const swTpPx=clampTargetToStructure(adjLast, adjLast+d*swTP, swSL, d, cr.srLevels);
 
    document.getElementById('scEntry').textContent=fmt(scEntryPx);
    document.getElementById('scStop').textContent=fmt(scStopPx);
@@ -3833,6 +3860,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     srBias, srText, fibBias, fibZone, strategyTags,
     structureBias: detectSwingStructure(a, 60),
     exhaustionBias: detectReversalExhaustion(a, 8),
+    // ---- Kullanıcı geri bildirimi: SELL sinyalinin TP'si Ana Destek'in (1H) ALTINA konmuştu — yani
+    // hedefe ulaşmak için fiyatın gerçek desteği kırması gerekiyordu, ki kırarsa zaten daha aşağı gider,
+    // orada durup TP'ye "temiz" ulaşması gerçekçi değil. TP/SL hesaplaması botTick'te (ayrı script)
+    // yapılıyor, o yüzden gerçek S/R seviyeleri buradan köprüleniyor — botTick artık TP'yi bu
+    // seviyelerin ÖNÜNDE (kırmadan) kesiyor.
+    srLevels: {mainSup:(mainSR&&mainSR.sup!=null)?mainSR.sup:null, mainRes:(mainSR&&mainSR.res!=null)?mainSR.res:null,
+               dynSup:(typeof sup==='number'&&isFinite(sup))?sup:null, dynRes:(typeof res==='number'&&isFinite(res))?res:null},
     hasLiveData:true,
     candleTime: a[a.length-1].time, // mevcut mumun SABİT zaman damgası — sinyal tekilleştirmede kullanılır
     hourlyMove: estimateHourlyMovement(a), // saatlik tipik hareket — TP ulaşılabilirlik sınırı için
