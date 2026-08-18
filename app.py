@@ -664,6 +664,7 @@ const I18N = {
   mt5BridgeExecuted:'✓ Gönderildi, MT5\'te işlem açıldı.',
   mt5BridgeSkipped:(reason)=>'Köprüye ulaştı ama işlem AÇILMADI (sebep: '+reason+').',
   mt5LotLabel:'Gönderilecek lot', mt5SendBtnLabel:'⚡ Bu Sinyali MT5\'e Gönder (Onayla)', mt5SendBtnSending:'Gönderiliyor…', mt5SendBtnSent:'✓ Gönderildi (bu sinyal için)',
+  mt5CandleLimitReached:'⏸ Bu mumda/yönde gönderim sınırına (2) ulaşıldı — yeni mum bekleniyor.', mt5CandleLimitBtn:'⏸ Mum Başına Sınır Doldu (2/2)',
   mt5AutoSendLabel:'🤖 Otomatik Gönder — SADECE DEMO hesap için (onay beklemeden gönderir)',
   mt5AutoMinConfLabel:'Min. güven (%)',
   mt5AutoSendWarn:'⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.',
@@ -862,6 +863,7 @@ const I18N = {
   mt5BridgeExecuted:'✓ Sent, trade opened in MT5.',
   mt5BridgeSkipped:(reason)=>'Reached the bridge but no trade was opened (reason: '+reason+').',
   mt5LotLabel:'Lot to send', mt5SendBtnLabel:'⚡ Send This Signal to MT5 (Confirm)', mt5SendBtnSending:'Sending…', mt5SendBtnSent:'✓ Sent (for this signal)',
+  mt5CandleLimitReached:'⏸ Send limit reached for this candle/direction (2) — waiting for a new candle.', mt5CandleLimitBtn:'⏸ Per-Candle Limit Reached (2/2)',
   mt5AutoSendLabel:'🤖 Auto-Send — DEMO accounts ONLY (sends without waiting for approval)',
   mt5AutoMinConfLabel:'Min. confidence (%)',
   mt5AutoSendWarn:"⚠ While this is checked, EVERY trade is sent to the real MT5 account without waiting for approval. Only use this on a demo/test account — keep it OFF with real money.",
@@ -1491,9 +1493,31 @@ function updateMT5UIConnected(connected){
 })();
 // ---- Ortak gönderme fonksiyonu — hem manuel "Gönder" butonu hem de otomatik (demo/veri toplama)
 // modu AYNI yolu kullanır, davranış hiçbir zaman ikisi arasında farklılaşmaz. ----
+// ---- MUM BAŞINA MAKS 2 GÖNDERİM — kullanıcı geri bildirimi (gerçek örnek): aynı mum içinde
+// birkaç saniye arayla farklı fiyat noktalarından (4341, 4342, 4343...) tekrar tekrar SELL
+// gönderiliyordu. sigId kazanan stratejiye göre de değiştiğinden (best.key), tek başına yeterli bir
+// dedup değildi — strateji bir tick'te değişse bile "aynı mum, aynı yön" hâlâ pratikte aynı fikirdir.
+// Burada MUM ZAMANI + YÖNE göre ayrı, daha sıkı bir sayaç tutuluyor: bir yönde bir mumda en fazla 2
+// gönderim, 3.'sü o mum kapanıp yeni mum başlayana kadar engellenir.
+function candleSendLimitReached(sig){
+  const tr = window.valensCandleSendTracker;
+  return !!(tr && sig && tr.candleTime===sig.candleTime && tr.dir===sig.dir && tr.count>=2);
+}
+function recordCandleSend(sig){
+  const tr = window.valensCandleSendTracker;
+  if(!tr || tr.candleTime!==sig.candleTime || tr.dir!==sig.dir){
+   window.valensCandleSendTracker = {candleTime:sig.candleTime, dir:sig.dir, count:1};
+  } else { tr.count++; }
+}
 function sendSignalToMT5(sig, lot){
   const url=mt5Url(); if(!url || !window.valensMT5Connected || !sig) return;
   const sendBtn=document.getElementById('mt5SendBtn'), status=document.getElementById('mt5BridgeStatus');
+  if(candleSendLimitReached(sig)){
+   if(status) status.textContent=t('mt5CandleLimitReached');
+   if(sendBtn){ sendBtn.disabled=true; sendBtn.textContent=t('mt5SendBtnLabel'); }
+   return;
+  }
+  recordCandleSend(sig);
   if(sendBtn){ sendBtn.disabled=true; sendBtn.textContent=t('mt5SendBtnSending'); }
   fetch(url+'/signal', {
     method:'POST', headers:{'Content-Type':'application/json'},
@@ -2184,17 +2208,20 @@ function botTick(){
    // kurulum sürdüğü sürece aynı kalır, "aynı sinyali defalarca gönder" riskini önler.
    const candleTimeForSig = cr.candleTime || Math.floor(Date.now()/1000);
    const sigId = rawDir+'-'+(best?best.key:'none')+'-'+candleTimeForSig;
-   window.valensPendingSignal = {dir:rawDir, entry:scEntryPx, stop:scStopPx, tp:scTpPx, confidence:conf, label:(best?best.label:'?'), sigId};
+   window.valensPendingSignal = {dir:rawDir, entry:scEntryPx, stop:scStopPx, tp:scTpPx, confidence:conf, label:(best?best.label:'?'), sigId, candleTime:candleTimeForSig};
    const mt5SendBtn=document.getElementById('mt5SendBtn');
+   const candleLimitHit = candleSendLimitReached(window.valensPendingSignal);
    if(mt5SendBtn){
-    if(window.valensLastSentSigId===sigId){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5SendBtnSent'); }
+    if(candleLimitHit){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5CandleLimitBtn'); }
+    else if(window.valensLastSentSigId===sigId){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5SendBtnSent'); }
     else { mt5SendBtn.disabled=false; mt5SendBtn.textContent=t('mt5SendBtnLabel'); }
    }
    // ---- OTOMATİK GÖNDER (demo/veri toplama modu) — kullanıcı açıkça işaretlemişse, bağlıysa,
-   // güven eşiğini karşılıyorsa VE bu sinyal daha önce gönderilmemişse, onay beklemeden gönderir.
-   // Kapalıyken (varsayılan) hiçbir şey değişmez, davranış manuel-onaylı moddan farksızdır.
+   // güven eşiğini karşılıyorsa, bu sinyal daha önce gönderilmemişse VE bu mumda/yönde gönderim
+   // sınırına (2) ulaşılmamışsa, onay beklemeden gönderir. Kapalıyken (varsayılan) hiçbir şey
+   // değişmez, davranış manuel-onaylı moddan farksızdır.
    const autoChk=document.getElementById('mt5AutoSend');
-   if(autoChk && autoChk.checked && window.valensMT5Connected && window.valensLastSentSigId!==sigId){
+   if(autoChk && autoChk.checked && window.valensMT5Connected && window.valensLastSentSigId!==sigId && !candleLimitHit){
     const minConf=parseFloat(document.getElementById('mt5AutoMinConf').value)||90;
     if(conf>=minConf){
      const autoLot=parseFloat(document.getElementById('mt5SendLot').value)||0.1;
