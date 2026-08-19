@@ -2161,8 +2161,18 @@ function botTick(){
    const swSL = atr ? atr*3.0 : cfg.swSL, swTP = atr ? atr*6.0 : cfg.swTP;
    const scEntryPx=adjLast, scStopPx=adjLast-d*scSL;
    const swStopPx=adjLast-d*swSL;
-   const scTpPx=clampTargetToStructure(adjLast, adjLast+d*scTP, scSL, d, cr.srLevels);
-   const swTpPx=clampTargetToStructure(adjLast, adjLast+d*swTP, swSL, d, cr.srLevels);
+   // ---- KULLANICI GERİ BİLDİRİMİ: giriş fiyatı canlı (gerçek spot-eşdeğeri, goldAdj ile düzeltilmiş)
+   // ama TP/SL kırpması için kullanılan S/R seviyeleri (cr.srLevels) HAM grafik/PAXG fiyatındandı —
+   // ikisi farklı bir referans noktasındaydı (goldAdj kadar, XAU/USD'de birkaç dolar fark edebilir).
+   // Burada srLevels de AYNI goldAdj ile düzeltilip entry ile aynı baza getiriliyor.
+   const adjSrLevels = cr.srLevels ? {
+    mainSup: cr.srLevels.mainSup!=null?cr.srLevels.mainSup+goldAdj:null,
+    mainRes: cr.srLevels.mainRes!=null?cr.srLevels.mainRes+goldAdj:null,
+    dynSup: cr.srLevels.dynSup!=null?cr.srLevels.dynSup+goldAdj:null,
+    dynRes: cr.srLevels.dynRes!=null?cr.srLevels.dynRes+goldAdj:null
+   } : null;
+   const scTpPx=clampTargetToStructure(adjLast, adjLast+d*scTP, scSL, d, adjSrLevels);
+   const swTpPx=clampTargetToStructure(adjLast, adjLast+d*swTP, swSL, d, adjSrLevels);
 
    document.getElementById('scEntry').textContent=fmt(scEntryPx);
    document.getElementById('scStop').textContent=fmt(scStopPx);
