@@ -338,6 +338,24 @@ iframe{height:100%;width:100%;border:0}
       </div>
       </div>
       <div class="panelcard">
+      <div class="ph"><b data-i18n="signal_api_title">☁️ MERKEZİ SİNYAL KAYDI (7/24 sunucu)</b><span class="badge" id="signalApiBadge">—</span></div>
+      <div style="padding:9px">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="signalApiHint">Terminal 7/24 sunucuda çalışıyorsa, her sinyal buraya da kaydedilir — hangi cihazdan/tarayıcıdan girerseniz girin AYNI geçmişi görürsünüz. Bağlı değilken hiçbir şey değişmez, kayıt sadece bu tarayıcıda (localStorage) tutulmaya devam eder.</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input id="signalApiUrl" type="text" placeholder="https://terminal.valenswealth.com" style="flex:1;min-width:0;background:#07101c;border:1px solid var(--line);color:var(--text);padding:6px;border-radius:3px;font:9px 'IBM Plex Mono'">
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:7px">
+          <input id="signalApiCode" type="text" placeholder="Erken erişim kodu" style="flex:1;min-width:0;background:#07101c;border:1px solid var(--line);color:var(--text);padding:6px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <button id="signalApiToggle" style="padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:#07101c;color:var(--text);font:9px 'IBM Plex Mono';cursor:pointer;white-space:nowrap" data-i18n="signalApiToggleOff">☁️ Bağlan</button>
+        </div>
+        <div id="signalApiStatus" style="font-size:8px;color:var(--muted);line-height:1.5;margin-bottom:7px">—</div>
+        <div id="signalApiStatsArea" style="display:none">
+          <div style="border-top:1px dashed var(--line);margin-top:2px;padding-top:8px;font:9px 'IBM Plex Mono';color:var(--gold);margin-bottom:6px" data-i18n="signalApiStatsTitle">📊 Merkezi Strateji Performansı (tüm cihazlar)</div>
+          <div id="signalApiStatsBody" style="font-size:9px;color:var(--text);line-height:1.8">—</div>
+        </div>
+      </div>
+      </div>
+      <div class="panelcard">
       <div class="ph"><b data-i18n="challenge_title">🎯 CHALLENGE MODU</b><span class="badge" id="challengeBadge">—</span></div>
       <div style="padding:9px">
         <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="challengeHint">Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).</div>
@@ -601,6 +619,7 @@ const I18N = {
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   fvgTop:'FVG Üst', fvgBottom:'FVG Alt', fvgCE:'FVG %50 (CE)', fvgEntry:'FVG Giriş',
   mainResistance:'Ana Direnç (1H)', mainSupport:'Ana Destek (1H)', srNearMainSupport:'ana desteğe (1H) yakın', srNearMainResistance:'ana dirence (1H) yakın',
+  mainResistanceBroken:'Eski Direnç (kırıldı → olası destek)', mainSupportBroken:'Eski Destek (kırıldı → olası direnç)',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
   tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
   tagRsiDivergence:'RSI Uyumsuzluğu (Divergence)', tagBollSqueeze:'Bollinger Sıkışması + Kırılımı',
@@ -653,6 +672,15 @@ const I18N = {
   lastSignalLine:(dir,entry,tp,time)=>'Son sinyal: <b>'+dir+'</b> · Giriş '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RİSK YÖNETİCİSİ', risk_balance:'Bakiye ($)', risk_daily:'Günlük Kayıp Limiti (%)',
   gaugeTrend:'TREND', gaugeCandle:'MUM', gaugeNews:'HABER',
+  signal_api_title:'☁️ MERKEZİ SİNYAL KAYDI (7/24 sunucu)',
+  signalApiHint:'Terminal 7/24 sunucuda çalışıyorsa, her sinyal buraya da kaydedilir — hangi cihazdan/tarayıcıdan girerseniz girin AYNI geçmişi görürsünüz. Bağlı değilken hiçbir şey değişmez, kayıt sadece bu tarayıcıda (localStorage) tutulmaya devam eder.',
+  signalApiToggleOff:'☁️ Bağlan', signalApiToggleOn:'⏸ Bağlantıyı Kes',
+  signalApiConnecting:'Bağlanıyor…', signalApiConnected:'✓ Bağlı — sinyaller merkezi olarak kaydediliyor.',
+  signalApiInvalidCode:'✗ Erken erişim kodu yanlış.', signalApiUnreachable:'✗ Sunucuya ulaşılamadı — adresi kontrol edin.',
+  signalApiNoUrl:'Önce sunucu adresini girin.',
+  signalApiStatsTitle:'📊 Merkezi Strateji Performansı (tüm cihazlar)',
+  signalApiStatsLine:(label,trades,winRate)=>label+': '+trades+' işlem · %'+winRate+' kazanma',
+  signalApiStatsEmpty:'Henüz sonuçlanan sinyal yok.',
   mt5_bridge_title:'🔌 MT5 KÖPRÜSÜ (manuel onaylı)',
   mt5BridgeHint:'Diğer bilgisayarınızda valens_mt5_executor.py çalışıyorsa buraya bağlanın. Otomatik gönderim YOK — her KESİN İŞLEM\'de burada bir "Gönder" butonu belirir, siz onaylamadan hiçbir emir MT5\'e gitmez.',
   mt5BridgeToggleOff:'🔌 Bağlan', mt5BridgeToggleOn:'⏸ Bağlantıyı Kes',
@@ -800,6 +828,7 @@ const I18N = {
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   fvgTop:'FVG Top', fvgBottom:'FVG Bottom', fvgCE:'FVG 50% (CE)', fvgEntry:'FVG Entry',
   mainResistance:'Main Resistance (1H)', mainSupport:'Main Support (1H)', srNearMainSupport:'near main support (1H)', srNearMainResistance:'near main resistance (1H)',
+  mainResistanceBroken:'Old Resistance (broken → possible support)', mainSupportBroken:'Old Support (broken → possible resistance)',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
   tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
   tagRsiDivergence:'RSI Divergence', tagBollSqueeze:'Bollinger Squeeze Breakout',
@@ -852,6 +881,15 @@ const I18N = {
   lastSignalLine:(dir,entry,tp,time)=>'Last signal: <b>'+dir+'</b> · Entry '+entry+' → TP '+tp+' · '+time,
   risk_governor_title:'🛡 CHALLENGE RISK GOVERNOR', risk_balance:'Balance ($)', risk_daily:'Daily Loss Limit (%)',
   gaugeTrend:'TREND', gaugeCandle:'CANDLE', gaugeNews:'NEWS',
+  signal_api_title:'☁️ CENTRAL SIGNAL LOG (24/7 server)',
+  signalApiHint:'If the terminal is running 24/7 on a server, every signal is also recorded here — you see the SAME history no matter which device/browser you log in from. Nothing changes while disconnected — signals keep being tracked in this browser (localStorage) only.',
+  signalApiToggleOff:'☁️ Connect', signalApiToggleOn:'⏸ Disconnect',
+  signalApiConnecting:'Connecting…', signalApiConnected:'✓ Connected — signals are being recorded centrally.',
+  signalApiInvalidCode:'✗ Early access code is wrong.', signalApiUnreachable:'✗ Could not reach the server — check the address.',
+  signalApiNoUrl:'Enter the server address first.',
+  signalApiStatsTitle:'📊 Central Strategy Performance (all devices)',
+  signalApiStatsLine:(label,trades,winRate)=>label+': '+trades+' trades · '+winRate+'% win rate',
+  signalApiStatsEmpty:'No resolved signals yet.',
   mt5_bridge_title:'🔌 MT5 BRIDGE (manual confirm)',
   mt5BridgeHint:"If valens_mt5_executor.py is running on your other PC, connect here. No auto-send — every CONFIRMED TRADE shows a Send button here, nothing reaches MT5 until you approve it.",
   mt5BridgeToggleOff:'🔌 Connect', mt5BridgeToggleOn:'⏸ Disconnect',
@@ -1184,9 +1222,13 @@ function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context){
   store.trades=store.trades||[];
   const openTrade=store.trades.find(t=>!t.resolved);
   if(openTrade)return; // aynı anda tek açık takip — üst üste her tick'te yeni kayıt açılmaz
-  store.trades.push({ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null});
+  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null};
+  store.trades.push(trade);
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveTradeStore(sym,store);
+  // 7/24 sunucudaki merkezi sinyal API'sine bağlıysa buraya da kaydedilir (bkz. pushSignalToApi
+  // aşağıda) — bağlı değilken bu no-op'tur, localStorage davranışı hiç değişmez.
+  pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:stratKey||null, stratLabel:stratLabel||null, context:context||null, ts:trade.ts});
 }
 // ---- İşlem anındaki GERÇEK gerekçeyi (rejim, kaç indikatör destekledi, S/R/mum durumu, kaç mum
 // onayladı) okunaklı bir cümleye çevirir — kullanıcı isteği: "hangi strateji, hangi şartlar altında
@@ -1223,11 +1265,11 @@ function updateTradeOutcomes(sym,lastPrice){
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
     if(t.dir>0){
-      if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';changed=true;}
-      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);}
+      if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';changed=true;resolveSignalOnApi(t);}
+      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
     }else if(t.dir<0){
-      if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';changed=true;}
-      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);}
+      if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';changed=true;resolveSignalOnApi(t);}
+      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
     }
   });
   if(changed)saveTradeStore(sym,store);
@@ -1491,6 +1533,93 @@ function updateMT5UIConnected(connected){
     sendSignalToMT5(window.valensPendingSignal, lot);
   });
 })();
+// ============ MERKEZİ SİNYAL API — 7/24 SUNUCU ============
+// Kullanıcı isteği: terminal sunucuda kesintisiz çalışsın, hangi cihazdan girilirse girilsin
+// AYNI sinyal geçmişi görülsün, ilerde "hangi strateji gerçekten kârlı" analizi yapılabilsin.
+// MT5 köprüsüyle AYNI desen (kullanıcı URL girer, "Bağlan"a basar) ama burada bağlantı bir
+// erken-erişim koduyla doğrulanıp (valens_signal_api.py /verify-code) paylaşılan bir API token'ı
+// alınıyor — sonraki tüm istekler bu token'ı taşıyor. Bağlı değilken (varsayılan) hiçbir şey
+// değişmez, davranış öncekiyle birebir aynıdır (sadece localStorage).
+window.valensSignalApiConnected=false;
+window.valensSignalApiToken=null;
+function signalApiUrl(){ const el=document.getElementById('signalApiUrl'); const v=(el&&el.value||'').trim().replace(/\/$/,''); return v; }
+function signalApiHeaders(){ return {'Content-Type':'application/json', 'X-Valens-Token': window.valensSignalApiToken||''}; }
+function updateSignalApiUIConnected(connected){
+  window.valensSignalApiConnected=connected;
+  if(!connected) window.valensSignalApiToken=null;
+  const btn=document.getElementById('signalApiToggle'), badge=document.getElementById('signalApiBadge'), statsArea=document.getElementById('signalApiStatsArea');
+  if(btn) btn.textContent = connected ? t('signalApiToggleOn') : t('signalApiToggleOff');
+  if(badge){ badge.textContent = connected ? '●' : '—'; badge.style.color = connected ? 'var(--green)' : 'var(--muted)'; }
+  if(statsArea) statsArea.style.display = connected ? 'block' : 'none';
+}
+(function wireSignalApi(){
+  const toggleBtn=document.getElementById('signalApiToggle');
+  if(!toggleBtn) return;
+  try{
+    const savedUrl=localStorage.getItem('valens_signal_api_url'); if(savedUrl) document.getElementById('signalApiUrl').value=savedUrl;
+    const savedCode=localStorage.getItem('valens_signal_api_code'); if(savedCode) document.getElementById('signalApiCode').value=savedCode;
+  }catch(e){}
+  toggleBtn.addEventListener('click', ()=>{
+    if(window.valensSignalApiConnected){ updateSignalApiUIConnected(false); return; }
+    const url=signalApiUrl(), code=(document.getElementById('signalApiCode').value||'').trim();
+    const status=document.getElementById('signalApiStatus');
+    if(!url){ if(status) status.textContent=t('signalApiNoUrl'); return; }
+    try{ localStorage.setItem('valens_signal_api_url', url); localStorage.setItem('valens_signal_api_code', code); }catch(e){}
+    if(status) status.textContent=t('signalApiConnecting');
+    fetch(url+'/verify-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})})
+      .then(r=>r.json()).then(res=>{
+        if(res.ok && res.token){
+          window.valensSignalApiToken=res.token;
+          updateSignalApiUIConnected(true);
+          if(status) status.textContent=t('signalApiConnected');
+          refreshSignalApiStats();
+        } else {
+          updateSignalApiUIConnected(false);
+          if(status) status.textContent=t('signalApiInvalidCode');
+        }
+      }).catch(()=>{
+        updateSignalApiUIConnected(false);
+        if(status) status.textContent=t('signalApiUnreachable');
+      });
+  });
+})();
+// Yeni bir armed sinyal merkezi API'ye kaydedilir. Dönen id, TEKRAR AYRICA yüklenmiş (loadTradeStore
+// ile taze) bir kopyada `ts` eşleşmesiyle bulunup yazılıyor — logArmedTrade'in kendi `store` referansını
+// tekrar kaydetmiyoruz, çünkü bu fetch'in yanıtı gecikirse arada updateTradeOutcomes() aynı işlemi
+// çoktan sonuçlandırmış olabilir; o durumda eski/bayat store'u geri yazmak sonucu SİLERDİ.
+function pushSignalToApi(sym, ts, payload){
+  if(!window.valensSignalApiConnected || !window.valensSignalApiToken) return;
+  const url=signalApiUrl(); if(!url) return;
+  fetch(url+'/signal', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify(payload)})
+    .then(r=>r.json()).then(res=>{
+      if(res.ok && res.id){
+        const store=loadTradeStore(sym);
+        const trade=(store.trades||[]).find(tr=>tr.ts===ts);
+        if(trade){ trade.remoteId=res.id; saveTradeStore(sym,store); }
+      }
+    }).catch(()=>{});
+}
+function resolveSignalOnApi(trade){
+  if(!window.valensSignalApiConnected || !window.valensSignalApiToken || !trade.remoteId) return;
+  const url=signalApiUrl(); if(!url) return;
+  fetch(url+'/signal/'+trade.remoteId+'/resolve', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify({outcome:trade.outcome})})
+    .then(()=>refreshSignalApiStats()).catch(()=>{});
+}
+function refreshSignalApiStats(){
+  if(!window.valensSignalApiConnected || !window.valensSignalApiToken) return;
+  const url=signalApiUrl(); if(!url) return;
+  fetch(url+'/stats', {headers:signalApiHeaders()}).then(r=>r.json()).then(res=>{
+    const body=document.getElementById('signalApiStatsBody'); if(!body || !res.ok) return;
+    const entries=Object.keys(res.stats||{});
+    if(!entries.length){ body.textContent=t('signalApiStatsEmpty'); return; }
+    entries.sort((a,b)=>(res.stats[b].winRate||0)-(res.stats[a].winRate||0));
+    body.innerHTML = entries.map(k=>{
+      const s=res.stats[k], label=(window.valensTagLabels && window.valensTagLabels[k])||k;
+      return t('signalApiStatsLine')(label, s.trades, s.winRate!=null?s.winRate:0);
+    }).join('<br>');
+  }).catch(()=>{});
+}
+setInterval(()=>{ if(window.valensSignalApiConnected) refreshSignalApiStats(); }, 5*60*1000); // 5dk'da bir tazele
 // ---- Ortak gönderme fonksiyonu — hem manuel "Gönder" butonu hem de otomatik (demo/veri toplama)
 // modu AYNI yolu kullanır, davranış hiçbir zaman ikisi arasında farklılaşmaz. ----
 // ---- MUM BAŞINA MAKS 2 GÖNDERİM — kullanıcı geri bildirimi (gerçek örnek): aynı mum içinde
@@ -1727,6 +1856,7 @@ function botTick(){
   ttmSqueeze:t('tagTtmSqueeze'), divergenceChoch:t('tagDivergenceChoch'), pocBounce:t('tagPocBounce'),
   orderBlockMit:t('tagOrderBlockMit'), fibOte:t('tagFibOte'), asianFakeout:t('tagAsianFakeout'), extremeMeanReversion:t('tagExtremeMR'),
   levelConfluence:t('tagLevelConfluence'), deltaConfirmTrend:t('tagDeltaConfirmTrend'), deltaAbsorption:t('tagDeltaAbsorption')};
+ window.valensTagLabels = tagLabels; // refreshSignalApiStats() gibi bu fonksiyonun DIŞINDaki kod için (ayrı kapsam)
 
  // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
  // Önceki tasarım: 23 şeyin TEK harmanlanmış skoruna bakılıyordu — güçlü ama tek bir kalıp (ör. temiz bir
@@ -2718,7 +2848,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  function styledCandles(arr, sym){ return arr.map(c=>styledCandle(c, sym)); }
  // "Ana destek/direnç" HER ZAMAN 1 saatlik mumlardan hesaplanır (kullanıcı hangi zaman dilimini
  // izlerse izlesin) — "scalp" destek/direnç ise o an izlenen aralığın kendi dinamik S/R'ıdır.
- let mainSR={sup:null,res:null}, mainSRLines=[];
+ let mainSR={sup:null,res:null}, mainSRLines=[], mainSRHistory=[], mainSRHistoryLines=[];
  const closedEl=document.getElementById('chartClosed');
 
  const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
@@ -3644,19 +3774,41 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // ---- ANA DESTEK/DİRENÇ: her zaman 1 saatlik mumlardan, o an izlenen zaman diliminden BAĞIMSIZ ----
  // "Ana destek direnç noktaları 1 saatlikten alınıyor" — kullanıcı 15dk'da bakarken bile bu arka planda
  // 1 saatlik veriden hesaplanır ve grafiğe kalın turuncu çizgilerle işaretlenir.
+ // ---- KIRILAN ANA S/R SEVİYESİ SİLİNMESİN — kullanıcı geri bildirimi: direnç kırılıp fiyat
+ // yukarı gidince eski çizgi anında SİLİNİP en yeni (daha yüksek) direnç çiziliyordu; oysa
+ // kırılan bir direnç klasik olarak "geri dönüp test edilecek yeni destek" sayılır (polarite
+ // dönüşü — ICT/klasik TA'da "kırılan seviye rol değiştirir" ilkesi). Artık: mainSR yeniden
+ // hesaplanırken eski sup/res GERÇEKTEN kırılmışsa (yeni res eskisinden yüksek / yeni sup
+ // eskisinden düşük), eski seviye SİLİNMİYOR — mainSRHistory'ye "kırılmış, olası tersine
+ // seviye" olarak taşınıp grafikte (daha soluk/kesikli) çizilmeye devam ediyor.
  async function fetchMainSR(sym){
-  const bs=MAP[sym]; if(!bs){ mainSR={sup:null,res:null}; return; }
+  const bs=MAP[sym]; if(!bs){ mainSR={sup:null,res:null}; mainSRHistory=[]; return; }
   try{
    const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1h&limit=100`);
    const d=await r.json();
    if(!Array.isArray(d)||!d.length) return;
    const highs=d.map(k=>+k[2]), lows=d.map(k=>+k[3]);
-   mainSR={sup:Math.min(...lows), res:Math.max(...highs)};
+   const newSR={sup:Math.min(...lows), res:Math.max(...highs)};
+   if(mainSR.res!=null && newSR.res>mainSR.res+1e-6) addBrokenMainSR(mainSR.res, 'res');
+   if(mainSR.sup!=null && newSR.sup<mainSR.sup-1e-6) addBrokenMainSR(mainSR.sup, 'sup');
+   mainSR=newSR;
    if(sym===curSym) drawMainSRLines();
   }catch(e){ /* sessizce yoksay — bu ikincil bir veri kaynağı, ana grafiği bozmasın */ }
  }
+ function addBrokenMainSR(price, kind){
+  // aynı seviyeye çok yakın bir kayıt zaten varsa tekrar ekleme (küçük fiyat titremeleri
+  // yeni bir "kırılım" olarak sayılmasın)
+  if(mainSRHistory.some(h=>Math.abs(h.price-price)/price<0.001)) return;
+  mainSRHistory.push({price, kind});
+  if(mainSRHistory.length>4) mainSRHistory.shift(); // grafik kirlenmesin — en fazla son 4 kırılan seviye
+ }
  function drawMainSRLines(){
   mainSRLines.forEach(l=>cs.removePriceLine(l)); mainSRLines=[];
+  mainSRHistoryLines.forEach(l=>cs.removePriceLine(l)); mainSRHistoryLines=[];
+  mainSRHistory.forEach(h=>{
+   const title = h.kind==='res' ? t('mainResistanceBroken') : t('mainSupportBroken');
+   mainSRHistoryLines.push(cs.createPriceLine({price:h.price,color:'rgba(255,140,66,.45)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title}));
+  });
   if(mainSR.sup==null||mainSR.res==null) return;
   mainSRLines.push(cs.createPriceLine({price:mainSR.res,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainResistance')}));
   mainSRLines.push(cs.createPriceLine({price:mainSR.sup,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainSupport')}));
@@ -4029,6 +4181,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
   zoneLines.forEach(l=>cs.removePriceLine(l)); zoneLines=[];
   mainSRLines.forEach(l=>cs.removePriceLine(l)); mainSRLines=[]; mainSR={sup:null,res:null};
+  mainSRHistoryLines.forEach(l=>cs.removePriceLine(l)); mainSRHistoryLines=[]; mainSRHistory=[];
   if(dynSup){cs.removePriceLine(dynSup);dynSup=null;}
   if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
   ohlc=[]; cs.setData([]);
