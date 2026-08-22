@@ -356,26 +356,11 @@ iframe{height:100%;width:100%;border:0}
       </div>
       </div>
       <div class="panelcard">
-      <div class="ph"><b data-i18n="challenge_title">🎯 CHALLENGE MODU</b><span class="badge" id="challengeBadge">—</span></div>
+      <div class="ph"><b data-i18n="scalpMode_title">⚡ 1M SCALP MODU</b><span class="badge" id="scalpModeBadge">KAPALI</span></div>
       <div style="padding:9px">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="challengeHint">Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeStartBal">Başlangıç ($)</span><input id="chStart" type="number" step="10" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
-          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeTargetBal">Hedef ($)</span><input id="chTarget" type="number" step="1000" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
-          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeGrowth">İşlem Başı Büyüme (%)</span><input id="chGrowth" type="number" step="1" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
-          <label style="font:8px 'IBM Plex Mono';color:var(--muted)"><span data-i18n="challengeMove">Hedef Hareket ($)</span><input id="chMove" type="number" step="0.1" style="width:100%;background:#07101c;border:1px solid var(--line);color:var(--text);padding:4px;border-radius:3px;font:10px 'IBM Plex Mono';margin-top:2px"></label>
-        </div>
-        <div id="challengeBody" style="font-size:9px;color:var(--text);line-height:1.7;margin-bottom:8px">—</div>
-        <div style="height:7px;border-radius:4px;background:#07101c;overflow:hidden;border:1px solid var(--line)"><div id="challengeBar" style="height:100%;width:0%;background:var(--gold);transition:width .3s"></div></div>
-        <div id="challengeDayNote" style="font-size:8px;color:var(--muted);margin-top:6px">—</div>
-        <div id="challengeActiveControls" style="display:flex;gap:6px;margin-top:8px">
-          <button id="chWinBtn" style="flex:1;background:var(--green);color:#07101b;border:0;padding:7px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeWinBtn">✓ Bu İşlem Kazandı</button>
-          <button id="chLossBtn" style="flex:1;background:var(--red);color:#fff;border:0;padding:7px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeLossBtn">✗ Bu İşlem Kaybetti</button>
-        </div>
-        <div id="challengeFailedControls" style="display:none;margin-top:8px">
-          <div style="color:var(--red);font-size:9px;font-weight:700;margin-bottom:6px" id="challengeFailedMsg">—</div>
-          <button id="chResetBtn" style="width:100%;background:transparent;color:var(--gold);border:1px solid var(--line);padding:7px;border-radius:4px;font:9px 'IBM Plex Mono';cursor:pointer" data-i18n="challengeResetBtn">🔄 Yeniden Başlat (Trade #1)</button>
-        </div>
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="scalpModeHint">Açınca grafik 1 dakikaya geçer, ama üst zaman dilimi (4H/1H) yapısı KORUNUR — sadece o yönle uyumlu sinyaller aranır ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.</div>
+        <button id="scalpModeToggle" style="width:100%;padding:10px;background:var(--gold);color:#07101b;border:0;border-radius:4px;font:700 10px 'IBM Plex Mono';cursor:pointer;margin-bottom:8px" data-i18n="scalpModeToggleOff">⚡ 1M Scalp Modunu Aç</button>
+        <div id="scalpModeBias" style="display:none;font-size:9px;color:var(--text);line-height:1.8">—</div>
       </div>
       </div>
       <div class="panelcard">
@@ -624,7 +609,7 @@ const I18N = {
   tagLiquiditySweep:'Likidite Süpürme Dönüşü (200 EMA + VWAP Reddi)',
   tagRsiDivergence:'RSI Uyumsuzluğu (Divergence)', tagBollSqueeze:'Bollinger Sıkışması + Kırılımı',
   tagEmaPullback:"EMA21'e Geri Çekilme (Trend Devamı)", tagInsideBar:'İç Mum (Inside Bar) Kırılımı',
-  tagFvgRetest:'Fair Value Gap Retest (ICT)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Döngüsü (Accumulation-Manipulation-Distribution)',
+  tagFvgRetest:'Fair Value Gap Retest (ICT)', tagObFvgConfluence:'Order Block + FVG Confluence (SMC)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Döngüsü (Accumulation-Manipulation-Distribution)',
   tagValuationZone:'Değerleme Ekstremi + Bölge Confluence', tagMacdZeroCross:'MACD Sıfır Çizgisi Kesişimi',
   tagScalpOrb:'ORB Scalp Varyantı (dar aralık)', tagNoWickRetest:'No Wick (Fitilsiz Mum) Geri Test',
   tagOrbSweepFade:'ORB Süpürme-Geri Dönüş', tagBosSignal:'Piyasa Yapısı: BOS (Yapı Devamı)',
@@ -696,14 +681,14 @@ const I18N = {
   mt5AutoSendLabel:'🤖 Otomatik Gönder — SADECE DEMO hesap için (onay beklemeden gönderir)',
   mt5AutoMinConfLabel:'Min. güven (%)',
   mt5AutoSendWarn:'⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.',
-  challenge_title:'🎯 CHALLENGE MODU', challengeBadgeBase:(n)=>'Trade #'+n,
-  challengeHint:'Her kazanan işlemden sonra bakiye hedef büyüme yüzdesi kadar bileşik büyür, lot buna göre önerilir. ⚠ Bu model KESİNTİSİZ kazanma varsayar — gerçek piyasada garantisi yoktur. Tek bir kayıp challenge\'ı DURDURUR (otomatik sıfırlamaz, siz karar verirsiniz).',
-  challengeStartBal:'Başlangıç ($)', challengeTargetBal:'Hedef ($)', challengeGrowth:'İşlem Başı Büyüme (%)', challengeMove:'Hedef Hareket ($)',
-  challengeWinBtn:'✓ Bu İşlem Kazandı', challengeLossBtn:'✗ Bu İşlem Kaybetti', challengeResetBtn:'🔄 Yeniden Başlat (Trade #1)',
-  challengeBodyLine:(n,bal,nextBal,profit,lot,move)=>'Trade <b>#'+n+'</b> · Mevcut bakiye: <b>$'+bal+'</b><br>Sıradaki hedef: $'+nextBal+' (+$'+profit+') · Önerilen lot: <b style="color:var(--gold)">'+lot+'</b> ('+move+'$ hareket varsayımıyla — gerçek hareket farklı olursa lotu siz ayarlayın)',
-  challengeReachedLine:(n,bal)=>'🏆 HEDEFE ULAŞILDI — Trade #'+n+'\'de $'+bal+'! Devam etmek isterseniz hedefi yükseltip resetleyin.',
-  challengeFailedMsg:(n,bal)=>'✗ Challenge Trade #'+n+'\'de $'+bal+' bakiyede DURDU (kayıp). İlerleme dondu — yeniden başlatana kadar öneri güncellenmez.',
-  challengeDayNote:(done,cap)=>done+'/'+cap+' bugün tamamlandı'+(done>=cap?' — disiplin için yarın devam etmeniz önerilir (istersen devam edebilirsin, engellenmiyor).':'.'),
+  scalpMode_title:'⚡ 1M SCALP MODU',
+  scalpModeHint:'Açınca grafik 1 dakikaya geçer, ama üst zaman dilimi (4H/1H) yapısı KORUNUR — sadece o yönle uyumlu sinyaller aranır ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.',
+  scalpModeToggleOff:'⚡ 1M Scalp Modunu Aç', scalpModeToggleOn:'⏸ 1M Scalp Modunu Kapat',
+  scalpModeBadgeOn:'AÇIK', scalpModeBadgeOff:'KAPALI',
+  scalpBiasUp:'Yükseliş', scalpBiasDown:'Düşüş', scalpBiasFlat:'Belirsiz',
+  scalpBiasLine:(h4,h1)=>'4H: <b>'+h4+'</b> · 1H: <b>'+h1+'</b>',
+  scalpBiasOnlySide:(side)=>'— Sadece '+side+' aranıyor',
+  scalpBiasNoConsensus:'— 4H/1H uyuşmuyor, sinyal aranmıyor',
   confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
@@ -833,7 +818,7 @@ const I18N = {
   tagLiquiditySweep:'Liquidity Sweep Reversal (200 EMA + VWAP Rejection)',
   tagRsiDivergence:'RSI Divergence', tagBollSqueeze:'Bollinger Squeeze Breakout',
   tagEmaPullback:'EMA21 Pullback (Trend Continuation)', tagInsideBar:'Inside Bar Breakout',
-  tagFvgRetest:'Fair Value Gap Retest (ICT)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Cycle (Accumulation-Manipulation-Distribution)',
+  tagFvgRetest:'Fair Value Gap Retest (ICT)', tagObFvgConfluence:'Order Block + FVG Confluence (SMC)', tagIfvg:'Inverse Fair Value Gap (ICT)', tagAmdCycle:'AMD Cycle (Accumulation-Manipulation-Distribution)',
   tagValuationZone:'Valuation Extreme + Zone Confluence', tagMacdZeroCross:'MACD Zero-Line Cross',
   tagScalpOrb:'ORB Scalp Variant (tight range)', tagNoWickRetest:'No Wick (Marubozu) Retest',
   tagOrbSweepFade:'ORB Sweep-and-Reclaim Fade', tagBosSignal:'Market Structure: BOS (Continuation)',
@@ -905,14 +890,14 @@ const I18N = {
   mt5AutoSendLabel:'🤖 Auto-Send — DEMO accounts ONLY (sends without waiting for approval)',
   mt5AutoMinConfLabel:'Min. confidence (%)',
   mt5AutoSendWarn:"⚠ While this is checked, EVERY trade is sent to the real MT5 account without waiting for approval. Only use this on a demo/test account — keep it OFF with real money.",
-  challenge_title:'🎯 CHALLENGE MODE', challengeBadgeBase:(n)=>'Trade #'+n,
-  challengeHint:"After each winning trade the balance compounds by the target growth %, and a lot size is suggested from that. ⚠ This model assumes an UNBROKEN win streak — real markets don't guarantee that. A single loss STOPS the challenge (it does not auto-reset — that's your call).",
-  challengeStartBal:'Start ($)', challengeTargetBal:'Target ($)', challengeGrowth:'Growth Per Trade (%)', challengeMove:'Target Move ($)',
-  challengeWinBtn:'✓ This Trade Won', challengeLossBtn:'✗ This Trade Lost', challengeResetBtn:'🔄 Restart (Trade #1)',
-  challengeBodyLine:(n,bal,nextBal,profit,lot,move)=>'Trade <b>#'+n+'</b> · Current balance: <b>$'+bal+'</b><br>Next target: $'+nextBal+' (+$'+profit+') · Suggested lot: <b style="color:var(--gold)">'+lot+'</b> (assumes a $'+move+' move — adjust the lot yourself if the real move differs)',
-  challengeReachedLine:(n,bal)=>'🏆 TARGET REACHED — $'+bal+' at Trade #'+n+'! Raise the target and reset if you want to keep going.',
-  challengeFailedMsg:(n,bal)=>'✗ Challenge STOPPED at Trade #'+n+', $'+bal+' balance (loss). Progress is frozen until you restart.',
-  challengeDayNote:(done,cap)=>done+'/'+cap+' completed today'+(done>=cap?' — for discipline, consider continuing tomorrow (not blocked, your call).':'.'),
+  scalpMode_title:'⚡ 1M SCALP MODE',
+  scalpModeHint:'Switches the chart to 1-minute, but PRESERVES the higher-timeframe (4H/1H) structure — only signals aligned with that direction are searched ("How to Analysis": higher timeframe gives direction, lower gives confirmation). Turning it off restores the previous timeframe.',
+  scalpModeToggleOff:'⚡ Turn On 1M Scalp Mode', scalpModeToggleOn:'⏸ Turn Off 1M Scalp Mode',
+  scalpModeBadgeOn:'ON', scalpModeBadgeOff:'OFF',
+  scalpBiasUp:'Bullish', scalpBiasDown:'Bearish', scalpBiasFlat:'Unclear',
+  scalpBiasLine:(h4,h1)=>'4H: <b>'+h4+'</b> · 1H: <b>'+h1+'</b>',
+  scalpBiasOnlySide:(side)=>'— Only searching '+side,
+  scalpBiasNoConsensus:'— 4H/1H disagree, no signals searched',
   confSourceBacktest:'Confidence adjusted using historical backtest results',
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
@@ -1271,6 +1256,11 @@ function updateTradeOutcomes(sym,lastPrice){
       if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';changed=true;resolveSignalOnApi(t);}
       else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
     }
+    // 1M Scalp Modu kutusu: işlem sonuçlandığında (TP/SL) çizim de silinir — sinyal API'sine
+    // bağlı olsun olmasın (resolveSignalOnApi'den bağımsız, o sadece merkezi kayıt içindir).
+    if(t.resolved && window.valensScalpModeActive && window.valensClearScalpBox){
+      window.valensClearScalpBox(); window.valensScalpBoxEndTime=null;
+    }
   });
   if(changed)saveTradeStore(sym,store);
 }
@@ -1397,102 +1387,52 @@ function updateRiskUI(){
   );
 }
 
-// ============ CHALLENGE MODU: $50→$50.000 tarzı bileşik lot ilerleme takibi ============
-// Kullanıcı isteği: elindeki örnek tabloyu (sabit büyüme %, sabit hedef hareket $) birebir üretecek
-// şekilde. Bilerek OTOMATİK DEĞİL: her işlemin sonucunu (kazandı/kaybetti) kullanıcı kendi gerçek
-// MT5 hesabına bakıp burada işaretliyor — bu terminalin gerçek MT5 kapanış sonucunu geri okuyan bir
-// bağlantısı yok, o yüzden uydurma/otomatik ilerleme YAPILMAZ. Kayıpta ilerleme DONAR (elle reset
-// gerekir) — art arda büyüyen lotla kayıp sonrası "aynı hedefe devam" felakete açık kapı bırakır.
-const CHALLENGE_KEY='valens_challenge';
-function loadChallenge(){
-  const def={startBalance:50, targetBalance:50000, growthPct:20, moveUsd:2.0, tradeNum:1, currentBalance:50, failedAt:null, dailyCap:3, winLog:[]};
-  try{ const raw=localStorage.getItem(CHALLENGE_KEY); if(raw) return Object.assign({}, def, JSON.parse(raw)); }catch(e){}
-  return def;
+// ============ 1M SCALP MODU ============
+// Kullanıcı isteği ("How to Analysis" görseli + 8 SMC eğitim videosu): Challenge Modu'nun yerine
+// — üst zaman dilimi (4H/1H) YÖN verir, alt zaman dilimi (1dk) ONAY/giriş verir mantığını
+// uygulayan bir mod. Açılınca grafik 1 dakikaya geçer (mevcut .tfbtn/valensSetInterval mekanizması
+// üzerinden — YENİDEN YAZILMADI), ama 4H/1H yapı yönüyle ÇELİŞEN sinyaller tamamen devre dışı
+// bırakılır (window.valensScalpModeActive + window.valensScalpBias, botTick içinde okunur).
+window.valensScalpModeActive=false;
+window.valensScalpPrevInterval=null;
+function renderScalpBiasLine(){
+  const el=document.getElementById('scalpModeBias'); if(!el) return;
+  const bias=window.valensScalpBias;
+  if(!window.valensScalpModeActive || !bias){ el.style.display='none'; return; }
+  el.style.display='block';
+  const dirLabel=(d)=> d>0?t('scalpBiasUp'):d<0?t('scalpBiasDown'):t('scalpBiasFlat');
+  const aligned = bias.h4Dir!==0 && bias.h4Dir===bias.h1Dir;
+  el.innerHTML = t('scalpBiasLine')(dirLabel(bias.h4Dir), dirLabel(bias.h1Dir)) +
+    (aligned ? ' <b style="color:var(--gold)">'+t('scalpBiasOnlySide')(bias.h4Dir>0?'BUY':'SELL')+'</b>'
+              : ' <span style="color:var(--muted)">'+t('scalpBiasNoConsensus')+'</span>');
 }
-function saveChallenge(s){ try{ localStorage.setItem(CHALLENGE_KEY, JSON.stringify(s)); }catch(e){} }
-function challengeTodayCount(s){
-  const todayStr=new Date().toISOString().slice(0,10);
-  return (s.winLog||[]).filter(ts=>new Date(ts).toISOString().slice(0,10)===todayStr).length;
-}
-function challengeSuggestedLot(s){
-  const profitTarget=s.currentBalance*(s.growthPct/100);
-  const cs=(SYMS['OANDA:XAUUSD']||{}).contractSize||100;
-  const move=parseFloat(s.moveUsd)||2.0;
-  return {profitTarget, lot: move>0 ? profitTarget/(move*cs) : 0};
-}
-function renderChallengePanel(){
-  const body=document.getElementById('challengeBody'), badge=document.getElementById('challengeBadge');
-  const bar=document.getElementById('challengeBar'), dayNote=document.getElementById('challengeDayNote');
-  const activeC=document.getElementById('challengeActiveControls'), failedC=document.getElementById('challengeFailedControls');
-  if(!body) return;
-  const s=loadChallenge();
-  // Formdaki değerleri (kullanıcı değiştirmiş olabilir) state'e yansıt — ama tradeNum/currentBalance/failedAt/winLog KORUNUR.
-  const startEl=document.getElementById('chStart'), targetEl=document.getElementById('chTarget'), growthEl=document.getElementById('chGrowth'), moveEl=document.getElementById('chMove');
-  if(startEl && document.activeElement!==startEl) startEl.value=s.startBalance;
-  if(targetEl && document.activeElement!==targetEl) targetEl.value=s.targetBalance;
-  if(growthEl && document.activeElement!==growthEl) growthEl.value=s.growthPct;
-  if(moveEl && document.activeElement!==moveEl) moveEl.value=s.moveUsd;
-  if(badge) badge.textContent=t('challengeBadgeBase')(s.tradeNum);
-  const pctDone=Math.max(0,Math.min(100,(s.currentBalance-s.startBalance)/(s.targetBalance-s.startBalance)*100));
-  if(bar) bar.style.width=pctDone+'%';
-  if(dayNote) dayNote.textContent=t('challengeDayNote')(challengeTodayCount(s), s.dailyCap);
-  if(s.failedAt){
-    activeC.style.display='none'; failedC.style.display='block';
-    document.getElementById('challengeFailedMsg').textContent=t('challengeFailedMsg')(s.tradeNum, s.currentBalance.toFixed(2));
-    body.innerHTML=t('challengeBodyLine')(s.tradeNum, s.currentBalance.toFixed(2), '—','—','—',s.moveUsd);
-    return;
-  }
-  activeC.style.display='flex'; failedC.style.display='none';
-  if(s.currentBalance>=s.targetBalance){
-    body.innerHTML=t('challengeReachedLine')(s.tradeNum, s.currentBalance.toFixed(2));
-    activeC.style.display='none';
-    return;
-  }
-  const {profitTarget, lot}=challengeSuggestedLot(s);
-  const nextBal=s.currentBalance+profitTarget;
-  body.innerHTML=t('challengeBodyLine')(s.tradeNum, s.currentBalance.toFixed(2), nextBal.toFixed(2), profitTarget.toFixed(2), lot.toFixed(2), s.moveUsd);
-  // Otomatik gönder modunda (ör. arkadaşın demo hesabı, sabit 0.1 lot) kullanıcının kendi girdiği
-  // sabit lotu challenge önerisiyle EZMİYORUZ — ikisi farklı amaçlar (challenge takibi vs sabit-lot
-  // veri toplama), aynı anda çakışmasınlar diye auto-send açıkken bu alana dokunulmuyor.
-  const mt5AutoOn=document.getElementById('mt5AutoSend');
-  const mt5LotEl=document.getElementById('mt5SendLot');
-  if(mt5LotEl && document.activeElement!==mt5LotEl && !(mt5AutoOn&&mt5AutoOn.checked)) mt5LotEl.value=lot.toFixed(2);
-}
-(function wireChallengeForm(){
-  ['chStart','chTarget','chGrowth','chMove'].forEach(id=>{
-    const el=document.getElementById(id); if(!el) return;
-    el.addEventListener('change', ()=>{
-      const s=loadChallenge();
-      s.startBalance=parseFloat(document.getElementById('chStart').value)||s.startBalance;
-      s.targetBalance=parseFloat(document.getElementById('chTarget').value)||s.targetBalance;
-      s.growthPct=parseFloat(document.getElementById('chGrowth').value)||s.growthPct;
-      s.moveUsd=parseFloat(document.getElementById('chMove').value)||s.moveUsd;
-      // Hiç işlem yapılmamışsa (hâlâ trade #1, başlangıç bakiyesinde) başlangıç değişince mevcut bakiyeyi de eşitle.
-      if(s.tradeNum===1 && !s.failedAt) s.currentBalance=s.startBalance;
-      saveChallenge(s); renderChallengePanel();
-    });
+window.valensRenderScalpBiasLine = renderScalpBiasLine; // fetchScalpBias (chart motoru) tazelendiğinde çağırabilsin
+(function wireScalpMode(){
+  const toggleBtn=document.getElementById('scalpModeToggle');
+  if(!toggleBtn) return;
+  toggleBtn.addEventListener('click', ()=>{
+    const badge=document.getElementById('scalpModeBadge');
+    if(!window.valensScalpModeActive){
+      // ---- AÇ: mevcut zaman dilimini sakla, 1M'e geç, bias motorunu başlat ----
+      const activeBtn=document.querySelector('.tfbtn.on');
+      window.valensScalpPrevInterval = activeBtn ? activeBtn.dataset.int : '15';
+      window.valensScalpModeActive=true;
+      const oneMinBtn=document.querySelector('.tfbtn[data-int="1"]');
+      if(oneMinBtn) oneMinBtn.click(); // mevcut interval değişim mekanizmasını tetikler (loadChart+valensSetInterval)
+      toggleBtn.textContent=t('scalpModeToggleOn'); toggleBtn.style.background='var(--red)'; toggleBtn.style.color='#fff';
+      if(badge){ badge.textContent=t('scalpModeBadgeOn'); badge.style.color='var(--green)'; }
+      if(window.valensFetchScalpBias) window.valensFetchScalpBias();
+    } else {
+      // ---- KAPAT: kutu çizimini temizle, önceki zaman dilimine dön ----
+      window.valensScalpModeActive=false;
+      if(window.valensClearScalpBox) window.valensClearScalpBox();
+      const prevBtn=document.querySelector('.tfbtn[data-int="'+(window.valensScalpPrevInterval||'15')+'"]');
+      if(prevBtn) prevBtn.click();
+      toggleBtn.textContent=t('scalpModeToggleOff'); toggleBtn.style.background='var(--gold)'; toggleBtn.style.color='#07101b';
+      if(badge){ badge.textContent=t('scalpModeBadgeOff'); badge.style.color='var(--muted)'; }
+      renderScalpBiasLine();
+    }
   });
-  const winBtn=document.getElementById('chWinBtn'), lossBtn=document.getElementById('chLossBtn'), resetBtn=document.getElementById('chResetBtn');
-  if(winBtn) winBtn.addEventListener('click', ()=>{
-    const s=loadChallenge();
-    if(s.failedAt || s.currentBalance>=s.targetBalance) return;
-    const {profitTarget}=challengeSuggestedLot(s);
-    s.currentBalance=s.currentBalance+profitTarget; s.tradeNum++;
-    s.winLog=(s.winLog||[]); s.winLog.push(Date.now()); if(s.winLog.length>2000) s.winLog=s.winLog.slice(-2000);
-    saveChallenge(s); renderChallengePanel();
-  });
-  if(lossBtn) lossBtn.addEventListener('click', ()=>{
-    const s=loadChallenge();
-    if(s.failedAt) return;
-    s.failedAt=Date.now();
-    saveChallenge(s); renderChallengePanel();
-  });
-  if(resetBtn) resetBtn.addEventListener('click', ()=>{
-    const s=loadChallenge();
-    s.tradeNum=1; s.currentBalance=s.startBalance; s.failedAt=null; s.winLog=[];
-    saveChallenge(s); renderChallengePanel();
-  });
-  renderChallengePanel();
 })();
 
 // ============ MT5 KÖPRÜSÜ — MANUEL ONAYLI ============
@@ -1701,7 +1641,7 @@ function updateTradeLogUI(){
       '</div>';
   }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
   renderStrategyLivePanel(trades);
-  if(typeof renderChallengePanel==='function') renderChallengePanel();
+  if(typeof renderScalpBiasLine==='function') renderScalpBiasLine();
 }
 // ============ GERÇEK STRATEJİ PERFORMANSI — CANLI TAKİP (MT5'siz, sadece bu terminalin ürettiği
 // ve TP/SL'ye ulaştığı GERÇEK sinyallerden) ============ Kullanıcı isteği: "hangi strateji nerede
@@ -1848,7 +1788,7 @@ function botTick(){
 
  const tagLabels={emaCross:t('tagEmaCross'), orb:t('tagOrb'), momentum:t('tagMomentum'), liquiditySweep:t('tagLiquiditySweep'),
   rsiDivergence:t('tagRsiDivergence'), bollSqueeze:t('tagBollSqueeze'), emaPullback:t('tagEmaPullback'), insideBar:t('tagInsideBar'),
-  fvgRetest:t('tagFvgRetest'), ifvg:t('tagIfvg'), amdCycle:t('tagAmdCycle'), valuationZone:t('tagValuationZone'), macdZeroCross:t('tagMacdZeroCross'),
+  fvgRetest:t('tagFvgRetest'), obFvgConfluence:t('tagObFvgConfluence'), ifvg:t('tagIfvg'), amdCycle:t('tagAmdCycle'), valuationZone:t('tagValuationZone'), macdZeroCross:t('tagMacdZeroCross'),
   scalpOrb:t('tagScalpOrb'), noWickRetest:t('tagNoWickRetest'),
   orbSweepFade:t('tagOrbSweepFade'), bosSignal:t('tagBosSignal'), chochSignal:t('tagChochSignal'),
   equalHighsLows:t('tagEqualHighsLows'), tradeDelta:t('tagTradeDelta'),
@@ -1865,7 +1805,7 @@ function botTick(){
  // "aday" olur, kendi temel güvenine sahiptir; diğer göstergeler de aynı yöndeyse ek güven puanı alır.
  // O an en güçlü/en tam aday NİHAİ karar olur — genel bir "23'ün X'i aynı yönde olsun" şartı YOK artık.
  const STRATEGY_BASE_CONF={emaCross:72, orb:70, momentum:70, liquiditySweep:82, rsiDivergence:78, bollSqueeze:75, emaPullback:74, insideBar:68,
-  fvgRetest:76, ifvg:77, amdCycle:85, valuationZone:73, macdZeroCross:66,
+  fvgRetest:76, obFvgConfluence:88, ifvg:77, amdCycle:85, valuationZone:73, macdZeroCross:66,
   scalpOrb:68, noWickRetest:75,
   orbSweepFade:79, bosSignal:71, chochSignal:80, equalHighsLows:77, tradeDelta:65,
   silverBullet:86, orbVolume:74, vwapPullback:75, ttmSqueeze:77, divergenceChoch:84,
@@ -1883,7 +1823,7 @@ function botTick(){
  const STRATEGY_FAMILY={
   emaCross:'trend', orb:'trend', momentum:'trend', emaPullback:'trend', bosSignal:'trend',
   scalpOrb:'trend', noWickRetest:'trend', orbVolume:'trend', vwapPullback:'trend', fibOte:'trend',
-  deltaConfirmTrend:'trend', fvgRetest:'trend',
+  deltaConfirmTrend:'trend', fvgRetest:'trend', obFvgConfluence:'trend',
   liquiditySweep:'reversal', rsiDivergence:'reversal', ifvg:'reversal', amdCycle:'reversal',
   valuationZone:'reversal', orbSweepFade:'reversal', chochSignal:'reversal', equalHighsLows:'reversal',
   silverBullet:'reversal', divergenceChoch:'reversal', pocBounce:'reversal', orderBlockMit:'reversal',
@@ -2013,8 +1953,19 @@ function botTick(){
    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
    source = 'backtest';
   }
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, structureBias:cr.structureBias||0, exhaustionBias:cr.exhaustionBias||0, fvgZone:tag.fvgZone||null});
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, structureBias:cr.structureBias||0, exhaustionBias:cr.exhaustionBias||0, fvgZone:tag.fvgZone||null, boxZone:tag.zone||null});
  });
+
+ // ---- 1M SCALP MODU — KATI YÖN KAPISI ("ana structure'ı koruyarak" isteği): açıkken 4H VE 1H
+ // AYNI yönde net bir yapı gösteriyorsa (aligned), SADECE o yöndeki adaylar hayatta kalır — ters
+ // yöndekiler puan indirimiyle DEĞİL, TAMAMEN elenir. 4H/1H uyuşmuyorsa (net bir üst zaman dilimi
+ // yönü yoksa) hiçbir aday armed olamaz — üst zaman dilimi yön VERMİYORSA alt zaman diliminde
+ // "onay" aramanın bir anlamı yok ("How to Analysis": üst TF yön, alt TF onay).
+ if(window.valensScalpModeActive){
+  const bias=window.valensScalpBias;
+  const alignedDir = (bias && bias.h4Dir!==0 && bias.h4Dir===bias.h1Dir) ? Math.sign(bias.h4Dir) : 0;
+  candidates = alignedDir!==0 ? candidates.filter(c=>c.dir===alignedDir) : [];
+ }
 
  let best=null;
  candidates.forEach(c=>{ if(!best || c.confidence>best.confidence) best=c; });
@@ -2341,6 +2292,16 @@ function botTick(){
    logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx, best?best.key:null, best?best.label:null, {
     regime: marketRegime, agreeCount, totalVotes, trend: cr.trend||0, srText: cr.srText||'', patternName: cr.patternName||'', confirmedCandles
    });
+   // ---- 1M SCALP MODU KUTU ÇİZİMİ — kullanıcının paylaştığı video örnekleri: SL/TP çizgi değil,
+   // zaman+fiyat ekseninde sınırlı bir KUTU olarak çizilir. window.valensDrawScalpBox (chart
+   // motorunda tanımlı, FVG köprüsüyle AYNI desen) SL-TP aralığını, işlemin beklenen süresi kadar
+   // (maxHours) ileriye doğru bir dikdörtgen olarak çizer — süre dolunca/sonuçlanınca silinir.
+   if(window.valensScalpModeActive && window.valensDrawScalpBox){
+    const boxEntryTime = cr.candleTime || Math.floor(Date.now()/1000);
+    const boxEndTime = boxEntryTime + Math.round(maxHours*3600);
+    window.valensScalpBoxEndTime = boxEndTime;
+    window.valensDrawScalpBox(boxEntryTime, boxEndTime, Math.max(scStopPx,scTpPx), Math.min(scStopPx,scTpPx), rawDir);
+   }
    recordLastSignal(CUR,'scalp',rawDir,scEntryPx,scTpPx,scStopPx);
    recordLastSignal(CUR,'swing',rawDir,adjLast,swTpPx,swStopPx);
    // ---- MT5 KÖPRÜSÜ (manuel onaylı): bekleyen sinyali güncelle, gönder butonunun durumunu ayarla.
@@ -2376,6 +2337,13 @@ function botTick(){
    window.valensPendingSignal = null;
    const mt5SendBtnIdle=document.getElementById('mt5SendBtn');
    if(mt5SendBtnIdle){ mt5SendBtnIdle.disabled=true; mt5SendBtnIdle.textContent=t('mt5SendBtnLabel'); }
+ }
+ // ---- Scalp kutusu için süre-dolumu güvenlik ağı — trade resolve olduğunda (updateTradeOutcomes
+ // içindeki resolveSignalOnApi noktası) zaten temizleniyor, ama TP/SL'ye hiç ulaşılmadan süre
+ // dolarsa (kullanıcı isteği: "işlem süresi bitince çizdiklerini silebilir") burada da kontrol edilir.
+ if(window.valensScalpBoxEndTime && Date.now()/1000>window.valensScalpBoxEndTime){
+  if(window.valensClearScalpBox) window.valensClearScalpBox();
+  window.valensScalpBoxEndTime=null;
  }
 
  updateWinRateUI();
@@ -3071,6 +3039,15 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   }
   return points;
  }
+ // DÜZELTME (kullanıcının paylaştığı "This isn't A BOS!" videosu): findSwingPoints burada SADECE
+ // son 44 mumdaki son 2 swing'e bakıyor — bu "INTERNAL" (yerel/küçük) bir yapı okumasıdır. Video
+ // tam olarak şunu anlatıyor: küçük/yerel bir swing'in kırılması gerçek bir BOS SAYILMAZ, EĞER
+ // daha büyük resimdeki (EXTERNAL) yapı hâlâ ters yöndeyse — o zaman bu sadece iç dalgalanma,
+ // trend devamı değil. `detectSwingStructure(a,60)` (daha geniş pencere, daha büyük swing'ler)
+ // buradaki EXTERNAL referans olarak kullanılıyor: internal kırılım EXTERNAL yapıyla AÇIKÇA
+ // çelişiyorsa (ör. internal "yukarı kırıldı" derken external hâlâ net düşüşte) bosSignal hiç
+ // üretilmiyor — CHoCH'a dokunulmuyor, çünkü CHoCH zaten TANIM GEREĞİ henüz external'a yansımamış
+ // erken bir dönüş sinyalidir.
  function detectMarketStructure(a){
   if(a.length<35) return null;
   const points=findSwingPoints(a.slice(-45,-1));
@@ -3081,9 +3058,16 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const structUp = highs[1].price>highs[0].price && lows[1].price>lows[0].price;
   const structDown = highs[1].price<highs[0].price && lows[1].price<lows[0].price;
   const lastHigh=highs[highs.length-1], lastLow=lows[lows.length-1];
-  if(structUp && curr.close>lastHigh.price) return {key:'bosSignal', dir:1};
+  const externalBias = detectSwingStructure(a, 60);
+  if(structUp && curr.close>lastHigh.price){
+   if(externalBias<0) return null; // internal "yukarı kırılım" ama EXTERNAL yapı hâlâ düşüşte — gerçek BOS değil
+   return {key:'bosSignal', dir:1};
+  }
   if(structUp && curr.close<lastLow.price) return {key:'chochSignal', dir:-1};
-  if(structDown && curr.close<lastLow.price) return {key:'bosSignal', dir:-1};
+  if(structDown && curr.close<lastLow.price){
+   if(externalBias>0) return null;
+   return {key:'bosSignal', dir:-1};
+  }
   if(structDown && curr.close>lastHigh.price) return {key:'chochSignal', dir:1};
   return null;
  }
@@ -3334,6 +3318,31 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const ob=obs[i];
    if(ob.dir>0 && curr.low<=ob.top && curr.low>=ob.bottom*0.998 && curr.close>ob.top && curr.close>curr.open) return {key:'orderBlockMit', dir:1};
    if(ob.dir<0 && curr.high>=ob.bottom && curr.high<=ob.top*1.002 && curr.close<ob.bottom && curr.close<curr.open) return {key:'orderBlockMit', dir:-1};
+  }
+  return null;
+ }
+ // ---- OB+FVG CONFLUENCE (kullanıcının paylaştığı "Confused by SMC" eskizi) — bir Order Block
+ // ile bir FVG'nin ÇAKIŞTIĞI (üst üste bindiği) bölge, ikisinden ayrı ayrı daha güçlü bir giriş
+ // noktası sayılır — eskizde tam olarak bu: FVG kutusu, Bullish OB kutusunun hemen üzerinde/
+ // çakışık çiziliyor, BOS sonrası oluşuyor. İki bağımsız kalıbın AYNI bölgede AYNI yönde
+ // birleşmesi, tek başına ikisinden daha yüksek olasılıklı bir giriş sayılır.
+ function detectObFvgConfluence(a){
+  if(a.length<25) return null;
+  const obs=findOrderBlocks(a,20), fvgs=findFVGs(a,20), curr=a[a.length-1];
+  for(let i=obs.length-1;i>=0;i--){
+   const ob=obs[i];
+   for(let j=fvgs.length-1;j>=0;j--){
+    const f=fvgs[j];
+    if(f.dir!==ob.dir) continue;
+    const overlapTop=Math.min(ob.top,f.top), overlapBottom=Math.max(ob.bottom,f.bottom);
+    if(overlapTop<=overlapBottom) continue; // gerçek bir çakışma yok
+    if(ob.dir>0 && curr.low<=overlapTop && curr.close>overlapBottom && curr.close>curr.open){
+     return {key:'obFvgConfluence', dir:1, zone:{top:overlapTop, bottom:overlapBottom}};
+    }
+    if(ob.dir<0 && curr.high>=overlapBottom && curr.close<overlapTop && curr.close<curr.open){
+     return {key:'obFvgConfluence', dir:-1, zone:{top:overlapTop, bottom:overlapBottom}};
+    }
+   }
   }
   return null;
  }
@@ -3663,6 +3672,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const insideBar=detectInsideBarBreakout(a); if(insideBar) tags.push(insideBar);
   // (9) Fair Value Gap retest
   const fvgR=detectFVGRetest(a); if(fvgR) tags.push(fvgR);
+  // (9b) Order Block + FVG Confluence (kullanıcının paylaştığı SMC eskizi)
+  const obFvg=detectObFvgConfluence(a); if(obFvg) tags.push(obFvg);
   // (10) Inverse Fair Value Gap
   const ifvg=detectIFVG(a); if(ifvg) tags.push(ifvg);
   // (11) AMD Döngüsü (accumulation + manipulation + distribution)
@@ -3813,6 +3824,71 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   mainSRLines.push(cs.createPriceLine({price:mainSR.res,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainResistance')}));
   mainSRLines.push(cs.createPriceLine({price:mainSR.sup,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainSupport')}));
  }
+ // ---- 1M SCALP MODU — ÜST ZAMAN DİLİMİ BIAS ("How to Analysis" görseli + Türkçe BIAS/DOL
+ // videosu): 4H ve 1H'ı mevcut ohlc/WS pipeline'ına HİÇ dokunmadan, fetchMainSR ile AYNI desende
+ // (bağımsız REST kline çağrısı) çeker, detectSwingStructure ile yapı yönünü okur. 2dk'da bir
+ // tazelenir, sadece window.valensScalpModeActive açıkken (gereksiz istek atılmasın).
+ async function fetchScalpBias(sym){
+  const bs=MAP[sym]; if(!bs){ window.valensScalpBias=null; if(window.valensRenderScalpBiasLine) window.valensRenderScalpBiasLine(); return; }
+  try{
+   const [r4,r1]=await Promise.all([
+    fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=4h&limit=100`),
+    fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1h&limit=100`)
+   ]);
+   const [d4,d1]=await Promise.all([r4.json(), r1.json()]);
+   if(!Array.isArray(d4)||!Array.isArray(d1)||!d4.length||!d1.length) return;
+   const toBars=d=>d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
+   window.valensScalpBias = {h4Dir: detectSwingStructure(toBars(d4),60), h1Dir: detectSwingStructure(toBars(d1),60)};
+   if(window.valensRenderScalpBiasLine) window.valensRenderScalpBiasLine();
+  }catch(e){ /* sessizce yoksay — ikincil bir veri kaynağı, ana grafiği bozmasın */ }
+ }
+ window.valensFetchScalpBias=function(){ if(curSym) fetchScalpBias(curSym); };
+ setInterval(()=>{ if(window.valensScalpModeActive && curSym) fetchScalpBias(curSym); }, 2*60*1000);
+
+ // ---- 1M SCALP MODU — KUTU/DİKDÖRTGEN ÇİZİM (kullanıcının paylaştığı video örnekleri) ----
+ // lightweight-charts v4'te native "dikdörtgen" primitifi yok. Video'lardaki gibi GERÇEK bir kutu
+ // (hem zaman HEM fiyat ekseninde sınırlı, tek bir çizgi değil) için DOM overlay tekniği: chart
+ // container'ının üzerine mutlak-konumlu, yarı saydam bir <div>, pozisyonu timeToCoordinate/
+ // priceToCoordinate ile hesaplanıp CSS left/top/width/height'a çevrilir.
+ let scalpBoxEl=null, scalpBoxState=null;
+ function ensureScalpBoxEl(){
+  if(scalpBoxEl) return scalpBoxEl;
+  scalpBoxEl=document.createElement('div');
+  scalpBoxEl.id='scalpTradeBox';
+  scalpBoxEl.style.cssText='position:absolute;pointer-events:none;z-index:5;display:none;border-radius:2px;transition:opacity .2s;';
+  el.style.position = el.style.position || 'relative';
+  el.appendChild(scalpBoxEl);
+  return scalpBoxEl;
+ }
+ function positionScalpBox(){
+  if(!scalpBoxState || !scalpBoxEl) return;
+  const x1=chart.timeScale().timeToCoordinate(scalpBoxState.entryTime);
+  const x2=chart.timeScale().timeToCoordinate(scalpBoxState.endTime);
+  const yTop=cs.priceToCoordinate(scalpBoxState.top);
+  const yBottom=cs.priceToCoordinate(scalpBoxState.bottom);
+  if(x1==null||yTop==null||yBottom==null){ scalpBoxEl.style.display='none'; return; }
+  const rightX = x2!=null ? x2 : x1+60;
+  scalpBoxEl.style.display='block';
+  scalpBoxEl.style.left=Math.min(x1,rightX)+'px';
+  scalpBoxEl.style.top=Math.min(yTop,yBottom)+'px';
+  scalpBoxEl.style.width=Math.max(2,Math.abs(rightX-x1))+'px';
+  scalpBoxEl.style.height=Math.max(2,Math.abs(yBottom-yTop))+'px';
+  scalpBoxEl.style.background = scalpBoxState.dir>0 ? 'rgba(0,200,150,.18)' : 'rgba(255,80,109,.18)';
+  scalpBoxEl.style.border = '1px solid ' + (scalpBoxState.dir>0 ? 'rgba(0,200,150,.6)' : 'rgba(255,80,109,.6)');
+ }
+ // entryTime/endTime: saniye cinsinden UNIX zaman damgası (ohlc.time ile aynı birim). endTime,
+ // "işlem süresi" penceresinin sonu — bu süre geçince ya da işlem sonuçlanınca kutu silinir.
+ window.valensDrawScalpBox=function(entryTime, endTime, top, bottom, dir){
+  ensureScalpBoxEl();
+  scalpBoxState={entryTime, endTime, top, bottom, dir};
+  positionScalpBox();
+ };
+ window.valensClearScalpBox=function(){
+  scalpBoxState=null;
+  if(scalpBoxEl) scalpBoxEl.style.display='none';
+ };
+ chart.timeScale().subscribeVisibleTimeRangeChange(positionScalpBox);
+
  function drawFibonacci(dataArr){
   const a=dataArr||ohlc;
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
