@@ -358,7 +358,7 @@ iframe{height:100%;width:100%;border:0}
       <div class="panelcard">
       <div class="ph"><b data-i18n="scalpMode_title">⚡ 1M SCALP MODU</b><span class="badge" id="scalpModeBadge">KAPALI</span></div>
       <div style="padding:9px">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="scalpModeHint">Açınca grafik 1 dakikaya geçer, ama üst zaman dilimi (4H/1H) yapısı KORUNUR — sadece o yönle uyumlu sinyaller aranır ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.</div>
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="scalpModeHint">Açınca grafik 1 dakikaya geçer, tüm stratejiler normal şekilde aranmaya devam eder — ama üst zaman dilimi (4H/1H) yapısı da hesaba katılır: onunla uyumlu sinyallerin güveni artar ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.</div>
         <button id="scalpModeToggle" style="width:100%;padding:10px;background:var(--gold);color:#07101b;border:0;border-radius:4px;font:700 10px 'IBM Plex Mono';cursor:pointer;margin-bottom:8px" data-i18n="scalpModeToggleOff">⚡ 1M Scalp Modunu Aç</button>
         <div id="scalpModeBias" style="display:none;font-size:9px;color:var(--text);line-height:1.8">—</div>
       </div>
@@ -682,13 +682,13 @@ const I18N = {
   mt5AutoMinConfLabel:'Min. güven (%)',
   mt5AutoSendWarn:'⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.',
   scalpMode_title:'⚡ 1M SCALP MODU',
-  scalpModeHint:'Açınca grafik 1 dakikaya geçer, ama üst zaman dilimi (4H/1H) yapısı KORUNUR — sadece o yönle uyumlu sinyaller aranır ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.',
+  scalpModeHint:'Açınca grafik 1 dakikaya geçer, tüm stratejiler normal şekilde aranmaya devam eder — ama üst zaman dilimi (4H/1H) yapısı da hesaba katılır: onunla uyumlu sinyallerin güveni artar ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.',
   scalpModeToggleOff:'⚡ 1M Scalp Modunu Aç', scalpModeToggleOn:'⏸ 1M Scalp Modunu Kapat',
   scalpModeBadgeOn:'AÇIK', scalpModeBadgeOff:'KAPALI',
   scalpBiasUp:'Yükseliş', scalpBiasDown:'Düşüş', scalpBiasFlat:'Belirsiz',
   scalpBiasLine:(h4,h1)=>'4H: <b>'+h4+'</b> · 1H: <b>'+h1+'</b>',
-  scalpBiasOnlySide:(side)=>'— Sadece '+side+' aranıyor',
-  scalpBiasNoConsensus:'— 4H/1H uyuşmuyor, sinyal aranmıyor',
+  scalpBiasOnlySide:(side)=>'— '+side+' sinyalleri güçlendiriliyor (%10)',
+  scalpBiasNoConsensus:'— 4H/1H uyuşmuyor, normal arama devam ediyor (bonus/ceza yok)',
   confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
@@ -891,13 +891,13 @@ const I18N = {
   mt5AutoMinConfLabel:'Min. confidence (%)',
   mt5AutoSendWarn:"⚠ While this is checked, EVERY trade is sent to the real MT5 account without waiting for approval. Only use this on a demo/test account — keep it OFF with real money.",
   scalpMode_title:'⚡ 1M SCALP MODE',
-  scalpModeHint:'Switches the chart to 1-minute, but PRESERVES the higher-timeframe (4H/1H) structure — only signals aligned with that direction are searched ("How to Analysis": higher timeframe gives direction, lower gives confirmation). Turning it off restores the previous timeframe.',
+  scalpModeHint:'Switches the chart to 1-minute — all strategies keep scanning normally, but the higher-timeframe (4H/1H) structure is also factored in: signals aligned with it get a confidence boost ("How to Analysis": higher timeframe gives direction, lower gives confirmation). Turning it off restores the previous timeframe.',
   scalpModeToggleOff:'⚡ Turn On 1M Scalp Mode', scalpModeToggleOn:'⏸ Turn Off 1M Scalp Mode',
   scalpModeBadgeOn:'ON', scalpModeBadgeOff:'OFF',
   scalpBiasUp:'Bullish', scalpBiasDown:'Bearish', scalpBiasFlat:'Unclear',
   scalpBiasLine:(h4,h1)=>'4H: <b>'+h4+'</b> · 1H: <b>'+h1+'</b>',
-  scalpBiasOnlySide:(side)=>'— Only searching '+side,
-  scalpBiasNoConsensus:'— 4H/1H disagree, no signals searched',
+  scalpBiasOnlySide:(side)=>'— '+side+' signals are boosted (+10%)',
+  scalpBiasNoConsensus:'— 4H/1H disagree, scanning continues normally (no bonus/penalty)',
   confSourceBacktest:'Confidence adjusted using historical backtest results',
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
@@ -1880,6 +1880,20 @@ function botTick(){
   if(family==='trend' && candDir===-revDir) return strong?-16:-8;    // tükenmiş yönde devam bekleyen strateji — ceza
   return 0;
  }
+ // ---- 1M SCALP MODU — YÖN BONUSU/CEZASI (kullanıcı geri bildirimi: "uyuşmuyor diye işlem
+ // aranmasın olmaz, sadece uyuştuğunda yüzde artsın") — DÜZELTME: eskiden 4H/1H uyuşmuyorsa
+ // adaylar TAMAMEN eleniyordu (katı kapı). Artık diğer tüm ayarlamalarla (structureAdjustment,
+ // exhaustionAdjustment vb.) AYNI desende bir bonus/ceza — arama hiçbir zaman durmuyor, sadece
+ // üst zaman dilimiyle uyumlu adayların güveni artıyor (uyumsuz olanlarınki hafif düşüyor, YOK
+ // OLMUYOR).
+ function scalpBiasAdjustment(candDir){
+  if(!window.valensScalpModeActive) return 0;
+  const bias=window.valensScalpBias; if(!bias) return 0;
+  const aligned = bias.h4Dir!==0 && bias.h4Dir===bias.h1Dir;
+  if(!aligned) return 0; // üst zaman dilimi net değil — ne bonus ne ceza, normal aramaya devam
+  const biasDir=Math.sign(bias.h4Dir);
+  return candDir===biasDir ? 10 : -10;
+ }
  // ---- TP'Yİ GERÇEK YAPIYA GÖRE KES — kullanıcı örneği: SELL sinyalinin TP'si Ana Destek'in (1H)
  // ALTINA konmuştu. TP'ye ulaşmak için fiyatın gerçek desteği KIRMASI gerekiyordu — ki kırarsa zaten
  // muhtemelen devam eder, orada "temiz" durup TP'yi vermesi gerçekçi bir varsayım değil. Eskiden TP
@@ -1930,6 +1944,8 @@ function botTick(){
   if(structureAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+structureAdj)));
   const exhaustionAdj = exhaustionAdjustment(family, tag.dir, cr.exhaustionBias||0);
   if(exhaustionAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+exhaustionAdj)));
+  const scalpBiasAdj = scalpBiasAdjustment(tag.dir);
+  if(scalpBiasAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+scalpBiasAdj)));
   // ---- GEÇMİŞ VERİ TESTİNE (BACKTEST) GÖRE DİNAMİK AYARLAMA ----
   // window.valensBacktestResults, bu grafikteki GERÇEKTEN YAŞANMIŞ son ~300 mumda her stratejinin
   // geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaştığını hesaplar (runHistoricalBacktest).
@@ -1955,17 +1971,6 @@ function botTick(){
   }
   candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, structureBias:cr.structureBias||0, exhaustionBias:cr.exhaustionBias||0, fvgZone:tag.fvgZone||null, boxZone:tag.zone||null});
  });
-
- // ---- 1M SCALP MODU — KATI YÖN KAPISI ("ana structure'ı koruyarak" isteği): açıkken 4H VE 1H
- // AYNI yönde net bir yapı gösteriyorsa (aligned), SADECE o yöndeki adaylar hayatta kalır — ters
- // yöndekiler puan indirimiyle DEĞİL, TAMAMEN elenir. 4H/1H uyuşmuyorsa (net bir üst zaman dilimi
- // yönü yoksa) hiçbir aday armed olamaz — üst zaman dilimi yön VERMİYORSA alt zaman diliminde
- // "onay" aramanın bir anlamı yok ("How to Analysis": üst TF yön, alt TF onay).
- if(window.valensScalpModeActive){
-  const bias=window.valensScalpBias;
-  const alignedDir = (bias && bias.h4Dir!==0 && bias.h4Dir===bias.h1Dir) ? Math.sign(bias.h4Dir) : 0;
-  candidates = alignedDir!==0 ? candidates.filter(c=>c.dir===alignedDir) : [];
- }
 
  let best=null;
  candidates.forEach(c=>{ if(!best || c.confidence>best.confidence) best=c; });
