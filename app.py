@@ -1202,12 +1202,16 @@ const TRADE_STORE_PREFIX='valens_trades_';
 function getTradeKey(sym){return TRADE_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
 function loadTradeStore(sym){try{const raw=localStorage.getItem(getTradeKey(sym));if(!raw)return{trades:[]};return JSON.parse(raw);}catch(e){return{trades:[]};}}
 function saveTradeStore(sym,store){try{localStorage.setItem(getTradeKey(sym),JSON.stringify(store));}catch(e){}}
-function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context){
+function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context,candleTime){
   const store=loadTradeStore(sym);
   store.trades=store.trades||[];
   const openTrade=store.trades.find(t=>!t.resolved);
   if(openTrade)return; // aynı anda tek açık takip — üst üste her tick'te yeni kayıt açılmaz
-  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null};
+  // candleTime: chart.timeScale().timeToCoordinate() SADECE grafikte GERÇEKTEN çizili bir mumun
+  // TAM zaman değerini kabul ediyor (Date.now() gibi rastgele bir saniye DEĞİL — test edip
+  // doğruladım, aradaki fark 1dk'dan bile az olsa null dönüyor) — 1M Scalp Modu kutu çizimi bu
+  // yüzden ts (Date.now()) değil, cr.candleTime'dan gelen bu alanı kullanıyor.
+  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null,candleTime:candleTime||null};
   store.trades.push(trade);
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveTradeStore(sym,store);
@@ -2296,16 +2300,28 @@ function botTick(){
 
    logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx, best?best.key:null, best?best.label:null, {
     regime: marketRegime, agreeCount, totalVotes, trend: cr.trend||0, srText: cr.srText||'', patternName: cr.patternName||'', confirmedCandles
-   });
+   }, cr.candleTime||null);
    // ---- 1M SCALP MODU KUTU ÇİZİMİ — kullanıcının paylaştığı video örnekleri: SL/TP çizgi değil,
    // zaman+fiyat ekseninde sınırlı bir KUTU olarak çizilir. window.valensDrawScalpBox (chart
    // motorunda tanımlı, FVG köprüsüyle AYNI desen) SL-TP aralığını, işlemin beklenen süresi kadar
    // (maxHours) ileriye doğru bir dikdörtgen olarak çizer — süre dolunca/sonuçlanınca silinir.
-   if(window.valensScalpModeActive && window.valensDrawScalpBox){
-    const boxEntryTime = cr.candleTime || Math.floor(Date.now()/1000);
-    const boxEndTime = boxEntryTime + Math.round(maxHours*3600);
-    window.valensScalpBoxEndTime = boxEndTime;
-    window.valensDrawScalpBox(boxEntryTime, boxEndTime, Math.max(scStopPx,scTpPx), Math.min(scStopPx,scTpPx), rawDir);
+   // DÜZELTME (kullanıcı örneği: kutu fiyattan tamamen kopuk, havada asılı kalıyordu): burada
+   // HER tick'te TAZE (canlı fiyata göre kayan) scStopPx/scTpPx kullanılıyordu, ama logArmedTrade
+   // tek bir açık işlemi tekilleştiriyor (aynı işlem sonuçlanana kadar yeni kayıt açmıyor) — yani
+   // kutu, GERÇEKTE takip edilen işlemden FARKLI (daha yeni, kayan) bir SL/TP çiziyordu; üstelik
+   // "armed" bir tur FALSE olup (fiyat eşiği artık karşılamayınca) TP/SL'ye hiç ulaşmadan kutu
+   // hiç temizlenmeden EKRANDA DONUP kalıyordu. Artık kutu, localStorage'daki GERÇEK açık işlem
+   // kaydından (varsa) çiziliyor — o yoksa (sonuçlandı ya da hiç açılmadıysa) kutu temizleniyor.
+   if(window.valensScalpModeActive && window.valensDrawScalpBox && window.valensClearScalpBox){
+    const openTrade=(loadTradeStore(CUR).trades||[]).find(tr=>!tr.resolved);
+    if(openTrade && openTrade.candleTime){
+     const boxEntryTime=openTrade.candleTime;
+     const boxEndTime=boxEntryTime+Math.round(maxHours*3600);
+     window.valensScalpBoxEndTime=boxEndTime;
+     window.valensDrawScalpBox(boxEntryTime, boxEndTime, Math.max(openTrade.sl,openTrade.tp), Math.min(openTrade.sl,openTrade.tp), openTrade.dir);
+    } else {
+     window.valensClearScalpBox(); window.valensScalpBoxEndTime=null;
+    }
    }
    recordLastSignal(CUR,'scalp',rawDir,scEntryPx,scTpPx,scStopPx);
    recordLastSignal(CUR,'swing',rawDir,adjLast,swTpPx,swStopPx);
