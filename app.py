@@ -3861,13 +3861,17 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // birleştiriliyor: (1) konsolidasyon/volatilite birikimi bölgeleri, (2) RSI aşırı alım/satımdan
  // dönüş seviyeleri, (3) likidite süpürme (swing sweep) noktaları — birbirine yakın/çakışan
  // adaylar tek bir bölgede birleşip fiyata en yakın olanlar tutuluyor.
- // DÜZELTME (kullanıcı geri bildirimi — AYNI hata burada da vardı): detectConsolidationZones'daki
- // "sınırsız zincir birleşme" hatasını burada, üç kaynağı (konsolidasyon/RSI/süpürme) birleştiren
- // AYRI bir döngüde tekrar yapmışım — üst üste/yakın birçok aday varsa bunlar da sınırsız
- // büyüyerek tek dev bir banda dönüşebiliyordu. Aynı genişlik üst sınırı burada da uygulanıyor.
+ // DÜZELTME 2 (kullanıcı hâlâ tek dev bir blok gösterdi — referans görselindeki gibi SEYREK, DAR,
+ // birbirinden AYRIK kutular istiyor): genişlik sınırı her bölgeyi tek tek sınırlasa bile, ÇOK
+ // SAYIDA (özellikle yatay/dalgalı bir piyasada) birbirine bitişik dar bölge üretilince görsel
+ // olarak yine TEK bir kesintisiz blok gibi görünüyordu. Artık üç ek önlem var: (1) bölge genişliği
+ // sınırı daha SIKI (1.4×ATR, önceden 2.2×), (2) son listede birbirine ÇOK yakın kalan bölgeler
+ // (aralarında en az yarım ATR boşluk yoksa) ayrı ayrı gösterilmiyor — en güçlü kanıtlı (weight)
+ // olan tutulup diğeri elenir, (3) en fazla 4 bölge (6 değil) — az ama güvenilir.
  function buildMainSRZones(bars, lastPrice){
   const atrRef=calcATR(bars,14)||((bars[bars.length-1].high-bars[bars.length-1].low)||1);
-  const maxZoneWidth=atrRef*2.2;
+  const maxZoneWidth=atrRef*1.4;
+  const minGap=atrRef*0.5;
   const consolZones=detectConsolidationZones(bars).map(z=>({hi:z.hi, lo:z.lo, weight:1}));
   const rsiZones=clusterLevelsIntoZones(detectRsiReversalLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
   const sweepZones=clusterLevelsIntoZones(detectSweepLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
@@ -3884,8 +3888,17 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    }
    else merged.push({hi:c.hi, lo:c.lo, weight:c.weight});
   });
-  merged.sort((a,b)=>Math.abs(lastPrice-(a.hi+a.lo)/2)-Math.abs(lastPrice-(b.hi+b.lo)/2));
-  return merged.slice(0,6);
+  // Bitişik/çok yakın kalan bölgeleri seyrekleştir — aralarında yeterli boşluk yoksa sadece en
+  // güçlü kanıtlıyı (weight) tut, "duvar gibi" bitişik kutular yerine seyrek, net bölgeler kalsın.
+  merged.sort((a,b)=>a.lo-b.lo);
+  let spaced=[];
+  merged.forEach(z=>{
+   const prev=spaced[spaced.length-1];
+   if(prev && (z.lo-prev.hi)<minGap){ if(z.weight>prev.weight) spaced[spaced.length-1]=z; }
+   else spaced.push(z);
+  });
+  spaced.sort((a,b)=>Math.abs(lastPrice-(a.hi+a.lo)/2)-Math.abs(lastPrice-(b.hi+b.lo)/2));
+  return spaced.slice(0,4);
  }
  async function fetchMainSR(sym){
   const bs=MAP[sym]; if(!bs){ mainSRZones=[]; mainSRHistory=[]; return; }
@@ -4095,7 +4108,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const a=dataArr||ohlc;
   if(a.length<40) return [];
   const N=6, atrRef=calcATR(a,14)||( (a[a.length-1].high-a[a.length-1].low)||1 );
-  const maxZoneWidth=atrRef*2.2;
+  const maxZoneWidth=atrRef*1.4; // DÜZELTME 2: kullanıcı hâlâ çok geniş bulduğu için daha da sıkılaştırıldı
   let raw=[];
   for(let i=N;i<a.length;i++){
    const w=a.slice(i-N,i);
