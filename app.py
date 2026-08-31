@@ -3870,11 +3870,21 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // olan tutulup diğeri elenir, (3) en fazla 4 bölge (6 değil) — az ama güvenilir.
  function buildMainSRZones(bars, lastPrice){
   const atrRef=calcATR(bars,14)||((bars[bars.length-1].high-bars[bars.length-1].low)||1);
-  const maxZoneWidth=atrRef*1.4;
-  const minGap=atrRef*0.5;
-  const consolZones=detectConsolidationZones(bars).map(z=>({hi:z.hi, lo:z.lo, weight:1}));
-  const rsiZones=clusterLevelsIntoZones(detectRsiReversalLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
-  const sweepZones=clusterLevelsIntoZones(detectSweepLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
+  // DÜZELTME 3 (kullanıcının kesin isteği): ATR'ye dayalı hesap hâlâ çok geniş bantlar üretebiliyordu
+  // (yüksek volatiliteli dönemlerde ATR'nin kendisi büyüyünce sınır da büyüyordu). Artık MUTLAK bir
+  // dolar tavanı var — bir bölge, ATR ne olursa olsun 10 dolardan GENİŞ OLAMAZ.
+  const HARD_MAX_ZONE_WIDTH=10;
+  const maxZoneWidth=Math.min(atrRef*1.4, HARD_MAX_ZONE_WIDTH);
+  const minGap=Math.min(atrRef*0.5, HARD_MAX_ZONE_WIDTH*0.6);
+  // ÖNEMLİ: aşağıdaki merge döngüsü sadece İKİ bölge BİRLEŞTİĞİNDE sonucu sınırlıyordu — ama
+  // detectConsolidationZones gibi bir kaynaktan gelen TEK bir ham bölge zaten kendi başına 10
+  // dolardan geniş gelebiliyordu (hiç birleşmeden), bu durumda hiç kontrol edilmeden geçiyordu.
+  // Her adayı kaynağından çıkar çıkmaz (merge'den ÖNCE) 10 dolara sabitliyoruz — hiçbir bölge,
+  // hangi kaynaktan gelirse gelsin, asla bu sınırı aşamaz.
+  const clampWidth=(z)=>{ const w=z.hi-z.lo; if(w<=HARD_MAX_ZONE_WIDTH) return z; const mid=(z.hi+z.lo)/2; return {hi:mid+HARD_MAX_ZONE_WIDTH/2, lo:mid-HARD_MAX_ZONE_WIDTH/2, weight:z.weight}; };
+  const consolZones=detectConsolidationZones(bars).map(z=>clampWidth({hi:z.hi, lo:z.lo, weight:1}));
+  const rsiZones=clusterLevelsIntoZones(detectRsiReversalLevels(bars), 0.0025).map(z=>clampWidth({hi:z.hi, lo:z.lo, weight:z.count}));
+  const sweepZones=clusterLevelsIntoZones(detectSweepLevels(bars), 0.0025).map(z=>clampWidth({hi:z.hi, lo:z.lo, weight:z.count}));
   const all=[...consolZones, ...rsiZones, ...sweepZones];
   if(!all.length) return [];
   all.sort((a,b)=>a.lo-b.lo);
