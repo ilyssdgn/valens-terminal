@@ -3861,7 +3861,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // birleştiriliyor: (1) konsolidasyon/volatilite birikimi bölgeleri, (2) RSI aşırı alım/satımdan
  // dönüş seviyeleri, (3) likidite süpürme (swing sweep) noktaları — birbirine yakın/çakışan
  // adaylar tek bir bölgede birleşip fiyata en yakın olanlar tutuluyor.
+ // DÜZELTME (kullanıcı geri bildirimi — AYNI hata burada da vardı): detectConsolidationZones'daki
+ // "sınırsız zincir birleşme" hatasını burada, üç kaynağı (konsolidasyon/RSI/süpürme) birleştiren
+ // AYRI bir döngüde tekrar yapmışım — üst üste/yakın birçok aday varsa bunlar da sınırsız
+ // büyüyerek tek dev bir banda dönüşebiliyordu. Aynı genişlik üst sınırı burada da uygulanıyor.
  function buildMainSRZones(bars, lastPrice){
+  const atrRef=calcATR(bars,14)||((bars[bars.length-1].high-bars[bars.length-1].low)||1);
+  const maxZoneWidth=atrRef*2.2;
   const consolZones=detectConsolidationZones(bars).map(z=>({hi:z.hi, lo:z.lo, weight:1}));
   const rsiZones=clusterLevelsIntoZones(detectRsiReversalLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
   const sweepZones=clusterLevelsIntoZones(detectSweepLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
@@ -3871,7 +3877,11 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   let merged=[];
   all.forEach(c=>{
    const last=merged[merged.length-1];
-   if(last && c.lo<=last.hi*1.0015){ last.hi=Math.max(last.hi,c.hi); last.lo=Math.min(last.lo,c.lo); last.weight+=c.weight; }
+   if(last && c.lo<=last.hi*1.0015){
+    const newHi=Math.max(last.hi,c.hi), newLo=Math.min(last.lo,c.lo);
+    if((newHi-newLo)<=maxZoneWidth){ last.hi=newHi; last.lo=newLo; last.weight+=c.weight; }
+    else merged.push({hi:c.hi, lo:c.lo, weight:c.weight}); // birleşirse çok genişleyecekti — ayrı bölge
+   }
    else merged.push({hi:c.hi, lo:c.lo, weight:c.weight});
   });
   merged.sort((a,b)=>Math.abs(lastPrice-(a.hi+a.lo)/2)-Math.abs(lastPrice-(b.hi+b.lo)/2));
