@@ -2316,7 +2316,15 @@ function botTick(){
     const openTrade=(loadTradeStore(CUR).trades||[]).find(tr=>!tr.resolved);
     if(openTrade && openTrade.candleTime){
      const boxEntryTime=openTrade.candleTime;
-     const boxEndTime=boxEntryTime+Math.round(maxHours*3600);
+     // DÜZELTME (kullanıcı örneği: kutu "saçma sapan" görünüyordu) — burada hâlâ genel "maxHours"
+     // (varsayılan 2 SAAT, swing işlemler için) kullanılıyordu. 1M Scalp Modu'nda işlem dakikalar
+     // içinde sonuçlanması beklenir — 2 saat sonrası grafikte hiç veri olmadığından
+     // timeToCoordinate(boxEndTime) hep null dönüyor, kutu de anlamsız sabit bir 60px'e düşüp
+     // gerçek fiyat/zaman ile hiç ilgisi olmayan bir dikdörtgen çiziyordu. Artık scalp modunda
+     // çok daha kısa, gerçekçi bir pencere (varsayılan 20dk, window.valensScalpBoxMinutes ile
+     // ayarlanabilir) kullanılıyor.
+     const scalpBoxMinutes = (typeof window.valensScalpBoxMinutes==='number' && window.valensScalpBoxMinutes>0) ? window.valensScalpBoxMinutes : 20;
+     const boxEndTime=boxEntryTime+Math.round(scalpBoxMinutes*60);
      window.valensScalpBoxEndTime=boxEndTime;
      window.valensDrawScalpBox(boxEntryTime, boxEndTime, Math.max(openTrade.sl,openTrade.tp), Math.min(openTrade.sl,openTrade.tp), openTrade.dir);
     } else {
@@ -4016,14 +4024,32 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   el.appendChild(scalpBoxEl);
   return scalpBoxEl;
  }
+ // Grafikte HENÜZ çizilmemiş (gelecekteki) bir zamanın piksel konumunu, lightweight-charts'ın
+ // timeToCoordinate'ı ASLA çözemiyor (son mumun ötesindeki HERHANGİ bir zaman için, 1 dakika
+ // ötesi bile olsa, hep null dönüyor — kullanıcı geri bildirimi: "saçma sapan" kutu tam olarak
+ // bu yüzdendi, sabit 60px'lik anlamsız bir yedek genişliğe düşüyordu). Bunun yerine, EKRANDA
+ // ZATEN çizili son iki mumun piksel aralığından "piksel/saniye" oranını çıkarıp gelecekteki
+ // zamanı orantılı olarak EKSTRAPOLE ediyoruz — böylece kutunun genişliği gerçekten "20 dakika"yı
+ // ekrandaki gerçek mum aralığına göre temsil ediyor, rastgele bir sabit değil.
+ function estimatePixelsPerSecond(){
+  if(!ohlc || ohlc.length<2) return null;
+  const t1=ohlc[ohlc.length-2].time, t2=ohlc[ohlc.length-1].time;
+  if(t2===t1) return null;
+  const x1=chart.timeScale().timeToCoordinate(t1), x2=chart.timeScale().timeToCoordinate(t2);
+  if(x1==null||x2==null) return null;
+  return (x2-x1)/(t2-t1);
+ }
  function positionScalpBox(){
   if(!scalpBoxState || !scalpBoxEl) return;
   const x1=chart.timeScale().timeToCoordinate(scalpBoxState.entryTime);
-  const x2=chart.timeScale().timeToCoordinate(scalpBoxState.endTime);
   const yTop=cs.priceToCoordinate(scalpBoxState.top);
   const yBottom=cs.priceToCoordinate(scalpBoxState.bottom);
   if(x1==null||yTop==null||yBottom==null){ scalpBoxEl.style.display='none'; return; }
-  const rightX = x2!=null ? x2 : x1+60;
+  let rightX=chart.timeScale().timeToCoordinate(scalpBoxState.endTime);
+  if(rightX==null){
+   const pps=estimatePixelsPerSecond();
+   rightX = pps!=null ? x1+pps*(scalpBoxState.endTime-scalpBoxState.entryTime) : x1+60;
+  }
   scalpBoxEl.style.display='block';
   scalpBoxEl.style.left=Math.min(x1,rightX)+'px';
   scalpBoxEl.style.top=Math.min(yTop,yBottom)+'px';
