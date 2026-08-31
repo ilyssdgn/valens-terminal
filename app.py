@@ -2799,7 +2799,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // ATR bazlı volatilite zarfı (Keltner-tarzı) — trend yönüne göre renk değiştirir (TradingView referansınızdaki gibi)
  const kelUp=chart.addLineSeries({color:'rgba(0,200,150,.55)',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
  const kelLo=chart.addLineSeries({color:'rgba(0,200,150,.55)',lineWidth:1,lastValueVisible:false,priceLineVisible:false});
- const resize=()=>chart.applyOptions({width:el.clientWidth,height:el.clientHeight});
+ const resize=()=>{ chart.applyOptions({width:el.clientWidth,height:el.clientHeight}); if(typeof positionMainSRZones==='function') positionMainSRZones(); };
  // Önceden fitContent() TÜM (1000'e kadar) mumu sığdırıyordu — bu da her mumu çok ince/görünmez
  // yapıyordu, kullanıcı her açılışta manuel yakınlaştırmak zorunda kalıyordu. Artık açılışta sadece
  // son ~120 mumu (okunaklı bir yakınlık) gösteriyoruz; kullanıcı isterse kendisi uzaklaştırabilir.
@@ -2837,7 +2837,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  function styledCandles(arr, sym){ return arr.map(c=>styledCandle(c, sym)); }
  // "Ana destek/direnç" HER ZAMAN 1 saatlik mumlardan hesaplanır (kullanıcı hangi zaman dilimini
  // izlerse izlesin) — "scalp" destek/direnç ise o an izlenen aralığın kendi dinamik S/R'ıdır.
- let mainSR={sup:null,res:null}, mainSRLines=[], mainSRHistory=[], mainSRHistoryLines=[];
+ let mainSRZones=[], mainSRZoneEls=[], mainSRHistory=[], mainSRHistoryLines=[];
  const closedEl=document.getElementById('chartClosed');
 
  const emaLine=(a,p)=>{const k=2/(p+1);let e=a[0].close;return a.map((c,i)=>{e=i?c.close*k+e*(1-k):c.close;return{time:c.time,value:+e.toFixed(4)}});};
@@ -3804,27 +3804,32 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   });
  }
  // ---- ANA DESTEK/DİRENÇ: her zaman 1 saatlik mumlardan, o an izlenen zaman diliminden BAĞIMSIZ ----
- // "Ana destek direnç noktaları 1 saatlikten alınıyor" — kullanıcı 15dk'da bakarken bile bu arka planda
- // 1 saatlik veriden hesaplanır ve grafiğe kalın turuncu çizgilerle işaretlenir.
- // ---- KIRILAN ANA S/R SEVİYESİ SİLİNMESİN — kullanıcı geri bildirimi: direnç kırılıp fiyat
- // yukarı gidince eski çizgi anında SİLİNİP en yeni (daha yüksek) direnç çiziliyordu; oysa
- // kırılan bir direnç klasik olarak "geri dönüp test edilecek yeni destek" sayılır (polarite
- // dönüşü — ICT/klasik TA'da "kırılan seviye rol değiştirir" ilkesi). Artık: mainSR yeniden
- // hesaplanırken eski sup/res GERÇEKTEN kırılmışsa (yeni res eskisinden yüksek / yeni sup
- // eskisinden düşük), eski seviye SİLİNMİYOR — mainSRHistory'ye "kırılmış, olası tersine
- // seviye" olarak taşınıp grafikte (daha soluk/kesikli) çizilmeye devam ediyor.
+ // DÜZELTME (kullanıcı geri bildirimi): eskiden bu SADECE son ~100 saatlik mumun ham min/max'ıydı —
+ // yani "en son mum nereye değdiyse" seviyeyi oraya çekiyordu, gerçek bir destek/direnç (fiyatın
+ // TEKRAR TEKRAR reaksiyon verdiği, volatilitenin BİRİKTİĞİ bölge) değildi. Ayrıca sadece TEK bir
+ // destek + TEK bir direnç veriyordu (genelde birbirinden çok uzak), ve tek bir ÇİZGİ olarak
+ // çiziliyordu. Artık: aynı konsolidasyon/bölge tespit algoritması (detectConsolidationZones —
+ // "Bölge Üst/Alt" için zaten kullanılan, ATR'ye göre dar-aralıklı pencereleri birleştiren gerçek
+ // yöntem) 1 saatlik mumlara uygulanıyor — bu doğal olarak BİRDEN FAZLA gerçek konsolidasyon
+ // bölgesi buluyor, her biri gerçek bir fiyat ARALIĞI (dikdörtgen bant, tek çizgi değil).
  async function fetchMainSR(sym){
-  const bs=MAP[sym]; if(!bs){ mainSR={sup:null,res:null}; mainSRHistory=[]; return; }
+  const bs=MAP[sym]; if(!bs){ mainSRZones=[]; mainSRHistory=[]; return; }
   try{
-   const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1h&limit=100`);
+   const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1h&limit=200`);
    const d=await r.json();
    if(!Array.isArray(d)||!d.length) return;
-   const highs=d.map(k=>+k[2]), lows=d.map(k=>+k[3]);
-   const newSR={sup:Math.min(...lows), res:Math.max(...highs)};
-   if(mainSR.res!=null && newSR.res>mainSR.res+1e-6) addBrokenMainSR(mainSR.res, 'res');
-   if(mainSR.sup!=null && newSR.sup<mainSR.sup-1e-6) addBrokenMainSR(mainSR.sup, 'sup');
-   mainSR=newSR;
-   if(sym===curSym) drawMainSRLines();
+   const bars=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
+   const newZones=detectConsolidationZones(bars);
+   // Kırılan bölge takibi: eski bölgelerin dış sınırları (en yüksek tepe / en düşük dip) yeni
+   // bölgelerin dışına taştıysa (gerçekten kırıldıysa), eski sınır mainSRHistory'ye taşınır.
+   if(mainSRZones.length && newZones.length){
+    const oldMaxHi=Math.max(...mainSRZones.map(z=>z.hi)), oldMinLo=Math.min(...mainSRZones.map(z=>z.lo));
+    const newMaxHi=Math.max(...newZones.map(z=>z.hi)), newMinLo=Math.min(...newZones.map(z=>z.lo));
+    if(newMaxHi>oldMaxHi+1e-6) addBrokenMainSR(oldMaxHi, 'res');
+    if(newMinLo<oldMinLo-1e-6) addBrokenMainSR(oldMinLo, 'sup');
+   }
+   mainSRZones=newZones;
+   if(sym===curSym) drawMainSRZones();
   }catch(e){ /* sessizce yoksay — bu ikincil bir veri kaynağı, ana grafiği bozmasın */ }
  }
  function addBrokenMainSR(price, kind){
@@ -3834,16 +3839,48 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   mainSRHistory.push({price, kind});
   if(mainSRHistory.length>4) mainSRHistory.shift(); // grafik kirlenmesin — en fazla son 4 kırılan seviye
  }
- function drawMainSRLines(){
-  mainSRLines.forEach(l=>cs.removePriceLine(l)); mainSRLines=[];
+ // ---- Ana Destek/Direnç bölgelerini DOLU DİKDÖRTGEN BANT olarak çizer (tek çizgi değil) —
+ // lightweight-charts'ta native dikdörtgen yok, 1M Scalp kutusuyla AYNI DOM overlay tekniği
+ // kullanılıyor, ama zaman ekseninde SINIRSIZ (grafiğin tüm genişliğinde) — sadece fiyat ekseninde
+ // sınırlı bir yatay bant.
+ function ensureMainSRZoneEl(idx){
+  if(mainSRZoneEls[idx]) return mainSRZoneEls[idx];
+  const div=document.createElement('div');
+  div.className='mainSRZoneBox';
+  div.style.cssText='position:absolute;left:0;right:0;pointer-events:none;z-index:3;border-top:1px solid rgba(255,140,66,.55);border-bottom:1px solid rgba(255,140,66,.55);background:rgba(255,140,66,.10);display:none;';
+  el.appendChild(div);
+  mainSRZoneEls[idx]=div;
+  return div;
+ }
+ function positionMainSRZones(){
+  mainSRZones.forEach((z,i)=>{
+   const div=ensureMainSRZoneEl(i);
+   const yTop=cs.priceToCoordinate(z.hi), yBot=cs.priceToCoordinate(z.lo);
+   if(yTop==null||yBot==null){ div.style.display='none'; return; }
+   div.style.display='block';
+   div.style.top=Math.min(yTop,yBot)+'px';
+   div.style.height=Math.max(2,Math.abs(yBot-yTop))+'px';
+  });
+  for(let i=mainSRZones.length;i<mainSRZoneEls.length;i++){ if(mainSRZoneEls[i]) mainSRZoneEls[i].style.display='none'; }
+ }
+ function drawMainSRZones(){
   mainSRHistoryLines.forEach(l=>cs.removePriceLine(l)); mainSRHistoryLines=[];
   mainSRHistory.forEach(h=>{
    const title = h.kind==='res' ? t('mainResistanceBroken') : t('mainSupportBroken');
    mainSRHistoryLines.push(cs.createPriceLine({price:h.price,color:'rgba(255,140,66,.45)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title}));
   });
-  if(mainSR.sup==null||mainSR.res==null) return;
-  mainSRLines.push(cs.createPriceLine({price:mainSR.res,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainResistance')}));
-  mainSRLines.push(cs.createPriceLine({price:mainSR.sup,color:'#ff8c42',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:t('mainSupport')}));
+  positionMainSRZones();
+ }
+ // Diğer kodun (yakınlık/srBias kontrolü, TP kırpma) tek bir "en yakın destek/en yakın direnç"
+ // değerine ihtiyacı var — birden fazla bölgeden mevcut fiyata göre en yakın olanı seçer.
+ function nearestMainSR(last){
+  let sup=null, res=null;
+  mainSRZones.forEach(z=>{
+   const mid=(z.hi+z.lo)/2;
+   if(mid<=last && (sup==null || z.hi>sup.hi)) sup=z;
+   if(mid>=last && (res==null || z.lo<res.lo)) res=z;
+  });
+  return {sup, res};
  }
  // ---- 1M SCALP MODU — ÜST ZAMAN DİLİMİ BIAS ("How to Analysis" görseli + Türkçe BIAS/DOL
  // videosu): 4H ve 1H'ı mevcut ohlc/WS pipeline'ına HİÇ dokunmadan, fetchMainSR ile AYNI desende
@@ -4081,8 +4118,10 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   // ANA destek/direnç (1 saatlik, o an izlenen zaman diliminden BAĞIMSIZ) — en yüksek öncelikli S/R
   // kaynağıdır ("ana destek direnç noktaları 1 saatlikten alınıyor"). Şu an izlenen aralığın kendi
   // dinamik S/R'ı ("scalp" S/R) aşağıda ayrıca hesaba katılır, ama ana 1H seviyesi öncelik kazanır.
-  if(mainSR && mainSR.sup!=null && mainSR.res!=null){
-    const distMainSup=Math.abs(last-mainSR.sup)/last, distMainRes=Math.abs(last-mainSR.res)/last;
+  const nearMainSR = nearestMainSR(last);
+  if(nearMainSR.sup || nearMainSR.res){
+    const distMainSup = nearMainSR.sup ? Math.abs(last-nearMainSR.sup.hi)/last : Infinity;
+    const distMainRes = nearMainSR.res ? Math.abs(last-nearMainSR.res.lo)/last : Infinity;
     if(distMainSup<0.004 && distMainSup<=distMainRes && Math.abs(0.7)>Math.abs(srBias)){ srBias=0.7; srText=t('srNearMainSupport'); }
     else if(distMainRes<0.004 && distMainRes<distMainSup && Math.abs(-0.7)>Math.abs(srBias)){ srBias=-0.7; srText=t('srNearMainResistance'); }
   }
@@ -4151,7 +4190,9 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     // orada durup TP'ye "temiz" ulaşması gerçekçi değil. TP/SL hesaplaması botTick'te (ayrı script)
     // yapılıyor, o yüzden gerçek S/R seviyeleri buradan köprüleniyor — botTick artık TP'yi bu
     // seviyelerin ÖNÜNDE (kırmadan) kesiyor.
-    srLevels: {mainSup:(mainSR&&mainSR.sup!=null)?mainSR.sup:null, mainRes:(mainSR&&mainSR.res!=null)?mainSR.res:null,
+    // mainSup/mainRes: en yakın bölgenin fiyata BAKAN kenarı (ör. destek bölgesinin ÜST sınırı) —
+    // TP bu noktayı geçmeden kırpılır, yani bölgeye "ilk temas" noktası baz alınır.
+    srLevels: {mainSup:nearestMainSR(last).sup?nearestMainSR(last).sup.hi:null, mainRes:nearestMainSR(last).res?nearestMainSR(last).res.lo:null,
                dynSup:(typeof sup==='number'&&isFinite(sup))?sup:null, dynRes:(typeof res==='number'&&isFinite(res))?res:null},
     hasLiveData:true,
     candleTime: a[a.length-1].time, // mevcut mumun SABİT zaman damgası — sinyal tekilleştirmede kullanılır
@@ -4277,7 +4318,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
   zoneLines.forEach(l=>cs.removePriceLine(l)); zoneLines=[];
-  mainSRLines.forEach(l=>cs.removePriceLine(l)); mainSRLines=[]; mainSR={sup:null,res:null};
+  mainSRZones=[]; mainSRZoneEls.forEach(d=>{ if(d) d.style.display='none'; });
   mainSRHistoryLines.forEach(l=>cs.removePriceLine(l)); mainSRHistoryLines=[]; mainSRHistory=[];
   if(dynSup){cs.removePriceLine(dynSup);dynSup=null;}
   if(dynRes){cs.removePriceLine(dynRes);dynRes=null;}
