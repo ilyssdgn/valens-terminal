@@ -3946,6 +3946,12 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(scalpBoxEl) scalpBoxEl.style.display='none';
  };
  chart.timeScale().subscribeVisibleTimeRangeChange(positionScalpBox);
+ // ---- Kullanıcı geri bildirimi: grafik kaydırılınca/yakınlaştırılınca fiyat ekseni yeniden
+ // ölçekleniyor (autoscale) ama Ana Destek/Direnç bantları eski koordinatlarda kalıp fiyattan
+ // KOPUYORDU — bu bantlar sadece veri tazelenince (5dk'da bir) yeniden konumlanıyordu. Artık
+ // görünür zaman aralığı her değiştiğinde (kaydırma/yakınlaştırma dahil) de yeniden konumlanıyor.
+ chart.timeScale().subscribeVisibleTimeRangeChange(positionMainSRZones);
+ chart.priceScale('right').subscribePriceRangeChange && chart.priceScale('right').subscribePriceRangeChange(positionMainSRZones);
 
  function drawFibonacci(dataArr){
   const a=dataArr||ohlc;
