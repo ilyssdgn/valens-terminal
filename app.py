@@ -3803,15 +3803,80 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    srLines.push(cs.createPriceLine({price:px,color:isRes?'#ff506d':'#00c896',lineWidth:2,lineStyle:0,axisLabelVisible:true,title:s.label}));
   });
  }
+ // ---- RSI AŞIRI ALIM/SATIMDAN DÖNÜŞ SEVİYELERİ (kullanıcı isteği: "RSI yoğun alımdan 70 üstü
+ // birkaç kez dönmüş olsun gibi ya da yoğun satımdan") — RSI 70 üzerinden geri 70'in altına
+ // düştüğü ya da 30 altından geri 30'un üzerine çıktığı ANDAKİ fiyat seviyesi, gerçek bir
+ // destek/direnç adayıdır (piyasa o bölgede tekrar tekrar "yeter" demiş demektir).
+ function detectRsiReversalLevels(a){
+  if(a.length<40) return [];
+  const closes=a.map(c=>c.close);
+  const rsiSeries=calcRSISeries(closes,14);
+  let levels=[];
+  for(let i=1;i<a.length;i++){
+   if(rsiSeries[i]==null||rsiSeries[i-1]==null) continue;
+   if(rsiSeries[i-1]>=70 && rsiSeries[i]<70) levels.push({price:a[i-1].high, kind:'res'});
+   if(rsiSeries[i-1]<=30 && rsiSeries[i]>30) levels.push({price:a[i-1].low, kind:'sup'});
+  }
+  return levels;
+ }
+ // ---- LİKİDİTE SÜPÜRME NOKTALARI — bir swing high/low'un fitille aşılıp kapanışla geri içeri
+ // dönüldüğü (yani "süpürülüp" reddedildiği) seviyeler. Süpürülen seviyenin kendisi, piyasanın
+ // orada durup tersine döndüğü GERÇEK bir destek/direnç referansıdır.
+ function detectSweepLevels(a){
+  if(a.length<20) return [];
+  const N=2; let swings=[], levels=[];
+  for(let i=N;i<a.length-N;i++){
+   const c=a[i]; let isHigh=true, isLow=true;
+   for(let j=i-N;j<=i+N;j++){ if(j===i) continue; if(a[j].high>=c.high) isHigh=false; if(a[j].low<=c.low) isLow=false; }
+   if(isHigh) swings.push({idx:i, price:c.high, type:'high'});
+   if(isLow) swings.push({idx:i, price:c.low, type:'low'});
+  }
+  swings.forEach(s=>{
+   for(let k=s.idx+1;k<Math.min(a.length,s.idx+15);k++){ // süpürme makul bir süre içinde olmalı
+    const c=a[k];
+    if(s.type==='high' && c.high>s.price && c.close<s.price){ levels.push({price:s.price, kind:'res'}); break; }
+    if(s.type==='low' && c.low<s.price && c.close>s.price){ levels.push({price:s.price, kind:'sup'}); break; }
+   }
+  });
+  return levels;
+ }
+ // Yakın fiyattaki tekil seviyeleri (RSI dönüşü / süpürme noktaları) tek bir bölgede toplar —
+ // AYNI bölgede birden fazla dönüş/süpürme varsa bu gerçek bir confluence'dır, tek seferlik bir
+ // nokta değil ("birkaç kez dönmüş olsun" isteği tam olarak bu — count>=2 şartı).
+ function clusterLevelsIntoZones(levels, tolerancePct){
+  if(!levels.length) return [];
+  const sorted=levels.slice().sort((a,b)=>a.price-b.price);
+  let clusters=[];
+  sorted.forEach(lv=>{
+   const last=clusters[clusters.length-1];
+   if(last && (lv.price-last.hi)/lv.price < tolerancePct){ last.hi=Math.max(last.hi,lv.price); last.lo=Math.min(last.lo,lv.price); last.count++; }
+   else clusters.push({hi:lv.price, lo:lv.price, count:1});
+  });
+  return clusters.filter(c=>c.count>=2);
+ }
  // ---- ANA DESTEK/DİRENÇ: her zaman 1 saatlik mumlardan, o an izlenen zaman diliminden BAĞIMSIZ ----
  // DÜZELTME (kullanıcı geri bildirimi): eskiden bu SADECE son ~100 saatlik mumun ham min/max'ıydı —
- // yani "en son mum nereye değdiyse" seviyeyi oraya çekiyordu, gerçek bir destek/direnç (fiyatın
- // TEKRAR TEKRAR reaksiyon verdiği, volatilitenin BİRİKTİĞİ bölge) değildi. Ayrıca sadece TEK bir
- // destek + TEK bir direnç veriyordu (genelde birbirinden çok uzak), ve tek bir ÇİZGİ olarak
- // çiziliyordu. Artık: aynı konsolidasyon/bölge tespit algoritması (detectConsolidationZones —
- // "Bölge Üst/Alt" için zaten kullanılan, ATR'ye göre dar-aralıklı pencereleri birleştiren gerçek
- // yöntem) 1 saatlik mumlara uygulanıyor — bu doğal olarak BİRDEN FAZLA gerçek konsolidasyon
- // bölgesi buluyor, her biri gerçek bir fiyat ARALIĞI (dikdörtgen bant, tek çizgi değil).
+ // "en son mum nereye değdiyse" seviyeyi oraya çekiyordu, gerçek bir destek/direnç (fiyatın TEKRAR
+ // TEKRAR reaksiyon verdiği, volatilitenin BİRİKTİĞİ bölge) değildi. Artık ÜÇ bağımsız kanıt
+ // birleştiriliyor: (1) konsolidasyon/volatilite birikimi bölgeleri, (2) RSI aşırı alım/satımdan
+ // dönüş seviyeleri, (3) likidite süpürme (swing sweep) noktaları — birbirine yakın/çakışan
+ // adaylar tek bir bölgede birleşip fiyata en yakın olanlar tutuluyor.
+ function buildMainSRZones(bars, lastPrice){
+  const consolZones=detectConsolidationZones(bars).map(z=>({hi:z.hi, lo:z.lo, weight:1}));
+  const rsiZones=clusterLevelsIntoZones(detectRsiReversalLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
+  const sweepZones=clusterLevelsIntoZones(detectSweepLevels(bars), 0.0025).map(z=>({hi:z.hi, lo:z.lo, weight:z.count}));
+  const all=[...consolZones, ...rsiZones, ...sweepZones];
+  if(!all.length) return [];
+  all.sort((a,b)=>a.lo-b.lo);
+  let merged=[];
+  all.forEach(c=>{
+   const last=merged[merged.length-1];
+   if(last && c.lo<=last.hi*1.0015){ last.hi=Math.max(last.hi,c.hi); last.lo=Math.min(last.lo,c.lo); last.weight+=c.weight; }
+   else merged.push({hi:c.hi, lo:c.lo, weight:c.weight});
+  });
+  merged.sort((a,b)=>Math.abs(lastPrice-(a.hi+a.lo)/2)-Math.abs(lastPrice-(b.hi+b.lo)/2));
+  return merged.slice(0,6);
+ }
  async function fetchMainSR(sym){
   const bs=MAP[sym]; if(!bs){ mainSRZones=[]; mainSRHistory=[]; return; }
   try{
@@ -3819,7 +3884,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const d=await r.json();
    if(!Array.isArray(d)||!d.length) return;
    const bars=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
-   const newZones=detectConsolidationZones(bars);
+   const newZones=buildMainSRZones(bars, bars[bars.length-1].close);
    // Kırılan bölge takibi: eski bölgelerin dış sınırları (en yüksek tepe / en düşük dip) yeni
    // bölgelerin dışına taştıysa (gerçekten kırıldıysa), eski sınır mainSRHistory'ye taşınır.
    if(mainSRZones.length && newZones.length){
@@ -4009,10 +4074,18 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
  // ---- Konsolidasyon / hacim birikim bölgesi tespiti — TradingView ekranınızdaki teal kutular gibi
  // dar-aralıklı, sıkışık fiyat pencerelerini gerçek OHLC'den bulur; bunlar geleceğe dönük S/R adayı olur. ----
+ // DÜZELTME (kullanıcı geri bildirimi: "böyle noktalarda çok geniş bir aralık veriyor") — eskiden
+ // birleştirme SINIRSIZ uzayabiliyordu: yavaş bir trend/dalgalanmada onlarca ardışık pencere tek
+ // tek "dar" olsa bile, hepsi art arda birleşince toplam bant çok YÜKSEK bir aralığa çıkabiliyordu
+ // (her pencere kendi içinde dar ama zincir uzadıkça kapsadığı toplam fiyat aralığı büyüyor).
+ // Artık birleştirme sırasında SONUÇ bandının toplam genişliği bir üst sınırı (maxZoneWidth) aşarsa
+ // birleştirilmiyor, yeni bir bölge olarak ayrılıyor — böylece tek bir bölge asla makul bir
+ // (gerçek, dar) destek/direnç aralığından büyük olamıyor.
  function detectConsolidationZones(dataArr){
   const a=dataArr||ohlc;
   if(a.length<40) return [];
   const N=6, atrRef=calcATR(a,14)||( (a[a.length-1].high-a[a.length-1].low)||1 );
+  const maxZoneWidth=atrRef*2.2;
   let raw=[];
   for(let i=N;i<a.length;i++){
    const w=a.slice(i-N,i);
@@ -4022,7 +4095,11 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   let merged=[];
   raw.forEach(z=>{
    const last=merged[merged.length-1];
-   if(last && z.startIdx<=last.endIdx+1){ last.endIdx=Math.max(last.endIdx,z.endIdx); last.hi=Math.max(last.hi,z.hi); last.lo=Math.min(last.lo,z.lo); }
+   if(last && z.startIdx<=last.endIdx+1){
+    const newHi=Math.max(last.hi,z.hi), newLo=Math.min(last.lo,z.lo);
+    if((newHi-newLo)<=maxZoneWidth){ last.endIdx=Math.max(last.endIdx,z.endIdx); last.hi=newHi; last.lo=newLo; }
+    else merged.push(Object.assign({},z)); // birleşirse çok genişleyecekti — ayrı yeni bölge başlat
+   }
    else merged.push(Object.assign({},z));
   });
   return merged.filter(z=>(z.endIdx-z.startIdx)>=N-1).slice(-6);
