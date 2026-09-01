@@ -714,6 +714,8 @@ const I18N = {
     'Bu bir tahmindir, gerçek lot her işlemde kaydedilmediği için ortalama lot ('+t('avgLotNote')+') ile hesaplanır; garanti değildir.',
   avgLotNote:'lot aralığınızın ortalaması',
   trade_log_title:'📒 SİNYAL KAR/ZARAR TAKİBİ', tradeLogConfirmCandles:'mum onayı',
+  outcomePrefix:'🎯 Sonuç anı:', outcomeTrendUp:'EMA yapısı yükseliş yönlü', outcomeTrendDown:'EMA yapısı düşüş yönlü', outcomeTrendFlat:'EMA yapısı yatay',
+  outcomeRsi:(v)=>'RSI '+v, outcomeAdxStrong:(v)=>'ADX '+v+' (güçlü trend)', outcomeAdxWeak:(v)=>'ADX '+v+' (zayıf/yatay)',
   tradeLogBadge:(n)=>n+' İŞLEM',
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
   tradeLogEmpty:'Henüz sonuçlanan bir sinyal yok — bir sinyal TP veya SL\'ye ulaştığında burada listelenecek.',
@@ -924,6 +926,8 @@ const I18N = {
     'This is an estimate — actual lot size isn\'t logged per trade, so it uses the average of your lot range ('+t('avgLotNote')+'); not a guarantee.',
   avgLotNote:'the average of your lot range',
   trade_log_title:'📒 SIGNAL P&L TRACKING', tradeLogConfirmCandles:'candle confirmation',
+  outcomePrefix:'🎯 At close:', outcomeTrendUp:'EMA structure bullish', outcomeTrendDown:'EMA structure bearish', outcomeTrendFlat:'EMA structure flat',
+  outcomeRsi:(v)=>'RSI '+v, outcomeAdxStrong:(v)=>'ADX '+v+' (strong trend)', outcomeAdxWeak:(v)=>'ADX '+v+' (weak/ranging)',
   tradeLogBadge:(n)=>n+' TRADES',
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
   tradeLogEmpty:'No signal has resolved yet — trades will appear here once TP or SL is reached.',
@@ -1236,6 +1240,29 @@ function describeTradeContext(ctx){
   parts.push(ctx.confirmedCandles+' '+t('tradeLogConfirmCandles'));
   return parts.join(' · ');
 }
+// ---- SONUÇ ANI context'i — kullanıcı isteği: "kaybetti şu şunu takip etti neden kaybetti diye
+// hafızasında tutsun". describeTradeContext GİRİŞTEKİ gerekçeyi anlatıyordu ama SL/TP'ye ulaştığı
+// ANDAKİ piyasa durumunu (trend hâlâ aynı yönde mi, ADX güçlü mü) kaydetmiyordu — bu, ikisini
+// karşılaştırıp "giriş anında X'ti, kapanışta Y oldu" görmeyi sağlar. updateTradeOutcomes çağrılırken
+// o tick'in zaten okuduğu cr.indicators'tan (yeni bir hesaplama gerektirmeden) üretilir.
+function buildOutcomeContext(cr,price){
+  const ind=(cr&&cr.indicators)||null; if(!ind) return null;
+  let trendState=null;
+  if(ind.ema50!=null && ind.ema200!=null) trendState = ind.ema50>ind.ema200?'trendUp':(ind.ema50<ind.ema200?'trendDown':'trendFlat');
+  return {
+    rsi: ind.rsi!=null?Math.round(ind.rsi):null,
+    adx: ind.adx!=null?Math.round(ind.adx):null,
+    trendState, price
+  };
+}
+function describeOutcomeContext(ctx){
+  if(!ctx) return '';
+  const details=[];
+  if(ctx.trendState) details.push(ctx.trendState==='trendUp'?t('outcomeTrendUp'):ctx.trendState==='trendDown'?t('outcomeTrendDown'):t('outcomeTrendFlat'));
+  if(ctx.rsi!=null) details.push(t('outcomeRsi')(ctx.rsi));
+  if(ctx.adx!=null) details.push(ctx.adx>=25?t('outcomeAdxStrong')(ctx.adx):t('outcomeAdxWeak')(ctx.adx));
+  return details.length ? t('outcomePrefix')+' '+details.join(' · ') : '';
+}
 // ============ STOP SONRASI SOĞUMA (whipsaw koruması) ============
 // Kullanıcı geri bildirimi (gerçek örnek): %97 güvenli BUY stop oldu, hemen ardından %74 güvenli
 // SELL arm oldu — SL'e takılıp aynı anda TERS yöne dönmek klasik bir "whipsaw" (sahte kırılım/
@@ -1250,17 +1277,17 @@ function recordStopLoss(sym,dir){
 function getStopCooldown(sym){
   try{ const raw=localStorage.getItem(stopCooldownKey(sym)); return raw?JSON.parse(raw):null; }catch(e){ return null; }
 }
-function updateTradeOutcomes(sym,lastPrice){
+function updateTradeOutcomes(sym,lastPrice,cr){
   const store=loadTradeStore(sym);
   let changed=false;
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
     if(t.dir>0){
-      if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';changed=true;resolveSignalOnApi(t);}
-      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
+      if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
     }else if(t.dir<0){
-      if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';changed=true;resolveSignalOnApi(t);}
-      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
+      if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
     }
     // 1M Scalp Modu kutusu: işlem sonuçlandığında (TP/SL) çizim de silinir — sinyal API'sine
     // bağlı olsun olmasın (resolveSignalOnApi'den bağımsız, o sadece merkezi kayıt içindir).
@@ -1560,7 +1587,7 @@ function pushSignalToApi(sym, ts, payload){
 function resolveSignalOnApi(trade){
   if(!window.valensSignalApiConnected || !window.valensSignalApiToken || !trade.remoteId) return;
   const url=signalApiUrl(); if(!url) return;
-  fetch(url+'/signal/'+trade.remoteId+'/resolve', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify({outcome:trade.outcome})})
+  fetch(url+'/signal/'+trade.remoteId+'/resolve', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify({outcome:trade.outcome, outcomeContext:trade.outcomeContext||null})})
     .then(()=>{ refreshSignalApiStats(); refreshCentralSignals(); }).catch(()=>{});
 }
 // Merkezi API'den TÜM cihazların işlem geçmişini çeker — bağlıyken getWinRate/getAllResolvedTrades
@@ -1656,7 +1683,7 @@ function getAllResolvedTrades(){
       const cs2=(SYMS[s.sym]||{}).contractSize||100;
       const dist = s.outcome==='win' ? Math.abs(s.tp-s.entry) : -Math.abs(s.entry-s.sl);
       return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl,
-              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context};
+              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext};
     }).sort((a,b)=>b.ts-a.ts);
   }
   let all=[];
@@ -1685,10 +1712,12 @@ function updateTradeLogUI(){
     const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
     const hitPx = win?tr.tp:tr.sl;
     const ctxLine = tr.context ? describeTradeContext(tr.context) : '';
+    const outcomeLine = tr.outcomeContext ? describeOutcomeContext(tr.outcomeContext) : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
       '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+(tr.stratLabel?' <span style="color:var(--muted)">· '+tr.stratLabel+'</span>':'')+
       '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span>'+
-      (ctxLine?'<br><span style="color:var(--muted);font-size:8px">'+ctxLine+'</span>':'')+'</div>'+
+      (ctxLine?'<br><span style="color:var(--muted);font-size:8px">'+ctxLine+'</span>':'')+
+      (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+'</div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
   }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
@@ -1798,7 +1827,7 @@ function botTick(){
  // veriyle çalışıyordu, taze stop'u bir tick (3sn) GERİ kalarak görüyordu. Artık açık işlem varsa
  // önce O çözülüyor (kaydı da dahil), sonra yeni aday/güven/soğuma hesaplanıyor — taze bir STOP
  // aynı tick'te ters yöndeki yeni "KESİN İŞLEM"i gerçekten engelliyor.
- updateTradeOutcomes(CUR, adjLast);
+ updateTradeOutcomes(CUR, adjLast, cr);
 
  // Haber yönü: gerçek zamanlı takvimden (bugün açıklanan, beklenti-vs-gerçekleşen) hesaplanan
  // bias varsa ONU kullan; yoksa (API anahtarı yoksa ya da bugün ilgili haber yoksa) elle
