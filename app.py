@@ -4005,7 +4005,36 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const d=await r.json();
    if(!Array.isArray(d)||!d.length) return;
    const bars=d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
-   const newZones=buildMainSRZones(bars, bars[bars.length-1].close);
+   const lastPrice=bars[bars.length-1].close;
+   let newZones=buildMainSRZones(bars, lastPrice);
+   // DÜZELTME (kullanıcı isteği): "destek kırıldı ya da direnç kırıldı, eğer all-time low ya da
+   // all-time high'da DEĞİLSE önceden o bölgede oluşmuş destek/dirençlere baksın" — fiyat keskin
+   // bir hareketle son 200 saatlik mumun hiç görmediği bir bölgeye geçtiğinde, orada GERÇEKTEN
+   // hiç destek/direnç yokmuş gibi görünüyordu (yukarıdaki 200 saatlik pencerede kanıt yok) — ama
+   // bu sadece SON birkaç günde oraya hiç gelinmediği anlamına gelir, aylar/yıllar önce orada
+   // gerçekten oturulmuş/dönülmüş olabilir. Yakın bölge yoksa (>3×ATR), fiyat gerçek bir all-time
+   // uç noktasında değilse günlük mumlarla (yıllara yayılan) geçmişe bakıp o bölgedeki GERÇEK eski
+   // destek/dirençleri buluyoruz — hâlâ aynı $10 sert tavan ve aynı kanıt şartları (count≥2 vb.)
+   // geçerli, sadece bakılan pencere uzuyor.
+   const atrRef=calcATR(bars,14)||1;
+   const nearestGap=newZones.length ? Math.min(...newZones.map(z=>Math.abs(lastPrice-(z.hi+z.lo)/2))) : Infinity;
+   if(nearestGap>atrRef*3){
+    try{
+     const rD=await fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1d&limit=1000`);
+     const dD=await rD.json();
+     if(Array.isArray(dD)&&dD.length){
+      const dailyBars=dD.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
+      const allTimeHigh=Math.max(...dailyBars.map(b=>b.high)), allTimeLow=Math.min(...dailyBars.map(b=>b.low));
+      const nearAth=Math.abs(lastPrice-allTimeHigh)/allTimeHigh<0.01, nearAtl=Math.abs(lastPrice-allTimeLow)/allTimeLow<0.01;
+      if(!nearAth && !nearAtl){
+       const longZones=buildMainSRZones(dailyBars, lastPrice).filter(z=>Math.abs(lastPrice-(z.hi+z.lo)/2)<=atrRef*3);
+       if(longZones.length){
+        newZones=[...longZones, ...newZones].sort((a,b)=>Math.abs(lastPrice-(a.hi+a.lo)/2)-Math.abs(lastPrice-(b.hi+b.lo)/2)).slice(0,4);
+       }
+      }
+     }
+    }catch(e){ /* ikincil/geriye dönük kaynak, ana akışı bozmasın */ }
+   }
    // Kırılan bölge takibi: eski bölgelerin dış sınırları (en yüksek tepe / en düşük dip) yeni
    // bölgelerin dışına taştıysa (gerçekten kırıldıysa), eski sınır mainSRHistory'ye taşınır.
    if(mainSRZones.length && newZones.length){
