@@ -678,6 +678,7 @@ const I18N = {
   mt5BridgeSkipped:(reason)=>'Köprüye ulaştı ama işlem AÇILMADI (sebep: '+reason+').',
   mt5LotLabel:'Gönderilecek lot', mt5SendBtnLabel:'⚡ Bu Sinyali MT5\'e Gönder (Onayla)', mt5SendBtnSending:'Gönderiliyor…', mt5SendBtnSent:'✓ Gönderildi (bu sinyal için)',
   mt5CandleLimitReached:'⏸ Bu mumda/yönde gönderim sınırına (2) ulaşıldı — yeni mum bekleniyor.', mt5CandleLimitBtn:'⏸ Mum Başına Sınır Doldu (2/2)',
+  mt5CandleWait4MinBtn:'⏸ 2. Gönderim İçin 4dk Bekleniyor',
   mt5AutoSendLabel:'🤖 Otomatik Gönder — SADECE DEMO hesap için (onay beklemeden gönderir)',
   mt5AutoMinConfLabel:'Min. güven (%)',
   mt5AutoSendWarn:'⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.',
@@ -887,6 +888,7 @@ const I18N = {
   mt5BridgeSkipped:(reason)=>'Reached the bridge but no trade was opened (reason: '+reason+').',
   mt5LotLabel:'Lot to send', mt5SendBtnLabel:'⚡ Send This Signal to MT5 (Confirm)', mt5SendBtnSending:'Sending…', mt5SendBtnSent:'✓ Sent (for this signal)',
   mt5CandleLimitReached:'⏸ Send limit reached for this candle/direction (2) — waiting for a new candle.', mt5CandleLimitBtn:'⏸ Per-Candle Limit Reached (2/2)',
+  mt5CandleWait4MinBtn:'⏸ Waiting 4min For 2nd Send',
   mt5AutoSendLabel:'🤖 Auto-Send — DEMO accounts ONLY (sends without waiting for approval)',
   mt5AutoMinConfLabel:'Min. confidence (%)',
   mt5AutoSendWarn:"⚠ While this is checked, EVERY trade is sent to the real MT5 account without waiting for approval. Only use this on a demo/test account — keep it OFF with real money.",
@@ -1572,9 +1574,20 @@ setInterval(()=>{ if(window.valensSignalApiConnected) refreshSignalApiStats(); }
 // dedup değildi — strateji bir tick'te değişse bile "aynı mum, aynı yön" hâlâ pratikte aynı fikirdir.
 // Burada MUM ZAMANI + YÖNE göre ayrı, daha sıkı bir sayaç tutuluyor: bir yönde bir mumda en fazla 2
 // gönderim, 3.'sü o mum kapanıp yeni mum başlayana kadar engellenir.
+// ---- 15 DAKİKALIK MUMDA ZAMANLI 2. SLOT (kullanıcı isteği) — "mum başına en fazla 2" kuralı
+// zaten vardı ama ikisi de mumun HERHANGİ bir anında art arda ateşlenebiliyordu. 15dk'lık mum
+// için artık NET bir zamanlama var: 1. gönderim mum AÇILIŞINDA (mumun ilk sinyali ne zaman
+// gelirse), 2. gönderim ise mum başladıktan EN AZ 4 DAKİKA SONRA — aradaki 0-4dk'lık pencerede
+// ikinci bir gönderime izin verilmiyor (diğer zaman dilimlerinde eski davranış — sadece "maks 2" — korunuyor).
 function candleSendLimitReached(sig){
   const tr = window.valensCandleSendTracker;
-  return !!(tr && sig && tr.candleTime===sig.candleTime && tr.dir===sig.dir && tr.count>=2);
+  if(!tr || !sig || tr.candleTime!==sig.candleTime || tr.dir!==sig.dir) return false;
+  if(tr.count>=2) return true;
+  if(tr.count>=1 && typeof INT!=='undefined' && INT==='15'){
+   const elapsedMin=(Date.now()/1000 - sig.candleTime)/60;
+   if(elapsedMin<4) return true; // 2. slot için 4dk henüz dolmadı
+  }
+  return false;
 }
 function recordCandleSend(sig){
   const tr = window.valensCandleSendTracker;
@@ -2342,7 +2355,10 @@ function botTick(){
    const mt5SendBtn=document.getElementById('mt5SendBtn');
    const candleLimitHit = candleSendLimitReached(window.valensPendingSignal);
    if(mt5SendBtn){
-    if(candleLimitHit){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5CandleLimitBtn'); }
+    const tr15=window.valensCandleSendTracker;
+    const awaiting4min = candleLimitHit && INT==='15' && tr15 && tr15.count===1 && tr15.candleTime===candleTimeForSig && tr15.dir===rawDir;
+    if(awaiting4min){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5CandleWait4MinBtn'); }
+    else if(candleLimitHit){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5CandleLimitBtn'); }
     else if(window.valensLastSentSigId===sigId){ mt5SendBtn.disabled=true; mt5SendBtn.textContent=t('mt5SendBtnSent'); }
     else { mt5SendBtn.disabled=false; mt5SendBtn.textContent=t('mt5SendBtnLabel'); }
    }
