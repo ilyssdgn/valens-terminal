@@ -356,11 +356,12 @@ iframe{height:100%;width:100%;border:0}
       </div>
       </div>
       <div class="panelcard">
-      <div class="ph"><b data-i18n="scalpMode_title">⚡ 1M SCALP MODU</b><span class="badge" id="scalpModeBadge">KAPALI</span></div>
+      <div class="ph"><b data-i18n="eliteScalp_title">⚡ VALENS ELİT SCALP — PERFORMANS</b><span class="badge" id="eliteScalpBadge">—</span></div>
       <div style="padding:9px">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="scalpModeHint">Açınca grafik 1 dakikaya geçer, tüm stratejiler normal şekilde aranmaya devam eder — ama üst zaman dilimi (4H/1H) yapısı da hesaba katılır: onunla uyumlu sinyallerin güveni artar ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.</div>
-        <button id="scalpModeToggle" style="width:100%;padding:10px;background:var(--gold);color:#07101b;border:0;border-radius:4px;font:700 10px 'IBM Plex Mono';cursor:pointer;margin-bottom:8px" data-i18n="scalpModeToggleOff">⚡ 1M Scalp Modunu Aç</button>
-        <div id="scalpModeBias" style="display:none;font-size:9px;color:var(--text);line-height:1.8">—</div>
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="eliteScalpHint">Üst zaman dilimi (4H/1H) net bir yön verirse, GERÇEK backtest\'te en güvenilir çıkan kalıp (Order Block Mitigasyonu) VE canlı alım/satım akışı (delta) da AYNI YÖNDE onay verdiğinde ateşlenen, bu terminale özgü strateji — aynı indikatör/grafik verisini kullanır ama terminalin üstteki AI SIGNAL ENGINE'inden TAMAMEN BAĞIMSIZ karar verir ve kendi işlemini burada takip eder, üstteki motoru hiç etkilemez. Aşağıda sonuçlanan HER işlem, hem girişteki hem sonuçtaki gerçek gerekçesiyle listelenir.</div>
+        <div id="eliteScalpLive" style="font-size:10px;font-weight:700;padding:7px 8px;border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:8px">—</div>
+        <div id="eliteScalpSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
+        <div id="eliteScalpList" style="max-height:230px;overflow:auto"></div>
       </div>
       </div>
       <div class="panelcard">
@@ -622,6 +623,7 @@ const I18N = {
   tagAsianFakeout:'Asya Aralığı Killzone Sahte Kırılımı', tagExtremeMR:'Aşırı Ortalamaya Dönüş (3-Sigma)',
   tagLevelConfluence:'Önceki Gün Seviye Confluence (POC/VAH/VAL)', tagDeltaConfirmTrend:'Delta Doğrulaması (Fonlanmış Hareket)',
   tagDeltaAbsorption:'Delta Absorpsiyonu (Tükeniş/Olası Dönüş)',
+  tagValensEliteScalp:'⚡ Valens Elit Scalp (4H/1H Bias + Order Block Mit. + Delta üçlü onay)',
   candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
   winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
   noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
@@ -682,14 +684,13 @@ const I18N = {
   mt5AutoSendLabel:'🤖 Otomatik Gönder — SADECE DEMO hesap için (onay beklemeden gönderir)',
   mt5AutoMinConfLabel:'Min. güven (%)',
   mt5AutoSendWarn:'⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.',
-  scalpMode_title:'⚡ 1M SCALP MODU',
-  scalpModeHint:'Açınca grafik 1 dakikaya geçer, tüm stratejiler normal şekilde aranmaya devam eder — ama üst zaman dilimi (4H/1H) yapısı da hesaba katılır: onunla uyumlu sinyallerin güveni artar ("How to Analysis": üst zaman dilimi yön verir, alt zaman dilimi onay). Kapatınca önceki zaman dilimine döner.',
-  scalpModeToggleOff:'⚡ 1M Scalp Modunu Aç', scalpModeToggleOn:'⏸ 1M Scalp Modunu Kapat',
-  scalpModeBadgeOn:'AÇIK', scalpModeBadgeOff:'KAPALI',
-  scalpBiasUp:'Yükseliş', scalpBiasDown:'Düşüş', scalpBiasFlat:'Belirsiz',
-  scalpBiasLine:(h4,h1)=>'4H: <b>'+h4+'</b> · 1H: <b>'+h1+'</b>',
-  scalpBiasOnlySide:(side)=>'— '+side+' sinyalleri güçlendiriliyor (%10)',
-  scalpBiasNoConsensus:'— 4H/1H uyuşmuyor, normal arama devam ediyor (bonus/ceza yok)',
+  eliteScalp_title:'⚡ VALENS ELİT SCALP — PERFORMANS',
+  eliteScalpHint:'Üst zaman dilimi (4H/1H) net bir yön verirse, GERÇEK backtest\'te en güvenilir çıkan kalıp (Order Block Mitigasyonu) VE canlı alım/satım akışı (delta) da AYNI YÖNDE onay verdiğinde ateşlenen, bu terminale özgü strateji — aynı indikatör/grafik verisini kullanır ama terminalin üstteki AI SIGNAL ENGINE\'inden TAMAMEN BAĞIMSIZ karar verir ve kendi işlemini burada takip eder, üstteki motoru hiç etkilemez. Aşağıda sonuçlanan HER işlem, hem girişteki hem sonuçtaki gerçek gerekçesiyle listelenir.',
+  eliteScalpLiveIdle:'Beklemede — üç şart (4H/1H bias + Order Block Mitigasyonu + delta) henüz kesişmedi',
+  eliteScalpLiveActive:(dir)=>'AKTİF — '+dir+' · şart karşılandı',
+  eliteScalpBadge:(n)=>n+' İŞLEM',
+  eliteScalpSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
+  eliteScalpEmpty:'Henüz sonuçlanan bir Valens Elit Scalp işlemi yok — üç şart (4H/1H bias + Order Block Mitigasyonu + delta) aynı anda aynı yönde kesiştiğinde burada birikmeye başlayacak.',
   confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
@@ -834,6 +835,7 @@ const I18N = {
   tagAsianFakeout:'Asian Range Killzone Fakeout', tagExtremeMR:'Extreme Mean Reversion (3-Sigma)',
   tagLevelConfluence:'Prior-Day Level Confluence (POC/VAH/VAL)', tagDeltaConfirmTrend:'Delta Confirmation (Funded Move)',
   tagDeltaAbsorption:'Delta Absorption (Exhaustion/Possible Reversal)',
+  tagValensEliteScalp:'⚡ Valens Elite Scalp (4H/1H Bias + Order Block Mit. + Delta triple confirmation)',
   candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
   winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
   noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
@@ -894,14 +896,13 @@ const I18N = {
   mt5AutoSendLabel:'🤖 Auto-Send — DEMO accounts ONLY (sends without waiting for approval)',
   mt5AutoMinConfLabel:'Min. confidence (%)',
   mt5AutoSendWarn:"⚠ While this is checked, EVERY trade is sent to the real MT5 account without waiting for approval. Only use this on a demo/test account — keep it OFF with real money.",
-  scalpMode_title:'⚡ 1M SCALP MODE',
-  scalpModeHint:'Switches the chart to 1-minute — all strategies keep scanning normally, but the higher-timeframe (4H/1H) structure is also factored in: signals aligned with it get a confidence boost ("How to Analysis": higher timeframe gives direction, lower gives confirmation). Turning it off restores the previous timeframe.',
-  scalpModeToggleOff:'⚡ Turn On 1M Scalp Mode', scalpModeToggleOn:'⏸ Turn Off 1M Scalp Mode',
-  scalpModeBadgeOn:'ON', scalpModeBadgeOff:'OFF',
-  scalpBiasUp:'Bullish', scalpBiasDown:'Bearish', scalpBiasFlat:'Unclear',
-  scalpBiasLine:(h4,h1)=>'4H: <b>'+h4+'</b> · 1H: <b>'+h1+'</b>',
-  scalpBiasOnlySide:(side)=>'— '+side+' signals are boosted (+10%)',
-  scalpBiasNoConsensus:'— 4H/1H disagree, scanning continues normally (no bonus/penalty)',
+  eliteScalp_title:'⚡ VALENS ELITE SCALP — PERFORMANCE',
+  eliteScalpHint:'Fires when the higher timeframe (4H/1H) gives a clear direction AND the pattern that real backtesting shows is most reliable (Order Block Mitigation) AND live buy/sell flow (delta) all confirm the SAME direction at once — a strategy unique to this terminal. Uses the same indicator/chart data but decides and tracks its own trade COMPLETELY INDEPENDENTLY of the AI Signal Engine above; it never affects that engine. Every resolved trade below is listed with its real reasoning, both at entry and at outcome.',
+  eliteScalpLiveIdle:'Idle — the three conditions (4H/1H bias + Order Block Mitigation + delta) haven\'t aligned yet',
+  eliteScalpLiveActive:(dir)=>'ACTIVE — '+dir+' · condition met',
+  eliteScalpBadge:(n)=>n+' TRADES',
+  eliteScalpSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
+  eliteScalpEmpty:'No Valens Elite Scalp trade has resolved yet — once the three conditions (4H/1H bias + Order Block Mitigation + delta) align in the same direction, results will accumulate here.',
   confSourceBacktest:'Confidence adjusted using historical backtest results',
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
@@ -1225,6 +1226,65 @@ function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context,candleTim
   // aşağıda) — bağlı değilken bu no-op'tur, localStorage davranışı hiç değişmez.
   pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:stratKey||null, stratLabel:stratLabel||null, context:context||null, ts:trade.ts});
 }
+// ============ ⚡ VALENS ELİT SCALP — TAMAMEN BAĞIMSIZ TAKİP ============
+// Kullanıcı düzeltmesi: "terminal gene çalışmaya devam etsin... bizim stratejimiz sadece ai signal
+// engine yazan yerde değil soldaki kendi bölmesinde çalışacak" — bu strateji artık ana motorun
+// candidates/best/logArmedTrade akışına HİÇ karışmıyor (bkz. botTick, eliteScalpTag ayrımı). Kendi
+// AYRI localStorage kaydı (valens_elite_trades_*) ve kendi "tek açık işlem" kilidi var — ana motorun
+// o an açık bir işlemi olsa bile bu strateji bağımsız kendi işlemini açıp takip edebilir.
+const ELITE_TRADE_STORE_PREFIX='valens_elite_trades_';
+function getEliteTradeKey(sym){return ELITE_TRADE_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
+function loadEliteTradeStore(sym){try{const raw=localStorage.getItem(getEliteTradeKey(sym));if(!raw)return{trades:[]};return JSON.parse(raw);}catch(e){return{trades:[]};}}
+function saveEliteTradeStore(sym,store){try{localStorage.setItem(getEliteTradeKey(sym),JSON.stringify(store));}catch(e){}}
+function logEliteScalpTrade(sym,dir,entry,tp,sl,context,candleTime){
+  const store=loadEliteTradeStore(sym);
+  store.trades=store.trades||[];
+  const openTrade=store.trades.find(t=>!t.resolved);
+  if(openTrade)return; // aynı anda tek açık takip
+  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:'valensEliteScalp',stratLabel:t('tagValensEliteScalp'),context:context||null,candleTime:candleTime||null};
+  store.trades.push(trade);
+  if(store.trades.length>500)store.trades=store.trades.slice(-500);
+  saveEliteTradeStore(sym,store);
+  pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:'valensEliteScalp', stratLabel:trade.stratLabel, context:context||null, ts:trade.ts});
+}
+function updateEliteScalpTradeOutcomes(sym,lastPrice,cr){
+  const store=loadEliteTradeStore(sym);
+  let changed=false;
+  (store.trades||[]).forEach(t=>{
+    if(t.resolved)return;
+    if(t.dir>0){
+      if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+    }else if(t.dir<0){
+      if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+    }
+  });
+  if(changed)saveEliteTradeStore(sym,store);
+}
+// getAllResolvedTrades() ile AYNI desen (merkezi API bağlıysa oradan, değilse localStorage'dan) ama
+// SADECE bu stratejinin AYRI mağazasından — genel işlem geçmişiyle hiç karışmaz.
+function getEliteScalpResolvedTrades(){
+  const lot=avgLot();
+  if(window.valensSignalApiConnected && window.valensCentralSignals){
+    return window.valensCentralSignals.filter(s=>s.resolved && s.stratKey==='valensEliteScalp').map(s=>{
+      const cs2=(SYMS[s.sym]||{}).contractSize||100;
+      const dist = s.outcome==='win' ? Math.abs(s.tp-s.entry) : -Math.abs(s.entry-s.sl);
+      return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl,
+              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext};
+    }).sort((a,b)=>b.ts-a.ts);
+  }
+  let all=[];
+  Object.keys(SYMS).forEach(sym=>{
+    const store=loadEliteTradeStore(sym), cs=SYMS[sym].contractSize;
+    (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
+      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
+      all.push(Object.assign({sym, usd:dist*cs*lot}, tr));
+    });
+  });
+  all.sort((a,b)=>b.ts-a.ts);
+  return all;
+}
 // ---- İşlem anındaki GERÇEK gerekçeyi (rejim, kaç indikatör destekledi, S/R/mum durumu, kaç mum
 // onayladı) okunaklı bir cümleye çevirir — kullanıcı isteği: "hangi strateji, hangi şartlar altında
 // çalıştı, ilerde bilelim" diye kalıcı olarak trade log'a yazılır (sadece o an ekranda görünüp
@@ -1288,11 +1348,6 @@ function updateTradeOutcomes(sym,lastPrice,cr){
     }else if(t.dir<0){
       if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
       else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
-    }
-    // 1M Scalp Modu kutusu: işlem sonuçlandığında (TP/SL) çizim de silinir — sinyal API'sine
-    // bağlı olsun olmasın (resolveSignalOnApi'den bağımsız, o sadece merkezi kayıt içindir).
-    if(t.resolved && window.valensScalpModeActive && window.valensClearScalpBox){
-      window.valensClearScalpBox(); window.valensScalpBoxEndTime=null;
     }
   });
   if(changed)saveTradeStore(sym,store);
@@ -1431,53 +1486,47 @@ function updateRiskUI(){
   );
 }
 
-// ============ 1M SCALP MODU ============
-// Kullanıcı isteği ("How to Analysis" görseli + 8 SMC eğitim videosu): Challenge Modu'nun yerine
-// — üst zaman dilimi (4H/1H) YÖN verir, alt zaman dilimi (1dk) ONAY/giriş verir mantığını
-// uygulayan bir mod. Açılınca grafik 1 dakikaya geçer (mevcut .tfbtn/valensSetInterval mekanizması
-// üzerinden — YENİDEN YAZILMADI), ama 4H/1H yapı yönüyle ÇELİŞEN sinyaller tamamen devre dışı
-// bırakılır (window.valensScalpModeActive + window.valensScalpBias, botTick içinde okunur).
-window.valensScalpModeActive=false;
-window.valensScalpPrevInterval=null;
-function renderScalpBiasLine(){
-  const el=document.getElementById('scalpModeBias'); if(!el) return;
-  const bias=window.valensScalpBias;
-  if(!window.valensScalpModeActive || !bias){ el.style.display='none'; return; }
-  el.style.display='block';
-  const dirLabel=(d)=> d>0?t('scalpBiasUp'):d<0?t('scalpBiasDown'):t('scalpBiasFlat');
-  const aligned = bias.h4Dir!==0 && bias.h4Dir===bias.h1Dir;
-  el.innerHTML = t('scalpBiasLine')(dirLabel(bias.h4Dir), dirLabel(bias.h1Dir)) +
-    (aligned ? ' <b style="color:var(--gold)">'+t('scalpBiasOnlySide')(bias.h4Dir>0?'BUY':'SELL')+'</b>'
-              : ' <span style="color:var(--muted)">'+t('scalpBiasNoConsensus')+'</span>');
+// ============ ⚡ VALENS ELİT SCALP — PERFORMANS PANELİ ============
+// Kullanıcı düzeltmesi: "terminal gene çalışmaya devam etsin, biz stratejimizi ayrı bir şekilde
+// soldaki bölgede test edicez... sadece ai signal engine yazan yerde değil soldaki kendi bölmesinde
+// çalışacak" — bu strateji artık ana motorun candidates/best havuzuna karışmıyor (bkz. botTick,
+// eliteScalpTag), TAMAMEN AYRI bir karar+takip süreci (bkz. logEliteScalpTrade/
+// updateEliteScalpTradeOutcomes/getEliteScalpResolvedTrades). Aşağıdaki panel SADECE bu ayrı
+// sürecin sonuçlarını gösterir — hem girişteki (describeTradeContext) hem sonuçtaki
+// (describeOutcomeContext) gerçek gerekçesiyle. botTick her tick'te window.valensEliteScalpLive'ı
+// (o an üç şart kesişiyor mu, hangi yönde) günceller, burada okunup "kaybolmadan" gösterilir.
+function updateEliteScalpLiveStatus(live){
+  const el=document.getElementById('eliteScalpLive'); if(!el) return;
+  if(!live){ el.innerHTML='○ '+t('eliteScalpLiveIdle'); el.style.color='var(--muted)'; return; }
+  const dirLabel = live.dir>0 ? 'BUY' : 'SELL';
+  el.innerHTML = '● '+t('eliteScalpLiveActive')(dirLabel);
+  el.style.color = live.dir>0 ? 'var(--green)' : 'var(--red)';
 }
-window.valensRenderScalpBiasLine = renderScalpBiasLine; // fetchScalpBias (chart motoru) tazelendiğinde çağırabilsin
-(function wireScalpMode(){
-  const toggleBtn=document.getElementById('scalpModeToggle');
-  if(!toggleBtn) return;
-  toggleBtn.addEventListener('click', ()=>{
-    const badge=document.getElementById('scalpModeBadge');
-    if(!window.valensScalpModeActive){
-      // ---- AÇ: mevcut zaman dilimini sakla, 1M'e geç, bias motorunu başlat ----
-      const activeBtn=document.querySelector('.tfbtn.on');
-      window.valensScalpPrevInterval = activeBtn ? activeBtn.dataset.int : '15';
-      window.valensScalpModeActive=true;
-      const oneMinBtn=document.querySelector('.tfbtn[data-int="1"]');
-      if(oneMinBtn) oneMinBtn.click(); // mevcut interval değişim mekanizmasını tetikler (loadChart+valensSetInterval)
-      toggleBtn.textContent=t('scalpModeToggleOn'); toggleBtn.style.background='var(--red)'; toggleBtn.style.color='#fff';
-      if(badge){ badge.textContent=t('scalpModeBadgeOn'); badge.style.color='var(--green)'; }
-      if(window.valensFetchScalpBias) window.valensFetchScalpBias();
-    } else {
-      // ---- KAPAT: kutu çizimini temizle, önceki zaman dilimine dön ----
-      window.valensScalpModeActive=false;
-      if(window.valensClearScalpBox) window.valensClearScalpBox();
-      const prevBtn=document.querySelector('.tfbtn[data-int="'+(window.valensScalpPrevInterval||'15')+'"]');
-      if(prevBtn) prevBtn.click();
-      toggleBtn.textContent=t('scalpModeToggleOff'); toggleBtn.style.background='var(--gold)'; toggleBtn.style.color='#07101b';
-      if(badge){ badge.textContent=t('scalpModeBadgeOff'); badge.style.color='var(--muted)'; }
-      renderScalpBiasLine();
-    }
-  });
-})();
+function updateEliteScalpPanel(){
+  const list=document.getElementById('eliteScalpList'), summary=document.getElementById('eliteScalpSummary'), badge=document.getElementById('eliteScalpBadge');
+  if(!list||!summary||!badge) return;
+  const es=getEliteScalpResolvedTrades();
+  const wins=es.filter(tr=>tr.outcome==='win').length, losses=es.length-wins;
+  const netUsd=es.reduce((a,tr)=>a+tr.usd,0);
+  badge.textContent=t('eliteScalpBadge')(es.length);
+  summary.innerHTML=t('eliteScalpSummaryLine')(es.length,wins,losses,(netUsd>=0?'+':'')+'$'+Math.round(netUsd).toLocaleString('en-US'));
+  if(!es.length){ list.innerHTML='<p style="color:var(--muted);font-size:9px;padding:6px 2px">'+t('eliteScalpEmpty')+'</p>'; return; }
+  list.innerHTML = es.slice(0,40).map(tr=>{
+    const cfg=SYMS[tr.sym]; if(!cfg) return '';
+    const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
+    const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
+    const hitPx = win?tr.tp:tr.sl;
+    const ctxLine = tr.context ? describeTradeContext(tr.context) : '';
+    const outcomeLine = tr.outcomeContext ? describeOutcomeContext(tr.outcomeContext) : '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
+      '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+
+      '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span>'+
+      (ctxLine?'<br><span style="color:var(--muted);font-size:8px">'+ctxLine+'</span>':'')+
+      (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+'</div>'+
+      '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
+      '</div>';
+  }).join('') + (es.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(es.length-40)+'…</p>':'');
+}
 
 // ============ MT5 KÖPRÜSÜ — MANUEL ONAYLI ============
 // Kullanıcı "MT5'i tamamen kaldır" demişti, şimdi "diğer bilgisayardaki köprüye bağlanabileceğim bir
@@ -1722,7 +1771,6 @@ function updateTradeLogUI(){
       '</div>';
   }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
   renderStrategyLivePanel(trades);
-  if(typeof renderScalpBiasLine==='function') renderScalpBiasLine();
 }
 // ============ GERÇEK STRATEJİ PERFORMANSI — CANLI TAKİP (MT5'siz, sadece bu terminalin ürettiği
 // ve TP/SL'ye ulaştığı GERÇEK sinyallerden) ============ Kullanıcı isteği: "hangi strateji nerede
@@ -1876,7 +1924,8 @@ function botTick(){
   silverBullet:t('tagSilverBullet'), orbVolume:t('tagOrbVolume'), vwapPullback:t('tagVwapPullback'),
   ttmSqueeze:t('tagTtmSqueeze'), divergenceChoch:t('tagDivergenceChoch'), pocBounce:t('tagPocBounce'),
   orderBlockMit:t('tagOrderBlockMit'), fibOte:t('tagFibOte'), asianFakeout:t('tagAsianFakeout'), extremeMeanReversion:t('tagExtremeMR'),
-  levelConfluence:t('tagLevelConfluence'), deltaConfirmTrend:t('tagDeltaConfirmTrend'), deltaAbsorption:t('tagDeltaAbsorption')};
+  levelConfluence:t('tagLevelConfluence'), deltaConfirmTrend:t('tagDeltaConfirmTrend'), deltaAbsorption:t('tagDeltaAbsorption'),
+  valensEliteScalp:t('tagValensEliteScalp')};
  window.valensTagLabels = tagLabels; // refreshSignalApiStats() gibi bu fonksiyonun DIŞINDaki kod için (ayrı kapsam)
 
  // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
@@ -1961,20 +2010,6 @@ function botTick(){
   if(family==='trend' && candDir===-revDir) return strong?-16:-8;    // tükenmiş yönde devam bekleyen strateji — ceza
   return 0;
  }
- // ---- 1M SCALP MODU — YÖN BONUSU/CEZASI (kullanıcı geri bildirimi: "uyuşmuyor diye işlem
- // aranmasın olmaz, sadece uyuştuğunda yüzde artsın") — DÜZELTME: eskiden 4H/1H uyuşmuyorsa
- // adaylar TAMAMEN eleniyordu (katı kapı). Artık diğer tüm ayarlamalarla (structureAdjustment,
- // exhaustionAdjustment vb.) AYNI desende bir bonus/ceza — arama hiçbir zaman durmuyor, sadece
- // üst zaman dilimiyle uyumlu adayların güveni artıyor (uyumsuz olanlarınki hafif düşüyor, YOK
- // OLMUYOR).
- function scalpBiasAdjustment(candDir){
-  if(!window.valensScalpModeActive) return 0;
-  const bias=window.valensScalpBias; if(!bias) return 0;
-  const aligned = bias.h4Dir!==0 && bias.h4Dir===bias.h1Dir;
-  if(!aligned) return 0; // üst zaman dilimi net değil — ne bonus ne ceza, normal aramaya devam
-  const biasDir=Math.sign(bias.h4Dir);
-  return candDir===biasDir ? 10 : -10;
- }
  // ---- TP'Yİ GERÇEK YAPIYA GÖRE KES — kullanıcı örneği: SELL sinyalinin TP'si Ana Destek'in (1H)
  // ALTINA konmuştu. TP'ye ulaşmak için fiyatın gerçek desteği KIRMASI gerekiyordu — ki kırarsa zaten
  // muhtemelen devam eder, orada "temiz" durup TP'yi vermesi gerçekçi bir varsayım değil. Eskiden TP
@@ -2012,7 +2047,15 @@ function botTick(){
   candidates.push({key:'confluence', dir:confluenceDir, confidence:confluenceConf, label:t('candidateConfluence')});
  }
  const marketRegime = detectMarketRegime(adx, (typeof cr.fastTrend==='number'?cr.fastTrend:cr.trend)||0);
+ // ---- Kullanıcı düzeltmesi: ⚡ Valens Elit Scalp, AI SIGNAL ENGINE'in paylaştığı candidates/best
+ // havuzuna KARIŞMAYACAK — terminal ("AI SIGNAL ENGINE" yazan yer) hiç etkilenmeden kendi işine
+ // devam etsin, bu strateji SADECE kendi panelinde, TAMAMEN bağımsız bir karar/takip süreciyle
+ // çalışsın. Aynı ham veriyi (indikatörler, yapı, delta) kullanır ama kendi ayrı mantığıyla karar
+ // verir — bu yüzden 'valensEliteScalp' etiketini genel havuza HİÇ eklemiyoruz, ayrı yakalayıp
+ // aşağıda (bkz. "⚡ VALENS ELİT SCALP — bağımsız karar/takip") kendi başına işliyoruz.
+ const eliteScalpTag = (cr.strategyTags||[]).find(tg=>tg.key==='valensEliteScalp') || null;
  (cr.strategyTags||[]).forEach(tag=>{
+  if(tag.key==='valensEliteScalp') return;
   const base=STRATEGY_BASE_CONF[tag.key]||70;
   const label=tagLabels[tag.key];
   let confidence=Math.min(97, base+confirmBoost(tag.dir));
@@ -2025,8 +2068,6 @@ function botTick(){
   if(structureAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+structureAdj)));
   const exhaustionAdj = exhaustionAdjustment(family, tag.dir, cr.exhaustionBias||0);
   if(exhaustionAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+exhaustionAdj)));
-  const scalpBiasAdj = scalpBiasAdjustment(tag.dir);
-  if(scalpBiasAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+scalpBiasAdj)));
   // ---- GEÇMİŞ VERİ TESTİNE (BACKTEST) GÖRE DİNAMİK AYARLAMA ----
   // window.valensBacktestResults, bu grafikteki GERÇEKTEN YAŞANMIŞ son ~300 mumda her stratejinin
   // geçmişte ateşlendiği HER noktada TP'ye mi SL'ye mi önce ulaştığını hesaplar (runHistoricalBacktest).
@@ -2378,36 +2419,6 @@ function botTick(){
    logArmedTrade(CUR, rawDir, scEntryPx, scTpPx, scStopPx, best?best.key:null, best?best.label:null, {
     regime: marketRegime, agreeCount, totalVotes, trend: cr.trend||0, srText: cr.srText||'', patternName: cr.patternName||'', confirmedCandles
    }, cr.candleTime||null);
-   // ---- 1M SCALP MODU KUTU ÇİZİMİ — kullanıcının paylaştığı video örnekleri: SL/TP çizgi değil,
-   // zaman+fiyat ekseninde sınırlı bir KUTU olarak çizilir. window.valensDrawScalpBox (chart
-   // motorunda tanımlı, FVG köprüsüyle AYNI desen) SL-TP aralığını, işlemin beklenen süresi kadar
-   // (maxHours) ileriye doğru bir dikdörtgen olarak çizer — süre dolunca/sonuçlanınca silinir.
-   // DÜZELTME (kullanıcı örneği: kutu fiyattan tamamen kopuk, havada asılı kalıyordu): burada
-   // HER tick'te TAZE (canlı fiyata göre kayan) scStopPx/scTpPx kullanılıyordu, ama logArmedTrade
-   // tek bir açık işlemi tekilleştiriyor (aynı işlem sonuçlanana kadar yeni kayıt açmıyor) — yani
-   // kutu, GERÇEKTE takip edilen işlemden FARKLI (daha yeni, kayan) bir SL/TP çiziyordu; üstelik
-   // "armed" bir tur FALSE olup (fiyat eşiği artık karşılamayınca) TP/SL'ye hiç ulaşmadan kutu
-   // hiç temizlenmeden EKRANDA DONUP kalıyordu. Artık kutu, localStorage'daki GERÇEK açık işlem
-   // kaydından (varsa) çiziliyor — o yoksa (sonuçlandı ya da hiç açılmadıysa) kutu temizleniyor.
-   if(window.valensScalpModeActive && window.valensDrawScalpBox && window.valensClearScalpBox){
-    const openTrade=(loadTradeStore(CUR).trades||[]).find(tr=>!tr.resolved);
-    if(openTrade && openTrade.candleTime){
-     const boxEntryTime=openTrade.candleTime;
-     // DÜZELTME (kullanıcı örneği: kutu "saçma sapan" görünüyordu) — burada hâlâ genel "maxHours"
-     // (varsayılan 2 SAAT, swing işlemler için) kullanılıyordu. 1M Scalp Modu'nda işlem dakikalar
-     // içinde sonuçlanması beklenir — 2 saat sonrası grafikte hiç veri olmadığından
-     // timeToCoordinate(boxEndTime) hep null dönüyor, kutu de anlamsız sabit bir 60px'e düşüp
-     // gerçek fiyat/zaman ile hiç ilgisi olmayan bir dikdörtgen çiziyordu. Artık scalp modunda
-     // çok daha kısa, gerçekçi bir pencere (varsayılan 20dk, window.valensScalpBoxMinutes ile
-     // ayarlanabilir) kullanılıyor.
-     const scalpBoxMinutes = (typeof window.valensScalpBoxMinutes==='number' && window.valensScalpBoxMinutes>0) ? window.valensScalpBoxMinutes : 20;
-     const boxEndTime=boxEntryTime+Math.round(scalpBoxMinutes*60);
-     window.valensScalpBoxEndTime=boxEndTime;
-     window.valensDrawScalpBox(boxEntryTime, boxEndTime, Math.max(openTrade.sl,openTrade.tp), Math.min(openTrade.sl,openTrade.tp), openTrade.dir);
-    } else {
-     window.valensClearScalpBox(); window.valensScalpBoxEndTime=null;
-    }
-   }
    recordLastSignal(CUR,'scalp',rawDir,scEntryPx,scTpPx,scStopPx);
    recordLastSignal(CUR,'swing',rawDir,adjLast,swTpPx,swStopPx);
    // ---- MT5 KÖPRÜSÜ (manuel onaylı): bekleyen sinyali güncelle, gönder butonunun durumunu ayarla.
@@ -2447,13 +2458,41 @@ function botTick(){
    const mt5SendBtnIdle=document.getElementById('mt5SendBtn');
    if(mt5SendBtnIdle){ mt5SendBtnIdle.disabled=true; mt5SendBtnIdle.textContent=t('mt5SendBtnLabel'); }
  }
- // ---- Scalp kutusu için süre-dolumu güvenlik ağı — trade resolve olduğunda (updateTradeOutcomes
- // içindeki resolveSignalOnApi noktası) zaten temizleniyor, ama TP/SL'ye hiç ulaşılmadan süre
- // dolarsa (kullanıcı isteği: "işlem süresi bitince çizdiklerini silebilir") burada da kontrol edilir.
- if(window.valensScalpBoxEndTime && Date.now()/1000>window.valensScalpBoxEndTime){
-  if(window.valensClearScalpBox) window.valensClearScalpBox();
-  window.valensScalpBoxEndTime=null;
+
+ // ============ ⚡ VALENS ELİT SCALP — bağımsız karar/takip ============
+ // Kullanıcı düzeltmesi: "terminal gene çalışmaya devam etsin, biz stratejimizi ayrı bir şekilde
+ // soldaki bölgede test edicez... sadece ai signal engine yazan yerde değil soldaki kendi bölmesinde
+ // çalışacak" — yukarıdaki armed/candidates akışına HİÇ karışmaz (o akış hâlâ tamamen kendi başına,
+ // eskisi gibi çalışıyor). Aynı ham veriyi (atr, adjLast, S/R, rejim) okur ama TAMAMEN AYRI karar verir
+ // ve AYRI bir localStorage kaydında (logEliteScalpTrade) kendi işlemini takip eder — ana motorun o an
+ // açık bir işlemi olsa/olmasa bile bu stratejiyi etkilemez. Önce (varsa) açık kendi işlemini TP/SL'ye
+ // göre çözer, SONRA yeni bir kurulum var mı bakar (updateTradeOutcomes'taki "önce çöz sonra karar ver"
+ // ile aynı sıralama mantığı, aynı whipsaw nedeniyle).
+ updateEliteScalpTradeOutcomes(CUR, adjLast, cr);
+ window.valensEliteScalpLive = eliteScalpTag ? {dir:eliteScalpTag.dir} : null;
+ if(typeof updateEliteScalpLiveStatus==='function') updateEliteScalpLiveStatus(window.valensEliteScalpLive);
+ if(eliteScalpTag){
+  const ed=eliteScalpTag.dir;
+  const eSL = atr ? atr*1.0 : cfg.scSL;
+  let eTP = atr ? atr*2.0 : cfg.scTP;
+  const eHourlyMove = cr.hourlyMove;
+  if(eHourlyMove && eHourlyMove>0){
+   const eReachable = eHourlyMove * 2 * 1.5; // ~2 saatlik gerçekçi scalp penceresi, ana motorla aynı varsayılan
+   if(eTP > eReachable) eTP = Math.max(eReachable, eSL*0.5);
+  }
+  const eAdjSrLevels = cr.srLevels ? {
+   mainSup: cr.srLevels.mainSup!=null?cr.srLevels.mainSup+goldAdj:null,
+   mainRes: cr.srLevels.mainRes!=null?cr.srLevels.mainRes+goldAdj:null,
+   dynSup: cr.srLevels.dynSup!=null?cr.srLevels.dynSup+goldAdj:null,
+   dynRes: cr.srLevels.dynRes!=null?cr.srLevels.dynRes+goldAdj:null
+  } : null;
+  const eEntryPx=adjLast, eStopPx=adjLast-ed*eSL;
+  const eTpPx=clampTargetToStructure(adjLast, adjLast+ed*eTP, eSL, ed, eAdjSrLevels);
+  logEliteScalpTrade(CUR, ed, eEntryPx, eTpPx, eStopPx, {
+   regime: marketRegime, agreeCount, totalVotes, trend: cr.trend||0, srText: cr.srText||'', patternName: cr.patternName||'', confirmedCandles
+  }, cr.candleTime||null);
  }
+ if(typeof updateEliteScalpPanel==='function') updateEliteScalpPanel();
 
  updateWinRateUI();
  updateLastSignalUI();
@@ -3829,6 +3868,27 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const levelConf=detectLevelConfluenceReversal(a, priorDayLv); if(levelConf) tags.push(levelConf);
   // (31) Delta doğrulama matrisi (fonlanmış hareket / absorpsiyon)
   const deltaConf=detectDeltaConfirmation(a, ind.tradeDelta); if(deltaConf) tags.push(deltaConf);
+  // (32) VALENS ELİT SCALP — kullanıcı isteği: "kendi unique scalp stratejini üret, elindeki kar/zarar
+  // verisiyle". İLK TASARIM (BOS+OB/FVG+Delta) gerçek 151 işlemlik GENEL geçmişe dayanıyordu, ama o veri
+  // çoğunlukla 15dk gibi daha yavaş bir zaman diliminden geliyordu. Bu terminalin KENDİ backtest sistemiyle
+  // (runHistoricalBacktest) 1 DAKİKA'nın kendi gerçek geçmişini test edince ortaya çıktı: BOS 1dk'da son
+  // derece zayıf (%5, 2/41 — çok gürültülü/whipsaw'a açık), Order Block Mitigasyonu ise en güçlü çıkan
+  // kalıp (%63, 5/8). Bu yüzden BOS'u ATIP kanıtlanan kalıpla değiştirdik: ÜST ZAMAN DİLİMİ (4H/1H) yön
+  // verir — bu zaten scalp modunun orijinal tasarım ilkesiydi ("How to Analysis": üst zaman dilimi yön,
+  // alt zaman dilimi onay) — sonra 1dk'da GERÇEKTEN kanıtlanmış Order Block Mitigasyonu VE canlı delta
+  // (agresif alım/satım akışı) o yönde onay verirse ateşlenir. NOT: window.valensScalpBias ve tradeDelta
+  // canlı-only veridir, runHistoricalBacktest bunları geçmiş mumlara yansıtamaz (backtest paneli bu
+  // stratejiyi göstermez) — bu, scalp modunun HTF-bias fikrinin baştan beri sahip olduğu bir kısıt,
+  // yeni değil. Gerçek başarı oranı ancak CANLI takiple (Strateji Canlı Performans paneli, kendi stratKey'i
+  // ile) kanıtlanır — kullanıcının "bir süre test edelim" isteği zaten bunu hedefliyor. %80 gibi bir oran
+  // GARANTİ EDİLEMEZ; bu, gerçek 1dk verisinden damıtılmış bir HİPOTEZ.
+  const scalpBias=window.valensScalpBias;
+  if(scalpBias && scalpBias.h4Dir!==0 && scalpBias.h4Dir===scalpBias.h1Dir){
+   const biasDir=Math.sign(scalpBias.h4Dir);
+   if(obMit && obMit.dir===biasDir && deltaConf && deltaConf.key==='deltaConfirmTrend' && deltaConf.dir===biasDir){
+    tags.push({key:'valensEliteScalp', dir:biasDir});
+   }
+  }
   return tags;
  }
  // ---- GEÇMİŞ VERİ TESTİ (BACKTEST) — Kullanıcı isteği: "sinyal vermeden önce stratejiyi test etsin."
@@ -4097,12 +4157,13 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   });
   return {sup, res};
  }
- // ---- 1M SCALP MODU — ÜST ZAMAN DİLİMİ BIAS ("How to Analysis" görseli + Türkçe BIAS/DOL
+ // ---- ⚡ VALENS ELİT SCALP — ÜST ZAMAN DİLİMİ BIAS ("How to Analysis" görseli + Türkçe BIAS/DOL
  // videosu): 4H ve 1H'ı mevcut ohlc/WS pipeline'ına HİÇ dokunmadan, fetchMainSR ile AYNI desende
- // (bağımsız REST kline çağrısı) çeker, detectSwingStructure ile yapı yönünü okur. 2dk'da bir
- // tazelenir, sadece window.valensScalpModeActive açıkken (gereksiz istek atılmasın).
+ // (bağımsız REST kline çağrısı) çeker, detectSwingStructure ile yapı yönünü okur. valensEliteScalp
+ // (detectStrategyTags) bunu window.valensScalpBias üzerinden okur — artık ayrı bir "mod"a bağlı
+ // değil, sembol seçiliyken sürekli 2dk'da bir tazelenir.
  async function fetchScalpBias(sym){
-  const bs=MAP[sym]; if(!bs){ window.valensScalpBias=null; if(window.valensRenderScalpBiasLine) window.valensRenderScalpBiasLine(); return; }
+  const bs=MAP[sym]; if(!bs){ window.valensScalpBias=null; return; }
   try{
    const [r4,r1]=await Promise.all([
     fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=4h&limit=100`),
@@ -4112,73 +4173,11 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    if(!Array.isArray(d4)||!Array.isArray(d1)||!d4.length||!d1.length) return;
    const toBars=d=>d.map(k=>({time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
    window.valensScalpBias = {h4Dir: detectSwingStructure(toBars(d4),60), h1Dir: detectSwingStructure(toBars(d1),60)};
-   if(window.valensRenderScalpBiasLine) window.valensRenderScalpBiasLine();
   }catch(e){ /* sessizce yoksay — ikincil bir veri kaynağı, ana grafiği bozmasın */ }
  }
  window.valensFetchScalpBias=function(){ if(curSym) fetchScalpBias(curSym); };
- setInterval(()=>{ if(window.valensScalpModeActive && curSym) fetchScalpBias(curSym); }, 2*60*1000);
+ setInterval(()=>{ if(curSym) fetchScalpBias(curSym); }, 2*60*1000);
 
- // ---- 1M SCALP MODU — KUTU/DİKDÖRTGEN ÇİZİM (kullanıcının paylaştığı video örnekleri) ----
- // lightweight-charts v4'te native "dikdörtgen" primitifi yok. Video'lardaki gibi GERÇEK bir kutu
- // (hem zaman HEM fiyat ekseninde sınırlı, tek bir çizgi değil) için DOM overlay tekniği: chart
- // container'ının üzerine mutlak-konumlu, yarı saydam bir <div>, pozisyonu timeToCoordinate/
- // priceToCoordinate ile hesaplanıp CSS left/top/width/height'a çevrilir.
- let scalpBoxEl=null, scalpBoxState=null;
- function ensureScalpBoxEl(){
-  if(scalpBoxEl) return scalpBoxEl;
-  scalpBoxEl=document.createElement('div');
-  scalpBoxEl.id='scalpTradeBox';
-  scalpBoxEl.style.cssText='position:absolute;pointer-events:none;z-index:5;display:none;border-radius:2px;transition:opacity .2s;';
-  el.style.position = el.style.position || 'relative';
-  el.appendChild(scalpBoxEl);
-  return scalpBoxEl;
- }
- // Grafikte HENÜZ çizilmemiş (gelecekteki) bir zamanın piksel konumunu, lightweight-charts'ın
- // timeToCoordinate'ı ASLA çözemiyor (son mumun ötesindeki HERHANGİ bir zaman için, 1 dakika
- // ötesi bile olsa, hep null dönüyor — kullanıcı geri bildirimi: "saçma sapan" kutu tam olarak
- // bu yüzdendi, sabit 60px'lik anlamsız bir yedek genişliğe düşüyordu). Bunun yerine, EKRANDA
- // ZATEN çizili son iki mumun piksel aralığından "piksel/saniye" oranını çıkarıp gelecekteki
- // zamanı orantılı olarak EKSTRAPOLE ediyoruz — böylece kutunun genişliği gerçekten "20 dakika"yı
- // ekrandaki gerçek mum aralığına göre temsil ediyor, rastgele bir sabit değil.
- function estimatePixelsPerSecond(){
-  if(!ohlc || ohlc.length<2) return null;
-  const t1=ohlc[ohlc.length-2].time, t2=ohlc[ohlc.length-1].time;
-  if(t2===t1) return null;
-  const x1=chart.timeScale().timeToCoordinate(t1), x2=chart.timeScale().timeToCoordinate(t2);
-  if(x1==null||x2==null) return null;
-  return (x2-x1)/(t2-t1);
- }
- function positionScalpBox(){
-  if(!scalpBoxState || !scalpBoxEl) return;
-  const x1=chart.timeScale().timeToCoordinate(scalpBoxState.entryTime);
-  const yTop=cs.priceToCoordinate(scalpBoxState.top);
-  const yBottom=cs.priceToCoordinate(scalpBoxState.bottom);
-  if(x1==null||yTop==null||yBottom==null){ scalpBoxEl.style.display='none'; return; }
-  let rightX=chart.timeScale().timeToCoordinate(scalpBoxState.endTime);
-  if(rightX==null){
-   const pps=estimatePixelsPerSecond();
-   rightX = pps!=null ? x1+pps*(scalpBoxState.endTime-scalpBoxState.entryTime) : x1+60;
-  }
-  scalpBoxEl.style.display='block';
-  scalpBoxEl.style.left=Math.min(x1,rightX)+'px';
-  scalpBoxEl.style.top=Math.min(yTop,yBottom)+'px';
-  scalpBoxEl.style.width=Math.max(2,Math.abs(rightX-x1))+'px';
-  scalpBoxEl.style.height=Math.max(2,Math.abs(yBottom-yTop))+'px';
-  scalpBoxEl.style.background = scalpBoxState.dir>0 ? 'rgba(0,200,150,.18)' : 'rgba(255,80,109,.18)';
-  scalpBoxEl.style.border = '1px solid ' + (scalpBoxState.dir>0 ? 'rgba(0,200,150,.6)' : 'rgba(255,80,109,.6)');
- }
- // entryTime/endTime: saniye cinsinden UNIX zaman damgası (ohlc.time ile aynı birim). endTime,
- // "işlem süresi" penceresinin sonu — bu süre geçince ya da işlem sonuçlanınca kutu silinir.
- window.valensDrawScalpBox=function(entryTime, endTime, top, bottom, dir){
-  ensureScalpBoxEl();
-  scalpBoxState={entryTime, endTime, top, bottom, dir};
-  positionScalpBox();
- };
- window.valensClearScalpBox=function(){
-  scalpBoxState=null;
-  if(scalpBoxEl) scalpBoxEl.style.display='none';
- };
- chart.timeScale().subscribeVisibleTimeRangeChange(positionScalpBox);
  // ---- Kullanıcı geri bildirimi: grafik kaydırılınca/yakınlaştırılınca fiyat ekseni yeniden
  // ölçekleniyor (autoscale) ama Ana Destek/Direnç bantları eski koordinatlarda kalıp fiyattan
  // KOPUYORDU — bu bantlar sadece veri tazelenince (5dk'da bir) yeniden konumlanıyordu. Artık
@@ -4585,6 +4584,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   closedEl.style.display='none';
   window.valensCandleLock=null;
   fetchMainSR(sym);
+  fetchScalpBias(sym);
   loadHistory().then(()=>{
     drawSRLines(); connect(); connectTrades();
     // ---- EKSENİ YENİ FİYATA OTURT ----
