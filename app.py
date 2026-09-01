@@ -1270,7 +1270,18 @@ function updateTradeOutcomes(sym,lastPrice){
   });
   if(changed)saveTradeStore(sym,store);
 }
+// DÜZELTME (kullanıcı geri bildirimi): merkezi API'ye YAZMA (pushSignalToApi/resolveSignalOnApi)
+// zaten vardı ama görüntüleme panelleri hâlâ SADECE bu tarayıcının localStorage'ını okuyordu —
+// bağlıyken bile başka bir cihazdan girilen/sonuçlanan işlemler görünmüyordu. Artık bağlıyken
+// (window.valensSignalApiConnected) merkezi kaynak (window.valensCentralSignals, periyodik
+// tazelenir — bkz. refreshCentralSignals) önceliklidir; bağlı değilken eski yerel davranış
+// birebir korunuyor.
 function getWinRate(sym){
+  if(window.valensSignalApiConnected && window.valensCentralSignals){
+    const resolved=window.valensCentralSignals.filter(s=>s.resolved && s.sym===sym);
+    const wins=resolved.filter(s=>s.outcome==='win').length;
+    return{wins,total:resolved.length,rate:resolved.length?(wins/resolved.length*100):null};
+  }
   const store=loadTradeStore(sym);
   const resolved=(store.trades||[]).filter(t=>t.resolved);
   const wins=resolved.filter(t=>t.outcome==='win').length;
@@ -1519,6 +1530,7 @@ function updateSignalApiUIConnected(connected){
           updateSignalApiUIConnected(true);
           if(status) status.textContent=t('signalApiConnected');
           refreshSignalApiStats();
+          refreshCentralSignals();
         } else {
           updateSignalApiUIConnected(false);
           if(status) status.textContent=t('signalApiInvalidCode');
@@ -1549,7 +1561,19 @@ function resolveSignalOnApi(trade){
   if(!window.valensSignalApiConnected || !window.valensSignalApiToken || !trade.remoteId) return;
   const url=signalApiUrl(); if(!url) return;
   fetch(url+'/signal/'+trade.remoteId+'/resolve', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify({outcome:trade.outcome})})
-    .then(()=>refreshSignalApiStats()).catch(()=>{});
+    .then(()=>{ refreshSignalApiStats(); refreshCentralSignals(); }).catch(()=>{});
+}
+// Merkezi API'den TÜM cihazların işlem geçmişini çeker — bağlıyken getWinRate/getAllResolvedTrades
+// bu listeyi kullanır (her kaydın context'i dahil, hangi cihazdan girilirse girilsin aynı geçmiş).
+function refreshCentralSignals(){
+  if(!window.valensSignalApiConnected || !window.valensSignalApiToken){ window.valensCentralSignals=null; return; }
+  const url=signalApiUrl(); if(!url) return;
+  fetch(url+'/signals?limit=2000', {headers:signalApiHeaders()}).then(r=>r.json()).then(res=>{
+    if(res.ok && Array.isArray(res.signals)){
+      window.valensCentralSignals=res.signals;
+      updateTradeLogUI(); updateWinRateUI();
+    }
+  }).catch(()=>{});
 }
 function refreshSignalApiStats(){
   if(!window.valensSignalApiConnected || !window.valensSignalApiToken) return;
@@ -1565,7 +1589,7 @@ function refreshSignalApiStats(){
     }).join('<br>');
   }).catch(()=>{});
 }
-setInterval(()=>{ if(window.valensSignalApiConnected) refreshSignalApiStats(); }, 5*60*1000); // 5dk'da bir tazele
+setInterval(()=>{ if(window.valensSignalApiConnected){ refreshSignalApiStats(); refreshCentralSignals(); } }, 5*60*1000); // 5dk'da bir tazele
 // ---- Ortak gönderme fonksiyonu — hem manuel "Gönder" butonu hem de otomatik (demo/veri toplama)
 // modu AYNI yolu kullanır, davranış hiçbir zaman ikisi arasında farklılaşmaz. ----
 // ---- MUM BAŞINA MAKS 2 GÖNDERİM — kullanıcı geri bildirimi (gerçek örnek): aynı mum içinde
@@ -1624,7 +1648,18 @@ function sendSignalToMT5(sig, lot){
 // ÖNCE ulaştığını kontrol edip sonucu (win/loss) kalıcı olarak işaretliyor. Burada bunu görünür bir
 // kâr/zarar listesine dönüştürüyoruz — tüm enstrümanlar birlikte, en yeni en üstte.
 function getAllResolvedTrades(){
-  const lot=avgLot(); let all=[];
+  const lot=avgLot();
+  // Bağlıyken merkezi kaynak kullanılır — bu, HANGİ CİHAZDAN girilirse girilsin aynı sonuçlanmış
+  // işlem listesini (ve her birinin context'inde saklı "neden girildi" gerekçesini) verir.
+  if(window.valensSignalApiConnected && window.valensCentralSignals){
+    return window.valensCentralSignals.filter(s=>s.resolved).map(s=>{
+      const cs2=(SYMS[s.sym]||{}).contractSize||100;
+      const dist = s.outcome==='win' ? Math.abs(s.tp-s.entry) : -Math.abs(s.entry-s.sl);
+      return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl,
+              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context};
+    }).sort((a,b)=>b.ts-a.ts);
+  }
+  let all=[];
   Object.keys(SYMS).forEach(sym=>{
     const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
     (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
