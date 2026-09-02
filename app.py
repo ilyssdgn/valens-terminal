@@ -358,7 +358,7 @@ iframe{height:100%;width:100%;border:0}
       <div class="panelcard">
       <div class="ph"><b data-i18n="eliteScalp_title">⚡ VALENS ELİT SCALP — PERFORMANS</b><span class="badge" id="eliteScalpBadge">—</span></div>
       <div style="padding:9px">
-        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="eliteScalpHint">Üst zaman dilimi (4H/1H) net bir yön verirse, GERÇEK backtest\'te en güvenilir çıkan kalıp (Order Block Mitigasyonu) VE canlı alım/satım akışı (delta) da AYNI YÖNDE onay verdiğinde ateşlenen, bu terminale özgü strateji — aynı indikatör/grafik verisini kullanır ama terminalin üstteki AI SIGNAL ENGINE'inden TAMAMEN BAĞIMSIZ karar verir ve kendi işlemini burada takip eder, üstteki motoru hiç etkilemez. Aşağıda sonuçlanan HER işlem, hem girişteki hem sonuçtaki gerçek gerekçesiyle listelenir.</div>
+        <div style="font-size:8px;color:var(--muted);margin-bottom:7px" data-i18n="eliteScalpHint">Üst zaman dilimi (4H/1H) yönü, GERÇEK backtest'te en güvenilir çıkan kalıp (Order Block Mitigasyonu) ve canlı alım/satım akışından (delta) HERHANGİ İKİSİ aynı yönde birleştiğinde ateşlenen, bu terminale özgü strateji — aynı indikatör/grafik verisini kullanır ama terminalin üstteki AI SIGNAL ENGINE'inden TAMAMEN BAĞIMSIZ karar verir ve kendi işlemini burada takip eder, üstteki motoru hiç etkilemez. Aşağıda sonuçlanan HER işlem, hem girişteki hem sonuçtaki gerçek gerekçesiyle listelenir.</div>
         <div id="eliteScalpLive" style="font-size:10px;font-weight:700;padding:7px 8px;border-radius:4px;background:rgba(255,255,255,0.03);margin-bottom:8px">—</div>
         <div id="eliteScalpSummary" style="font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:6px">—</div>
         <div id="eliteScalpList" style="max-height:230px;overflow:auto"></div>
@@ -685,8 +685,8 @@ const I18N = {
   mt5AutoMinConfLabel:'Min. güven (%)',
   mt5AutoSendWarn:'⚠ Bu kutu işaretliyken TÜM işlemler onay beklemeden gerçek MT5 hesabına gönderilir. Sadece demo/test hesabında kullanın — gerçek parada KAPALI tutun.',
   eliteScalp_title:'⚡ VALENS ELİT SCALP — PERFORMANS',
-  eliteScalpHint:'Üst zaman dilimi (4H/1H) net bir yön verirse, GERÇEK backtest\'te en güvenilir çıkan kalıp (Order Block Mitigasyonu) VE canlı alım/satım akışı (delta) da AYNI YÖNDE onay verdiğinde ateşlenen, bu terminale özgü strateji — aynı indikatör/grafik verisini kullanır ama terminalin üstteki AI SIGNAL ENGINE\'inden TAMAMEN BAĞIMSIZ karar verir ve kendi işlemini burada takip eder, üstteki motoru hiç etkilemez. Aşağıda sonuçlanan HER işlem, hem girişteki hem sonuçtaki gerçek gerekçesiyle listelenir.',
-  eliteScalpLiveIdle:'Beklemede — üç şart (4H/1H bias + Order Block Mitigasyonu + delta) henüz kesişmedi',
+  eliteScalpHint:'Üst zaman dilimi (4H/1H) yönü, GERÇEK backtest\'te en güvenilir çıkan kalıp (Order Block Mitigasyonu) ve canlı alım/satım akışından (delta) HERHANGİ İKİSİ aynı yönde birleştiğinde ateşlenen, bu terminale özgü strateji — aynı indikatör/grafik verisini kullanır ama terminalin üstteki AI SIGNAL ENGINE\'inden TAMAMEN BAĞIMSIZ karar verir ve kendi işlemini burada takip eder, üstteki motoru hiç etkilemez. Aşağıda sonuçlanan HER işlem, hem girişteki hem sonuçtaki gerçek gerekçesiyle listelenir.',
+  eliteScalpLiveIdle:'Beklemede — üç şarttan (4H/1H bias + Order Block Mitigasyonu + delta) en az ikisi henüz aynı yönde birleşmedi',
   eliteScalpLiveActive:(dir)=>'AKTİF — '+dir+' · şart karşılandı',
   eliteScalpBadge:(n)=>n+' İŞLEM',
   eliteScalpSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
@@ -897,8 +897,8 @@ const I18N = {
   mt5AutoMinConfLabel:'Min. confidence (%)',
   mt5AutoSendWarn:"⚠ While this is checked, EVERY trade is sent to the real MT5 account without waiting for approval. Only use this on a demo/test account — keep it OFF with real money.",
   eliteScalp_title:'⚡ VALENS ELITE SCALP — PERFORMANCE',
-  eliteScalpHint:'Fires when the higher timeframe (4H/1H) gives a clear direction AND the pattern that real backtesting shows is most reliable (Order Block Mitigation) AND live buy/sell flow (delta) all confirm the SAME direction at once — a strategy unique to this terminal. Uses the same indicator/chart data but decides and tracks its own trade COMPLETELY INDEPENDENTLY of the AI Signal Engine above; it never affects that engine. Every resolved trade below is listed with its real reasoning, both at entry and at outcome.',
-  eliteScalpLiveIdle:'Idle — the three conditions (4H/1H bias + Order Block Mitigation + delta) haven\'t aligned yet',
+  eliteScalpHint:'Fires when ANY TWO of the three — the higher timeframe (4H/1H) direction, the pattern that real backtesting shows is most reliable (Order Block Mitigation), and live buy/sell flow (delta) — agree on the same direction at once, a strategy unique to this terminal. Uses the same indicator/chart data but decides and tracks its own trade COMPLETELY INDEPENDENTLY of the AI Signal Engine above; it never affects that engine. Every resolved trade below is listed with its real reasoning, both at entry and at outcome.',
+  eliteScalpLiveIdle:'Idle — fewer than two of the three conditions (4H/1H bias + Order Block Mitigation + delta) currently agree',
   eliteScalpLiveActive:(dir)=>'ACTIVE — '+dir+' · condition met',
   eliteScalpBadge:(n)=>n+' TRADES',
   eliteScalpSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
@@ -1218,13 +1218,19 @@ function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context,candleTim
   // TAM zaman değerini kabul ediyor (Date.now() gibi rastgele bir saniye DEĞİL — test edip
   // doğruladım, aradaki fark 1dk'dan bile az olsa null dönüyor) — 1M Scalp Modu kutu çizimi bu
   // yüzden ts (Date.now()) değil, cr.candleTime'dan gelen bu alanı kullanıyor.
-  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null,candleTime:candleTime||null};
+  // lot: DÜZELTME (kullanıcı geri bildirimi: "eski dönemde lot 1-1.5 civarındaydı, bu terminali
+  // yanıltıyor mu") — eskiden $ hesabı HER ZAMAN o anki (güncel) risk ayarındaki avgLot()'u
+  // kullanıyordu, geçmiş işlemlere bile — yani lot ayarı değiştikçe ESKİ işlemlerin görünen $'ı da
+  // geriye dönük değişiyordu (tarihsel olarak yanlış). Artık işlem AÇILDIĞI ANDAKİ lot burada
+  // donduruluyor; getAllResolvedTrades/getEliteScalpResolvedTrades bunu kullanır (bu alan yoksa —
+  // bu değişiklikten ÖNCEKİ eski kayıtlar — geriye dönük uyumluluk için güncel avgLot()'a düşer).
+  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null,candleTime:candleTime||null,lot:avgLot()};
   store.trades.push(trade);
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveTradeStore(sym,store);
   // 7/24 sunucudaki merkezi sinyal API'sine bağlıysa buraya da kaydedilir (bkz. pushSignalToApi
   // aşağıda) — bağlı değilken bu no-op'tur, localStorage davranışı hiç değişmez.
-  pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:stratKey||null, stratLabel:stratLabel||null, context:context||null, ts:trade.ts});
+  pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:stratKey||null, stratLabel:stratLabel||null, context:context||null, ts:trade.ts, lot:trade.lot});
 }
 // ============ ⚡ VALENS ELİT SCALP — TAMAMEN BAĞIMSIZ TAKİP ============
 // Kullanıcı düzeltmesi: "terminal gene çalışmaya devam etsin... bizim stratejimiz sadece ai signal
@@ -1241,11 +1247,11 @@ function logEliteScalpTrade(sym,dir,entry,tp,sl,context,candleTime){
   store.trades=store.trades||[];
   const openTrade=store.trades.find(t=>!t.resolved);
   if(openTrade)return; // aynı anda tek açık takip
-  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:'valensEliteScalp',stratLabel:t('tagValensEliteScalp'),context:context||null,candleTime:candleTime||null};
+  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:'valensEliteScalp',stratLabel:t('tagValensEliteScalp'),context:context||null,candleTime:candleTime||null,lot:avgLot()};
   store.trades.push(trade);
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveEliteTradeStore(sym,store);
-  pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:'valensEliteScalp', stratLabel:trade.stratLabel, context:context||null, ts:trade.ts});
+  pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:'valensEliteScalp', stratLabel:trade.stratLabel, context:context||null, ts:trade.ts, lot:trade.lot}, true);
 }
 function updateEliteScalpTradeOutcomes(sym,lastPrice,cr){
   const store=loadEliteTradeStore(sym);
@@ -1265,10 +1271,11 @@ function updateEliteScalpTradeOutcomes(sym,lastPrice,cr){
 // getAllResolvedTrades() ile AYNI desen (merkezi API bağlıysa oradan, değilse localStorage'dan) ama
 // SADECE bu stratejinin AYRI mağazasından — genel işlem geçmişiyle hiç karışmaz.
 function getEliteScalpResolvedTrades(){
-  const lot=avgLot();
+  const fallbackLot=avgLot();
   if(window.valensSignalApiConnected && window.valensCentralSignals){
     return window.valensCentralSignals.filter(s=>s.resolved && s.stratKey==='valensEliteScalp').map(s=>{
       const cs2=(SYMS[s.sym]||{}).contractSize||100;
+      const lot = s.lot!=null ? s.lot : fallbackLot;
       const dist = s.outcome==='win' ? Math.abs(s.tp-s.entry) : -Math.abs(s.entry-s.sl);
       return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl,
               resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext};
@@ -1278,6 +1285,7 @@ function getEliteScalpResolvedTrades(){
   Object.keys(SYMS).forEach(sym=>{
     const store=loadEliteTradeStore(sym), cs=SYMS[sym].contractSize;
     (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
+      const lot = tr.lot!=null ? tr.lot : fallbackLot;
       const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
       all.push(Object.assign({sym, usd:dist*cs*lot}, tr));
     });
@@ -1511,7 +1519,7 @@ function updateEliteScalpPanel(){
   badge.textContent=t('eliteScalpBadge')(es.length);
   summary.innerHTML=t('eliteScalpSummaryLine')(es.length,wins,losses,(netUsd>=0?'+':'')+'$'+Math.round(netUsd).toLocaleString('en-US'));
   if(!es.length){ list.innerHTML='<p style="color:var(--muted);font-size:9px;padding:6px 2px">'+t('eliteScalpEmpty')+'</p>'; return; }
-  list.innerHTML = es.slice(0,40).map(tr=>{
+  list.innerHTML = es.map(tr=>{
     const cfg=SYMS[tr.sym]; if(!cfg) return '';
     const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
     const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
@@ -1525,7 +1533,7 @@ function updateEliteScalpPanel(){
       (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+'</div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
-  }).join('') + (es.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(es.length-40)+'…</p>':'');
+  }).join('');
 }
 
 // ============ MT5 KÖPRÜSÜ — MANUEL ONAYLI ============
@@ -1621,15 +1629,21 @@ function updateSignalApiUIConnected(connected){
 // ile taze) bir kopyada `ts` eşleşmesiyle bulunup yazılıyor — logArmedTrade'in kendi `store` referansını
 // tekrar kaydetmiyoruz, çünkü bu fetch'in yanıtı gecikirse arada updateTradeOutcomes() aynı işlemi
 // çoktan sonuçlandırmış olabilir; o durumda eski/bayat store'u geri yazmak sonucu SİLERDİ.
-function pushSignalToApi(sym, ts, payload){
+// useEliteStore: DÜZELTME — logEliteScalpTrade da bunu çağırıyor ama işlemi AYRI bir mağazada
+// (loadEliteTradeStore) tutuyor; bu bayrak olmadan remoteId hep ANA mağazaya yazılmaya çalışılıyordu
+// (işlem orada bulunamadığı için sessizce hiçbir şey olmuyordu) — Elit Scalp işlemleri hiçbir zaman
+// remoteId almıyor, dolayısıyla resolveSignalOnApi (remoteId şartı yüzünden) hiç çalışmıyordu.
+function pushSignalToApi(sym, ts, payload, useEliteStore){
   if(!window.valensSignalApiConnected || !window.valensSignalApiToken) return;
   const url=signalApiUrl(); if(!url) return;
+  const load = useEliteStore ? loadEliteTradeStore : loadTradeStore;
+  const save = useEliteStore ? saveEliteTradeStore : saveTradeStore;
   fetch(url+'/signal', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify(payload)})
     .then(r=>r.json()).then(res=>{
       if(res.ok && res.id){
-        const store=loadTradeStore(sym);
+        const store=load(sym);
         const trade=(store.trades||[]).find(tr=>tr.ts===ts);
-        if(trade){ trade.remoteId=res.id; saveTradeStore(sym,store); }
+        if(trade){ trade.remoteId=res.id; save(sym,store); }
       }
     }).catch(()=>{});
 }
@@ -1724,12 +1738,16 @@ function sendSignalToMT5(sig, lot){
 // ÖNCE ulaştığını kontrol edip sonucu (win/loss) kalıcı olarak işaretliyor. Burada bunu görünür bir
 // kâr/zarar listesine dönüştürüyoruz — tüm enstrümanlar birlikte, en yeni en üstte.
 function getAllResolvedTrades(){
-  const lot=avgLot();
+  const fallbackLot=avgLot();
   // Bağlıyken merkezi kaynak kullanılır — bu, HANGİ CİHAZDAN girilirse girilsin aynı sonuçlanmış
   // işlem listesini (ve her birinin context'inde saklı "neden girildi" gerekçesini) verir.
   if(window.valensSignalApiConnected && window.valensCentralSignals){
     return window.valensCentralSignals.filter(s=>s.resolved).map(s=>{
       const cs2=(SYMS[s.sym]||{}).contractSize||100;
+      // DÜZELTME (kullanıcı geri bildirimi: "eski dönemde lot büyüktü, bu terminali yanıltıyor mu")
+      // — s.lot, işlem AÇILDIĞI ANDAKİ dondurulmuş lot (bkz. logArmedTrade); yoksa (bu değişiklikten
+      // önceki eski kayıtlar) güncel avgLot()'a düşer.
+      const lot = s.lot!=null ? s.lot : fallbackLot;
       const dist = s.outcome==='win' ? Math.abs(s.tp-s.entry) : -Math.abs(s.entry-s.sl);
       return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl,
               resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext};
@@ -1739,6 +1757,7 @@ function getAllResolvedTrades(){
   Object.keys(SYMS).forEach(sym=>{
     const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
     (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
+      const lot = tr.lot!=null ? tr.lot : fallbackLot;
       const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
       all.push(Object.assign({sym, usd:dist*cs*lot}, tr));
     });
@@ -1755,7 +1774,10 @@ function updateTradeLogUI(){
   badge.textContent=t('tradeLogBadge')(trades.length);
   summary.innerHTML=t('tradeLogSummaryLine')(trades.length,wins,losses,(netUsd>=0?'+':'')+'$'+Math.round(netUsd).toLocaleString('en-US'));
   if(!trades.length){ list.innerHTML='<p style="color:var(--muted);font-size:9px;padding:6px 2px">'+t('tradeLogEmpty')+'</p>'; return; }
-  list.innerHTML = trades.slice(0,40).map(tr=>{
+  // DÜZELTME (kullanıcı geri bildirimi: "171 işlemin tamamını göremiyorum") — eskiden sadece son 40
+  // işlem gösterilip gerisi "+131…" notuna gizleniyordu. Kutu zaten kaydırılabilir (max-height+overflow),
+  // artık TÜMÜ render ediliyor — hiçbir gerçek işlem gizli kalmıyor.
+  list.innerHTML = trades.map(tr=>{
     const cfg=SYMS[tr.sym]; if(!cfg) return '';
     const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
     const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
@@ -1769,7 +1791,7 @@ function updateTradeLogUI(){
       (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+'</div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
-  }).join('') + (trades.length>40?'<p style="font-size:8px;color:var(--muted);padding:4px 2px">+'+(trades.length-40)+'…</p>':'');
+  }).join('');
   renderStrategyLivePanel(trades);
 }
 // ============ GERÇEK STRATEJİ PERFORMANSI — CANLI TAKİP (MT5'siz, sadece bu terminalin ürettiği
@@ -3730,13 +3752,21 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
  // ---- INVERSE FVG (IFVG) — bir FVG, fiyatın onu TAM GÖVDE KAPANIŞIYLA (sadece fitil değil) geçmesiyle
  // "bozulur" ve kutup değiştirir: bullish FVG bozulursa bearish IFVG (SAT), tersi de BUY olur. ----
+ // DÜZELTME (kullanıcı geri bildirimi: gerçek 171 işlemlik veride bu kalıp 35 işlemde sadece %40
+ // kazanmış, net +$90 — hacmi büyük ama katkısı neredeyse sıfır): iki sıkılaştırma eklendi —
+ // (1) kırılım ARTIK sadece o boşluğun kenarına marjinal olarak dokunmakla değil, boşluğun kendi
+ // yüksekliğinin en az %15'i kadar ÖTESİNE kapanmalı (gürültülü/sınırda kırılımlar elenir);
+ // (2) kırılım TAZE olmalı — bir önceki mum HÂLÂ boşluğun "içinde" kapanmış olmalı, yoksa fiyat
+ // zaten günlerdir kırılmış bir seviyenin ötesinde oturuyor demektir, bu artık yeni bir sinyal değil
+ // (aynı kırık seviye için tekrar tekrar ateşlenmeyi de önler).
  function detectIFVG(a){
   if(a.length<25) return null;
-  const fvgs=findFVGs(a,20), curr=a[a.length-1];
+  const fvgs=findFVGs(a,20), curr=a[a.length-1], prev=a[a.length-2];
   for(let i=fvgs.length-1;i>=0;i--){
    const f=fvgs[i];
-   if(f.dir>0 && curr.close<f.bottom) return {key:'ifvg', dir:-1};
-   if(f.dir<0 && curr.close>f.top) return {key:'ifvg', dir:1};
+   const margin=(f.top-f.bottom)*0.15;
+   if(f.dir>0 && curr.close<f.bottom-margin && prev.close>=f.bottom) return {key:'ifvg', dir:-1};
+   if(f.dir<0 && curr.close>f.top+margin && prev.close<=f.top) return {key:'ifvg', dir:1};
   }
   return null;
  }
@@ -3794,8 +3824,15 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const tags=[];
   if(a.length<10) return tags;
   // (1) EMA9/21 momentum kesişimi + MACD + RSI filtresi
-  if(ind.ema9>ind.ema21 && ind.macd>0 && ind.rsi>45 && ind.rsi<70) tags.push({key:'emaCross', dir:1});
-  else if(ind.ema9<ind.ema21 && ind.macd<0 && ind.rsi<55 && ind.rsi>30) tags.push({key:'emaCross', dir:-1});
+  // DÜZELTME (kullanıcı geri bildirimi: gerçek 171 işlemlik veride bu kalıp 24 işlemde sadece %41.7
+  // kazanmış): eskiden EMA9/21 "az önce bir kılcal kadar kesişti" bile yeterliydi (ayrım şartı yok)
+  // ve RSI bandı 45-70/30-55 gibi genişti, 50'ye çok yakın KARARSIZ bölgeyi de kapsıyordu. Artık (1)
+  // EMA9/21 arasında fiyatın en az %0.08'i kadar GERÇEK bir ayrım olmalı (kılcal/gürültü kesişimleri
+  // elenir), (2) RSI bandı 50'nin daha net üstünde/altında olacak şekilde daraltıldı (net momentum,
+  // kararsız bölge değil).
+  const emaSepPct = ind.ema21 ? Math.abs(ind.ema9-ind.ema21)/ind.ema21 : 0;
+  if(ind.ema9>ind.ema21 && emaSepPct>0.0008 && ind.macd>0 && ind.rsi>50 && ind.rsi<68) tags.push({key:'emaCross', dir:1});
+  else if(ind.ema9<ind.ema21 && emaSepPct>0.0008 && ind.macd<0 && ind.rsi<50 && ind.rsi>32) tags.push({key:'emaCross', dir:-1});
   // (2) Açılış aralığı kırılımı (ORB)
   const orb=detectORB(a); if(orb) tags.push(orb);
   // (3) Ardışık N mum + kırılım momentumu
@@ -3882,12 +3919,22 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   // yeni değil. Gerçek başarı oranı ancak CANLI takiple (Strateji Canlı Performans paneli, kendi stratKey'i
   // ile) kanıtlanır — kullanıcının "bir süre test edelim" isteği zaten bunu hedefliyor. %80 gibi bir oran
   // GARANTİ EDİLEMEZ; bu, gerçek 1dk verisinden damıtılmış bir HİPOTEZ.
+  // DÜZELTME (kullanıcı geri bildirimi: gerçek veride 4H/1H bias sadece %12.4 saatte hizalı çıktı ve
+  // eklendiğimizden beri 5 gün boyunca hiç hizalanmadı — üçü BİRDEN şartı pratikte neredeyse hiç
+  // ateşlenmiyordu). Artık üçünden HERHANGİ İKİSİ aynı yönde yeterli (3'te 3 yerine 3'te 2) — üçü de
+  // varsa ve 2'si aynı yönde 1'i ters yöndeyse çoğunluğun yönü kazanır. Daha sık ama muhtemelen daha
+  // düşük kaliteli ateşlenecek — gerçek oranı yine ancak canlı takiple (kendi paneli) kanıtlanır.
   const scalpBias=window.valensScalpBias;
-  if(scalpBias && scalpBias.h4Dir!==0 && scalpBias.h4Dir===scalpBias.h1Dir){
-   const biasDir=Math.sign(scalpBias.h4Dir);
-   if(obMit && obMit.dir===biasDir && deltaConf && deltaConf.key==='deltaConfirmTrend' && deltaConf.dir===biasDir){
-    tags.push({key:'valensEliteScalp', dir:biasDir});
-   }
+  const biasDir = (scalpBias && scalpBias.h4Dir!==0 && scalpBias.h4Dir===scalpBias.h1Dir) ? Math.sign(scalpBias.h4Dir) : null;
+  const obMitDir = obMit ? obMit.dir : null;
+  const deltaDir = (deltaConf && deltaConf.key==='deltaConfirmTrend') ? deltaConf.dir : null;
+  const eliteVotes = [biasDir, obMitDir, deltaDir].filter(d=>d!=null);
+  const eliteDirCounts = {};
+  eliteVotes.forEach(d=>{ eliteDirCounts[d]=(eliteDirCounts[d]||0)+1; });
+  let eliteWinDir=null, eliteWinCount=0;
+  Object.keys(eliteDirCounts).forEach(d=>{ if(eliteDirCounts[d]>eliteWinCount){ eliteWinCount=eliteDirCounts[d]; eliteWinDir=+d; } });
+  if(eliteWinCount>=2){
+   tags.push({key:'valensEliteScalp', dir:eliteWinDir});
   }
   return tags;
  }
