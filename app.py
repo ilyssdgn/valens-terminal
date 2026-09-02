@@ -604,6 +604,7 @@ const I18N = {
   tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Bölge Üst', zoneBottom:'Bölge Alt', srNearZone:'konsolidasyon/hacim bölgesine yakın',
   fvgTop:'FVG Üst', fvgBottom:'FVG Alt', fvgCE:'FVG %50 (CE)', fvgEntry:'FVG Giriş',
+  trailedSLTitle:'🔒 Kilitli Stop', eliteTrailedSLTitle:'🔒 Elit Kilitli Stop',
   mainResistance:'Ana Direnç (1H)', mainSupport:'Ana Destek (1H)', srNearMainSupport:'ana desteğe (1H) yakın', srNearMainResistance:'ana dirence (1H) yakın',
   mainResistanceBroken:'Eski Direnç (kırıldı → olası destek)', mainSupportBroken:'Eski Destek (kırıldı → olası direnç)',
   tagEmaCross:'EMA Momentum Kesişimi (9/21 + MACD/RSI)', tagOrb:'Açılış Aralığı Kırılımı (ORB)', tagMomentum:'Ardışık Mum Momentum Kırılımı',
@@ -721,6 +722,7 @@ const I18N = {
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
   tradeLogEmpty:'Henüz sonuçlanan bir sinyal yok — bir sinyal TP veya SL\'ye ulaştığında burada listelenecek.',
   tradeLogWin:'✓', tradeLogLoss:'✗',
+  trailLockNote:'🔒 Kâr koruma: TP\'nin %75\'i tamamlandığında stop, hedefin yarısına çekildi',
   sessClosesIn:(label,time)=>label+' seansı kapanışa: '+time,
   sessOpensIn:(label,time)=>label+' seansı açılışa: '+time,
   sessNoneActive:'Şu an aktif ana seans yok (düşük likidite) — spread\'ler genişleyebilir.',
@@ -816,6 +818,7 @@ const I18N = {
   tickerNextEvent:(country,name,time)=>country+' '+name+' — '+time,
   zoneTop:'Zone Top', zoneBottom:'Zone Bottom', srNearZone:'near consolidation/volume zone',
   fvgTop:'FVG Top', fvgBottom:'FVG Bottom', fvgCE:'FVG 50% (CE)', fvgEntry:'FVG Entry',
+  trailedSLTitle:'🔒 Locked Stop', eliteTrailedSLTitle:'🔒 Elite Locked Stop',
   mainResistance:'Main Resistance (1H)', mainSupport:'Main Support (1H)', srNearMainSupport:'near main support (1H)', srNearMainResistance:'near main resistance (1H)',
   mainResistanceBroken:'Old Resistance (broken → possible support)', mainSupportBroken:'Old Support (broken → possible resistance)',
   tagEmaCross:'EMA Momentum Cross (9/21 + MACD/RSI)', tagOrb:'Opening Range Breakout (ORB)', tagMomentum:'Consecutive-Candle Momentum Breakout',
@@ -933,6 +936,7 @@ const I18N = {
   tradeLogSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
   tradeLogEmpty:'No signal has resolved yet — trades will appear here once TP or SL is reached.',
   tradeLogWin:'✓', tradeLogLoss:'✗',
+  trailLockNote:'🔒 Profit lock: once TP was 75% complete, stop was moved to half the target',
   sessClosesIn:(label,time)=>label+' session closes in: '+time,
   sessOpensIn:(label,time)=>label+' session opens in: '+time,
   sessNoneActive:'No major session is currently active (low liquidity) — spreads may widen.',
@@ -1258,12 +1262,23 @@ function updateEliteScalpTradeOutcomes(sym,lastPrice,cr){
   let changed=false;
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
+    if(applyTrailingStop(t, lastPrice, window.valensDrawEliteTrailedSL)) changed=true;
+    let exitPrice=null;
     if(t.dir>0){
-      if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
-      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+      if(lastPrice>=t.tp) exitPrice=t.tp;
+      else if(lastPrice<=t.sl) exitPrice=t.sl;
     }else if(t.dir<0){
-      if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
-      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
+      if(lastPrice<=t.tp) exitPrice=t.tp;
+      else if(lastPrice>=t.sl) exitPrice=t.sl;
+    }
+    if(exitPrice!=null){
+      t.resolved=true;
+      t.exitPrice=exitPrice;
+      t.outcome = (t.dir*(exitPrice-t.entry) >= 0) ? 'win' : 'loss';
+      t.outcomeContext=buildOutcomeContext(cr,lastPrice);
+      changed=true;
+      resolveSignalOnApi(t);
+      if(window.valensClearEliteTrailedSL) window.valensClearEliteTrailedSL();
     }
   });
   if(changed)saveEliteTradeStore(sym,store);
@@ -1276,9 +1291,14 @@ function getEliteScalpResolvedTrades(){
     return window.valensCentralSignals.filter(s=>s.resolved && s.stratKey==='valensEliteScalp').map(s=>{
       const cs2=(SYMS[s.sym]||{}).contractSize||100;
       const lot = s.lot!=null ? s.lot : fallbackLot;
-      const dist = s.outcome==='win' ? Math.abs(s.tp-s.entry) : -Math.abs(s.entry-s.sl);
-      return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl,
-              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext};
+      // exitPrice: DÜZELTME (kâr koruma/trailing stop) — GERÇEKTE dokunulan seviye (tp VEYA kâr
+      // bölgesine çekilmiş sl); yoksa (bu değişiklikten önceki eski kayıtlar) eski win/loss varsayımına
+      // düşer. dist artık işaretli (dir bazlı) — hem tam TP kazancını hem trailing'le kilitlenen KISMİ
+      // kazancı (stop kâr bölgesindeyken dokunulduğunda) doğru işaretle hesaplar.
+      const hitPx = s.exitPrice!=null ? s.exitPrice : (s.outcome==='win'?s.tp:s.sl);
+      const dist = s.dir*(hitPx-s.entry);
+      return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl, exitPrice:hitPx,
+              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext, slAdjusted:s.slAdjusted||false};
     }).sort((a,b)=>b.ts-a.ts);
   }
   let all=[];
@@ -1286,7 +1306,8 @@ function getEliteScalpResolvedTrades(){
     const store=loadEliteTradeStore(sym), cs=SYMS[sym].contractSize;
     (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
       const lot = tr.lot!=null ? tr.lot : fallbackLot;
-      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
+      const hitPx = tr.exitPrice!=null ? tr.exitPrice : (tr.outcome==='win'?tr.tp:tr.sl);
+      const dist = tr.dir*(hitPx-tr.entry);
       all.push(Object.assign({sym, usd:dist*cs*lot}, tr));
     });
   });
@@ -1345,17 +1366,55 @@ function recordStopLoss(sym,dir){
 function getStopCooldown(sym){
   try{ const raw=localStorage.getItem(stopCooldownKey(sym)); return raw?JSON.parse(raw):null; }catch(e){ return null; }
 }
+// ---- KÂR KORUMA (trailing stop) — kullanıcı isteği: "tp'nin yüzde 75'i üzeri tamamlandığında
+// stopu işlemin yarısına çeksin, en kötü senaryoda total profitin yarısını alalım". Fiyat, giriş-TP
+// mesafesinin %75'ine ulaştığında stop, giriş-TP mesafesinin %50'sine (tam ortasına) çekilir — bir
+// kere tetiklenince KALICIDIR (fiyat sonra %75'in altına dönse bile stop geri gevşetilmez). drawFn
+// verilirse (chart motoruna köprü) yeni stop seviyesinde kırmızı bir çizgi çizdirir.
+// Dönüş değeri: bu ÇAĞRIDA yeni tetiklendiyse true (çağıran, localStorage'a KAYDETMESİ gerektiğini
+// bilsin diye — DÜZELTME: ilk sürümde çağıran sadece işlem SONUÇLANDIĞINDA kaydediyordu, sl/slAdjusted
+// mutasyonu resolve olmayan bir tick'te belleğe yazılıp hiç localStorage'a düşmüyordu, bir sonraki
+// tick'te store yeniden YÜKLENİNCE değişiklik SIFIRLANIYORDU — stop asla gerçekten çekilmiyordu).
+function applyTrailingStop(t, lastPrice, drawFn){
+  let justTriggered=false;
+  if(!t.slAdjusted){
+   const distToTp = Math.abs(t.tp-t.entry);
+   const thresholdPrice = t.entry + t.dir*0.75*distToTp;
+   const reached = t.dir>0 ? lastPrice>=thresholdPrice : lastPrice<=thresholdPrice;
+   if(reached){ t.sl = t.entry + t.dir*0.5*distToTp; t.slAdjusted = true; justTriggered=true; }
+  }
+  // slAdjusted olduğu sürece HER tick'te tekrar çizdirilir (sadece tetiklendiği anda değil) — sembol/
+  // zaman dilimi değişince chart motoru TÜM çizgileri temizliyor (bkz. valensSetSymbol/valensSetInterval),
+  // bu olmadan kilitlenmiş stop çizgisi bir daha asla geri gelmezdi (tekrar tetiklenme şartı yok).
+  if(t.slAdjusted && drawFn) drawFn(t.sl, t.dir);
+  return justTriggered;
+}
 function updateTradeOutcomes(sym,lastPrice,cr){
   const store=loadTradeStore(sym);
   let changed=false;
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
+    if(applyTrailingStop(t, lastPrice, window.valensDrawTrailedSL)) changed=true;
+    let exitPrice=null;
     if(t.dir>0){
-      if(lastPrice>=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
-      else if(lastPrice<=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
+      if(lastPrice>=t.tp) exitPrice=t.tp;
+      else if(lastPrice<=t.sl) exitPrice=t.sl;
     }else if(t.dir<0){
-      if(lastPrice<=t.tp){t.resolved=true;t.outcome='win';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;resolveSignalOnApi(t);}
-      else if(lastPrice>=t.sl){t.resolved=true;t.outcome='loss';t.outcomeContext=buildOutcomeContext(cr,lastPrice);changed=true;recordStopLoss(sym,t.dir);resolveSignalOnApi(t);}
+      if(lastPrice<=t.tp) exitPrice=t.tp;
+      else if(lastPrice>=t.sl) exitPrice=t.sl;
+    }
+    if(exitPrice!=null){
+      // outcome artık HANGİ seviyeye (tp/sl) dokunulduğuna değil, o seviyenin girişe göre KÂR/ZARAR
+      // olmasına göre belirleniyor — kâr koruma devredeyken stop artık kâr bölgesinde olabilir, o
+      // durumda stop'a dokunmak GERÇEKTE bir kazançtır (t.sl>=entry için BUY, t.sl<=entry için SELL).
+      t.resolved=true;
+      t.exitPrice=exitPrice;
+      t.outcome = (t.dir*(exitPrice-t.entry) >= 0) ? 'win' : 'loss';
+      t.outcomeContext=buildOutcomeContext(cr,lastPrice);
+      changed=true;
+      if(t.outcome==='loss') recordStopLoss(sym,t.dir);
+      resolveSignalOnApi(t);
+      if(window.valensClearTrailedSL) window.valensClearTrailedSL();
     }
   });
   if(changed)saveTradeStore(sym,store);
@@ -1523,14 +1582,16 @@ function updateEliteScalpPanel(){
     const cfg=SYMS[tr.sym]; if(!cfg) return '';
     const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
     const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
-    const hitPx = win?tr.tp:tr.sl;
+    const hitPx = tr.exitPrice!=null ? tr.exitPrice : (win?tr.tp:tr.sl);
     const ctxLine = tr.context ? describeTradeContext(tr.context) : '';
     const outcomeLine = tr.outcomeContext ? describeOutcomeContext(tr.outcomeContext) : '';
+    const trailLine = tr.slAdjusted ? t('trailLockNote') : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
       '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+
       '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span>'+
       (ctxLine?'<br><span style="color:var(--muted);font-size:8px">'+ctxLine+'</span>':'')+
-      (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+'</div>'+
+      (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+
+      (trailLine?'<br><span style="color:var(--gold);font-size:8px">'+trailLine+'</span>':'')+'</div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
   }).join('');
@@ -1650,7 +1711,7 @@ function pushSignalToApi(sym, ts, payload, useEliteStore){
 function resolveSignalOnApi(trade){
   if(!window.valensSignalApiConnected || !window.valensSignalApiToken || !trade.remoteId) return;
   const url=signalApiUrl(); if(!url) return;
-  fetch(url+'/signal/'+trade.remoteId+'/resolve', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify({outcome:trade.outcome, outcomeContext:trade.outcomeContext||null})})
+  fetch(url+'/signal/'+trade.remoteId+'/resolve', {method:'POST', headers:signalApiHeaders(), body:JSON.stringify({outcome:trade.outcome, outcomeContext:trade.outcomeContext||null, exitPrice:trade.exitPrice!=null?trade.exitPrice:null, sl:trade.sl, slAdjusted:!!trade.slAdjusted})})
     .then(()=>{ refreshSignalApiStats(); refreshCentralSignals(); }).catch(()=>{});
 }
 // Merkezi API'den TÜM cihazların işlem geçmişini çeker — bağlıyken getWinRate/getAllResolvedTrades
@@ -1748,9 +1809,14 @@ function getAllResolvedTrades(){
       // — s.lot, işlem AÇILDIĞI ANDAKİ dondurulmuş lot (bkz. logArmedTrade); yoksa (bu değişiklikten
       // önceki eski kayıtlar) güncel avgLot()'a düşer.
       const lot = s.lot!=null ? s.lot : fallbackLot;
-      const dist = s.outcome==='win' ? Math.abs(s.tp-s.entry) : -Math.abs(s.entry-s.sl);
-      return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl,
-              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext};
+      // exitPrice: DÜZELTME (kâr koruma/trailing stop) — GERÇEKTE dokunulan seviye (tp VEYA kâr
+      // bölgesine çekilmiş sl); yoksa (bu değişiklikten önceki eski kayıtlar) eski win/loss varsayımına
+      // düşer. dist artık işaretli (dir bazlı) — hem tam TP kazancını hem trailing'le kilitlenen KISMİ
+      // kazancı (stop kâr bölgesindeyken dokunulduğunda) doğru işaretle hesaplar.
+      const hitPx = s.exitPrice!=null ? s.exitPrice : (s.outcome==='win'?s.tp:s.sl);
+      const dist = s.dir*(hitPx-s.entry);
+      return {sym:s.sym, usd:dist*cs2*lot, ts:s.ts, dir:s.dir, entry:s.entry, tp:s.tp, sl:s.sl, exitPrice:hitPx,
+              resolved:true, outcome:s.outcome, stratKey:s.stratKey, stratLabel:s.stratLabel, context:s.context, outcomeContext:s.outcomeContext, slAdjusted:s.slAdjusted||false};
     }).sort((a,b)=>b.ts-a.ts);
   }
   let all=[];
@@ -1758,7 +1824,8 @@ function getAllResolvedTrades(){
     const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
     (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
       const lot = tr.lot!=null ? tr.lot : fallbackLot;
-      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
+      const hitPx = tr.exitPrice!=null ? tr.exitPrice : (tr.outcome==='win'?tr.tp:tr.sl);
+      const dist = tr.dir*(hitPx-tr.entry);
       all.push(Object.assign({sym, usd:dist*cs*lot}, tr));
     });
   });
@@ -1781,14 +1848,16 @@ function updateTradeLogUI(){
     const cfg=SYMS[tr.sym]; if(!cfg) return '';
     const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
     const win = tr.outcome==='win', col=win?'var(--green)':'var(--red)';
-    const hitPx = win?tr.tp:tr.sl;
+    const hitPx = tr.exitPrice!=null ? tr.exitPrice : (win?tr.tp:tr.sl);
     const ctxLine = tr.context ? describeTradeContext(tr.context) : '';
     const outcomeLine = tr.outcomeContext ? describeOutcomeContext(tr.outcomeContext) : '';
+    const trailLine = tr.slAdjusted ? t('trailLockNote') : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
       '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+(tr.stratLabel?' <span style="color:var(--muted)">· '+tr.stratLabel+'</span>':'')+
       '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span>'+
       (ctxLine?'<br><span style="color:var(--muted);font-size:8px">'+ctxLine+'</span>':'')+
-      (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+'</div>'+
+      (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+
+      (trailLine?'<br><span style="color:var(--gold);font-size:8px">'+trailLine+'</span>':'')+'</div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
   }).join('');
@@ -2960,7 +3029,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
  window.addEventListener('resize',resize); setTimeout(resize,150);
 
- let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[],fvgZoneLines=[],fvgMarker=null;
+ let ohlc=[],ws=null,tradeWs=null,binSym=null,curSym=null,srLines=[],fibLines=[],dynSup,dynRes,patternMarkers=[],zoneLines=[],fvgZoneLines=[],fvgMarker=null,trailedSLLine=null,eliteTrailedSLLine=null;
  // patternMarkers (mum formasyonları) VE fvgMarker (FVG giriş noktası) aynı cs.setMarkers() çağrısını
  // paylaşıyor — lightweight-charts setMarkers() önceki listeyi tamamen DEĞİŞTİRİR, birleştirmez.
  // Bu yüzden ikisini de tutan tek bir yer olmalı, yoksa biri diğerini görünmez şekilde silerdi.
@@ -4352,6 +4421,26 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(fvgZoneLines.length){ fvgZoneLines.forEach(l=>cs.removePriceLine(l)); fvgZoneLines=[]; }
   if(fvgMarker){ fvgMarker=null; refreshAllMarkers(); }
  };
+ // ---- KÂR KORUMA (trailing stop) ÇİZGİSİ — kullanıcı isteği: "stopun çekildiği yeri kırmızı küçük
+ // bir çizgi ile göstersin... grafiği oynattıkça oynamasın, bulunduğu alanda sabit kalsın". DOM overlay
+ // (scalp kutusunda kullanılan teknik) YERİNE lightweight-charts'ın NATİF cs.createPriceLine'ı
+ // kullanılıyor — bu, tanımı gereği fiyat eksenine bağlıdır, kaydırma/yakınlaştırmada KENDİLİĞİNDEN
+ // doğru fiyatta kalır, elle yeniden konumlandırma gerektirmez (mainSRZones/scalp kutusunun aksine).
+ // Ana motorun işlemi ile Elit Scalp'in AYRI işlemi aynı anda açık olabileceği için iki AYRI çizgi.
+ window.valensDrawTrailedSL=function(price, dir){
+  if(trailedSLLine) cs.removePriceLine(trailedSLLine);
+  trailedSLLine=cs.createPriceLine({price, color:'#ff3b5c', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:t('trailedSLTitle')});
+ };
+ window.valensClearTrailedSL=function(){
+  if(trailedSLLine){ cs.removePriceLine(trailedSLLine); trailedSLLine=null; }
+ };
+ window.valensDrawEliteTrailedSL=function(price, dir){
+  if(eliteTrailedSLLine) cs.removePriceLine(eliteTrailedSLLine);
+  eliteTrailedSLLine=cs.createPriceLine({price, color:'#ff3b5c', lineWidth:2, lineStyle:0, axisLabelVisible:true, title:t('eliteTrailedSLTitle')});
+ };
+ window.valensClearEliteTrailedSL=function(){
+  if(eliteTrailedSLLine){ cs.removePriceLine(eliteTrailedSLLine); eliteTrailedSLLine=null; }
+ };
  function analyze(isCloseTick){
   if(ohlc.length<20)return;
   // ---- HAFTA SONU/KAPALI PİYASA DONDURMA — kullanıcı gerçek ekran görüntüsüyle gösterdi: XAU/USD
@@ -4611,6 +4700,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   kelUp.setData([]); kelLo.setData([]);
   patternMarkers=[]; // farklı enstrümana geçince eski sembolün formasyon geçmişini taşıma
   fvgZoneLines.forEach(l=>cs.removePriceLine(l)); fvgZoneLines=[]; fvgMarker=null;
+  if(trailedSLLine){ cs.removePriceLine(trailedSLLine); trailedSLLine=null; }
+  if(eliteTrailedSLLine){ cs.removePriceLine(eliteTrailedSLLine); eliteTrailedSLLine=null; }
   e20.setData([]); e50.setData([]);
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
@@ -4650,6 +4741,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   kelUp.setData([]); kelLo.setData([]);
   patternMarkers=[];
   fvgZoneLines.forEach(l=>cs.removePriceLine(l)); fvgZoneLines=[]; fvgMarker=null;
+  if(trailedSLLine){ cs.removePriceLine(trailedSLLine); trailedSLLine=null; }
+  if(eliteTrailedSLLine){ cs.removePriceLine(eliteTrailedSLLine); eliteTrailedSLLine=null; }
   e20.setData([]); e50.setData([]);
   srLines.forEach(l=>cs.removePriceLine(l)); srLines=[];
   fibLines.forEach(l=>cs.removePriceLine(l)); fibLines=[];
