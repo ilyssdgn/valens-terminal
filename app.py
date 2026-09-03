@@ -625,6 +625,7 @@ const I18N = {
   tagLevelConfluence:'Önceki Gün Seviye Confluence (POC/VAH/VAL)', tagDeltaConfirmTrend:'Delta Doğrulaması (Fonlanmış Hareket)',
   tagDeltaAbsorption:'Delta Absorpsiyonu (Tükeniş/Olası Dönüş)',
   tagValensEliteScalp:'⚡ Valens Elit Scalp (4H/1H Bias + Order Block Mit. + Delta üçlü onay)',
+  tagSrTestReversal:'Ana/Ara Destek-Direnç Test + Tepki', tagSrBreakContinuation:'Ana/Ara Destek-Direnç Kırılım + Devam',
   candidateConfluence:'Çoklu Gösterge Konfluensi (15 klasik gösterge)',
   winningCandidateLine:(label,conf)=>'En güçlü aday: <b>'+label+'</b> (%'+conf+' güven)',
   noCandidateLine:'Şu an hiçbir strateji ya da gösterge konfluensi net bir sinyal vermiyor.',
@@ -737,6 +738,10 @@ const I18N = {
   riskBlockedStatus:'🛑 GÜNLÜK RİSK SINIRI — yeni sinyal durduruldu',
   cooldownStatus:(min)=>'⏸ STOP SONRASI SOĞUMA — ters yön '+min+' dk daha bekletiliyor (whipsaw koruması)',
   cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ Az önce ters yönde STOP oldu — sahte dönüş riskine karşı '+min+' dk daha bu yönde KESİN İŞLEM açılmayacak (aynı yönde devam serbest).</span>',
+  circuitPausedStatus:(min)=>'🛑 ARDIŞIK 3 KAYIP — tüm yeni sinyaller '+min+' dk duraklatıldı',
+  circuitPausedWhyRegime:(min,dir)=>' <span style="color:#ff6b6b">🛑 Art arda 3 '+dir+' kaybı — piyasa rejimi/trend işlemler açıldıktan sonra değişmiş görünüyor. Sistem '+min+' dk tamamen duruyor, sonra yeniden teyit isteyecek.</span>',
+  circuitPausedWhyGeneric:(min,dir)=>' <span style="color:#ff6b6b">🛑 Art arda 3 '+dir+' kaybı — hesabı korumak için sistem '+min+' dk tamamen duruyor. Devam ederken aynı yön için daha güçlü teyit isteyecek, ters yön normal çalışmaya devam edecek.</span>',
+  circuitPenaltyWhyNote:(dir)=>' <span style="color:#ffb27a">⚠ Az önce art arda 3 '+dir+' kaybı oldu — bu yöndeki yeni adaylara ekstra güven cezası uygulanıyor (daha güçlü sinyal isteniyor), ters yön etkilenmiyor.</span>',
   confirmStatus:(have,need,dir)=>'🕐 MUM KAPANIŞ ONAYI BEKLENİYOR — '+dir+' · '+have+'/'+need+' mum',
   confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 Bu sinyal henüz sadece '+have+'/'+need+' mum tarafından doğrulandı — mum kapanıp bir SONRAKİ mum da aynı yönü desteklerse KESİN İŞLEM sayılacak (aynı mumun ilk okuması tek başına yeterli değil, sahte titreşim riskine karşı).</span>',
   anText: p => (p.totalVotes>0 ? ('Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor.') : ('Bot şu an '+p.label+' üzerinde net bir yön bulamıyor — göstergeler/stratejiler birbiriyle çelişiyor ya da hiçbiri belirgin değil (aşağıdaki kategori dökümüne bakın).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
@@ -839,6 +844,7 @@ const I18N = {
   tagLevelConfluence:'Prior-Day Level Confluence (POC/VAH/VAL)', tagDeltaConfirmTrend:'Delta Confirmation (Funded Move)',
   tagDeltaAbsorption:'Delta Absorption (Exhaustion/Possible Reversal)',
   tagValensEliteScalp:'⚡ Valens Elite Scalp (4H/1H Bias + Order Block Mit. + Delta triple confirmation)',
+  tagSrTestReversal:'Main/Intermediate S/R Test + Reaction', tagSrBreakContinuation:'Main/Intermediate S/R Break + Continuation',
   candidateConfluence:'Multi-Indicator Confluence (15 classic indicators)',
   winningCandidateLine:(label,conf)=>'Strongest candidate: <b>'+label+'</b> ('+conf+'% confidence)',
   noCandidateLine:'No strategy or indicator confluence is giving a clear signal right now.',
@@ -951,6 +957,10 @@ const I18N = {
   riskBlockedStatus:'🛑 DAILY RISK LIMIT — new signals paused',
   cooldownStatus:(min)=>'⏸ POST-STOP COOLDOWN — opposite direction held for '+min+' more min (whipsaw guard)',
   cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ This direction just got STOPPED OUT — to avoid a false reversal, no new CONFIRMED TRADE this direction for '+min+' more min (continuing the same direction is still allowed).</span>',
+  circuitPausedStatus:(min)=>'🛑 3 LOSSES IN A ROW — all new signals paused for '+min+' min',
+  circuitPausedWhyRegime:(min,dir)=>' <span style="color:#ff6b6b">🛑 3 '+dir+' losses in a row — the market regime/trend looks like it changed after these trades opened. The system is fully pausing for '+min+' min, then will require fresh confirmation.</span>',
+  circuitPausedWhyGeneric:(min,dir)=>' <span style="color:#ff6b6b">🛑 3 '+dir+' losses in a row — to protect the account the system is fully pausing for '+min+' min. When it resumes, the same direction will need stronger confirmation; the opposite direction is unaffected.</span>',
+  circuitPenaltyWhyNote:(dir)=>' <span style="color:#ffb27a">⚠ 3 '+dir+' losses just happened in a row — new candidates in this direction get an extra confidence penalty (need a stronger signal); the opposite direction is unaffected.</span>',
   confirmStatus:(have,need,dir)=>'🕐 WAITING FOR CANDLE-CLOSE CONFIRMATION — '+dir+' · '+have+'/'+need+' candles',
   confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 This signal is only confirmed by '+have+'/'+need+' candle(s) so far — once this candle closes and the NEXT one still agrees, it becomes a CONFIRMED TRADE (a single candle\'s first reading alone is not enough, to guard against noise).</span>',
   anText: p => (p.totalVotes>0 ? ('The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score.') : ('The bot cannot find a clear direction for '+p.label+' right now — indicators/strategies conflict or none are decisive (see the category breakdown below).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
@@ -1366,6 +1376,36 @@ function recordStopLoss(sym,dir){
 function getStopCooldown(sym){
   try{ const raw=localStorage.getItem(stopCooldownKey(sym)); return raw?JSON.parse(raw):null; }catch(e){ return null; }
 }
+// ============ ARDIŞIK KAYIP DEVRE KESİCİ (sadece ana motor) ============
+// Kullanıcı geri bildirimi (gerçek örnek, funded/prop-firm hesap): "art arda kaybettiğimiz 3 işlem
+// olunca hesap patlıyor" + "ısrarla aynı yöne (örn. sell) devam ediyor, piyasa tamamen farklı olsa
+// bile". Yukarıdaki whipsaw-cooldown SADECE ters yönü 20dk bekletiyor, aynı yönde devam bilinçli
+// olarak serbestti — yani aynı yönde art arda kaybeden bir seri hiç yavaşlamıyordu. Bu, hesap-geneli
+// (tüm semboller, riskState() ile aynı mantık) bir sayaç: 3. ardışık kayıpta TÜM yeni ana-motor
+// sinyalleri (her iki yön) 15dk tamamen durur; süre dolunca "en mantıklı pozisyon" mantığıyla geri
+// döner — az önce kaybettiren yön 15 puan güven cezası alır (daha fazla kanıt ister), ters yön hiç
+// cezalanmaz (piyasa gerçekten döndüyse yakalasın). Elite Scalp'e KASITLI olarak dokunulmuyor —
+// tamamen bağımsız panel tasarımı korunuyor.
+function mainLossStreakKey(){ return 'valens_main_loss_streak'; }
+function getMainLossStreak(){
+  try{ const raw=localStorage.getItem(mainLossStreakKey());
+    return raw?JSON.parse(raw):{count:0,dir:0,pausedUntil:0,recentLossCtx:[]}; }catch(e){ return {count:0,dir:0,pausedUntil:0,recentLossCtx:[]}; }
+}
+function recordMainTradeOutcome(dir,outcome,ctx){
+  try{
+    let st=getMainLossStreak();
+    if(outcome==='loss'){
+      if(st.dir===dir){ st.count=(st.count||0)+1; st.recentLossCtx=(st.recentLossCtx||[]).concat([ctx||null]).slice(-3); }
+      else { st.dir=dir; st.count=1; st.recentLossCtx=[ctx||null]; }
+      if(st.count>=3 && !(st.pausedUntil>Date.now())){ st.pausedUntil=Date.now()+15*60000; }
+    } else {
+      st.count=0; st.dir=0; st.recentLossCtx=[];
+      // Aktif bir duraklama varsa (paused'ken açılmış eski bir işlem şimdi kazandıysa) süresini
+      // erken bitirmiyoruz — 15dk disiplini kazançla iptal edilmez, sadece seri sıfırlanır.
+    }
+    localStorage.setItem(mainLossStreakKey(), JSON.stringify(st));
+  }catch(e){}
+}
 // ---- KÂR KORUMA (trailing stop) — kullanıcı isteği: "tp'nin yüzde 75'i üzeri tamamlandığında
 // stopu işlemin yarısına çeksin, en kötü senaryoda total profitin yarısını alalım". Fiyat, giriş-TP
 // mesafesinin %75'ine ulaştığında stop, giriş-TP mesafesinin %50'sine (tam ortasına) çekilir — bir
@@ -1413,6 +1453,7 @@ function updateTradeOutcomes(sym,lastPrice,cr){
       t.outcomeContext=buildOutcomeContext(cr,lastPrice);
       changed=true;
       if(t.outcome==='loss') recordStopLoss(sym,t.dir);
+      recordMainTradeOutcome(t.dir,t.outcome,t.context||null);
       resolveSignalOnApi(t);
       if(window.valensClearTrailedSL) window.valensClearTrailedSL();
     }
@@ -1478,6 +1519,12 @@ function loadRiskSettings(){
 }
 function saveRiskSettings(s){ try{ localStorage.setItem(RISK_KEY, JSON.stringify(s)); }catch(e){} }
 function avgLot(){ const s=loadRiskSettings(); return ((parseFloat(s.lotMin)||0.8)+(parseFloat(s.lotMax)||1.2))/2; }
+// DÜZELTME (kullanıcı geri bildirimi: "hesaplar patlıyor" — kâr koruma/trailing stop eklenirken
+// BURASI güncellenmeyi kaçırmıştı): eskiden kazanan işlemler HER ZAMAN tam TP mesafesiyle
+// hesaplanıyordu — ama kâr koruma tetiklenip stop girişin üzerine çekildiğinde gerçek çıkış artık
+// tp'den KÜÇÜK. Bu, günlük/toplam kârı OLDUĞUNDAN BÜYÜK gösteriyordu — risk bloğu (aşağıda
+// riskState) da bu şişirilmiş kâra bakıp GEREĞİNDEN GEÇ devreye giriyordu. Artık getAllResolvedTrades
+// ile AYNI mantık: gerçek exitPrice (varsa) kullanılıyor.
 function computeTodayPnL(){
   const todayStr=new Date().toISOString().slice(0,10);
   const lot=avgLot();
@@ -1487,8 +1534,9 @@ function computeTodayPnL(){
     (store.trades||[]).forEach(tr=>{
       if(!tr.resolved) return;
       if(new Date(tr.ts).toISOString().slice(0,10)!==todayStr) return;
-      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
-      pnl += dist*cs*lot;
+      const hitPx = tr.exitPrice!=null ? tr.exitPrice : (tr.outcome==='win'?tr.tp:tr.sl);
+      const dist = tr.dir*(hitPx-tr.entry);
+      pnl += dist*cs*(tr.lot!=null?tr.lot:lot);
     });
   });
   return pnl;
@@ -1500,8 +1548,9 @@ function computeTotalPnL(){
     const store=loadTradeStore(sym), cs=SYMS[sym].contractSize;
     (store.trades||[]).forEach(tr=>{
       if(!tr.resolved) return;
-      const dist = tr.outcome==='win' ? Math.abs(tr.tp-tr.entry) : -Math.abs(tr.entry-tr.sl);
-      pnl += dist*cs*lot;
+      const hitPx = tr.exitPrice!=null ? tr.exitPrice : (tr.outcome==='win'?tr.tp:tr.sl);
+      const dist = tr.dir*(hitPx-tr.entry);
+      pnl += dist*cs*(tr.lot!=null?tr.lot:lot);
     });
   });
   return pnl;
@@ -2016,7 +2065,8 @@ function botTick(){
   ttmSqueeze:t('tagTtmSqueeze'), divergenceChoch:t('tagDivergenceChoch'), pocBounce:t('tagPocBounce'),
   orderBlockMit:t('tagOrderBlockMit'), fibOte:t('tagFibOte'), asianFakeout:t('tagAsianFakeout'), extremeMeanReversion:t('tagExtremeMR'),
   levelConfluence:t('tagLevelConfluence'), deltaConfirmTrend:t('tagDeltaConfirmTrend'), deltaAbsorption:t('tagDeltaAbsorption'),
-  valensEliteScalp:t('tagValensEliteScalp')};
+  valensEliteScalp:t('tagValensEliteScalp'),
+  srTestReversal:t('tagSrTestReversal'), srBreakContinuation:t('tagSrBreakContinuation')};
  window.valensTagLabels = tagLabels; // refreshSignalApiStats() gibi bu fonksiyonun DIŞINDaki kod için (ayrı kapsam)
 
  // ---- HER STRATEJİYİ BAĞIMSIZ BİR ADAY OLARAK DEĞERLENDİR ("bütün ihtimalleri test et, en uygununu ver") ----
@@ -2031,7 +2081,8 @@ function botTick(){
   orbSweepFade:79, bosSignal:71, chochSignal:80, equalHighsLows:77, tradeDelta:65,
   silverBullet:86, orbVolume:74, vwapPullback:75, ttmSqueeze:77, divergenceChoch:84,
   pocBounce:76, orderBlockMit:75, fibOte:73, asianFakeout:78, extremeMeanReversion:80,
-  levelConfluence:84, deltaConfirmTrend:70, deltaAbsorption:77};
+  levelConfluence:84, deltaConfirmTrend:70, deltaAbsorption:77,
+  srTestReversal:78, srBreakContinuation:74};
  // ---- STRATEJİ AİLESİ + PİYASA REJİMİ — kullanıcının en baştaki orijinal tasarımında olup şu ana
  // kadar hiç uygulanmamış "anlık duruma göre en uygun strateji" fikri. Her strateji, doğası gereği
  // TREND'i (kırılımı/devamı takip eden) mi yoksa REVERSAL'ı (dönüş/ortalamaya çekilme arayan) mı
@@ -2049,7 +2100,8 @@ function botTick(){
   valuationZone:'reversal', orbSweepFade:'reversal', chochSignal:'reversal', equalHighsLows:'reversal',
   silverBullet:'reversal', divergenceChoch:'reversal', pocBounce:'reversal', orderBlockMit:'reversal',
   asianFakeout:'reversal', extremeMeanReversion:'reversal', levelConfluence:'reversal', deltaAbsorption:'reversal',
-  insideBar:'neutral', bollSqueeze:'neutral', macdZeroCross:'neutral', ttmSqueeze:'neutral', tradeDelta:'neutral'
+  insideBar:'neutral', bollSqueeze:'neutral', macdZeroCross:'neutral', ttmSqueeze:'neutral', tradeDelta:'neutral',
+  srTestReversal:'reversal', srBreakContinuation:'trend'
  };
  function detectMarketRegime(adxVal, trendDir){
   if(adxVal==null) return 'unknown';
@@ -2262,6 +2314,27 @@ function botTick(){
   if(elapsedMin < COOLDOWN_MIN){ cooldownActive=true; cooldownRemainMin=Math.ceil(COOLDOWN_MIN-elapsedMin); armed=false; }
  }
 
+ // ---- ARDIŞIK KAYIP DEVRE KESİCİ (sadece ana motor, hesap-geneli — bkz. mainLossStreakKey yorumu) ----
+ const mainStreak = getMainLossStreak();
+ const circuitPaused = !!(mainStreak.pausedUntil && Date.now() < mainStreak.pausedUntil);
+ let circuitRemainMin = 0;
+ if(circuitPaused){ circuitRemainMin = Math.ceil((mainStreak.pausedUntil-Date.now())/60000); armed=false; }
+ // Duraklama süresi geçti ama seri (3+) henüz bir KAZANÇLA temizlenmediyse: az önce kaybettiren
+ // yönü tekrarlamak isteyen adaya güven cezası — "en mantıklı pozisyon" mantığı, ters yön cezasız.
+ const circuitPenaltyActive = !circuitPaused && mainStreak.count>=3 && rawDir===mainStreak.dir;
+ if(circuitPenaltyActive){
+  conf = Math.max(50, Math.round(conf-15));
+  if(conf<THRESHOLD) armed=false;
+ }
+ // Duraklama tetiklendiğinde son kayıpların bağlamına (rejim/trend) bakıp kısa, dürüst bir sebep
+ // özeti üret — "neden kaybetti bilsin" isteğiyle örtüşüyor, ekstra veri toplamaya gerek yok
+ // (context zaten işlem açılırken kaydediliyordu).
+ let circuitReasonIsRegimeShift = false;
+ if(circuitPaused){
+  const ctxs = mainStreak.recentLossCtx||[];
+  circuitReasonIsRegimeShift = ctxs.length>0 && ctxs.every(c=>c && (c.regime!==marketRegime || (typeof c.trend==='number' && typeof cr.trend==='number' && Math.sign(c.trend||0)!==Math.sign(cr.trend||0))));
+ }
+
  let sigText='◇ GÖZLEM', sigColor='var(--gold)';
  if(rawDir>0)sigText='▲ BUY'; else if(rawDir<0)sigText='▼ SELL';
  if(armed){sigText=rawDir>0?'▲ BUY':'▼ SELL';sigColor=rawDir>0?'var(--green)':'var(--red)';}
@@ -2272,6 +2345,12 @@ function botTick(){
   if(conflicted) whyHtml += ' <span style="color:#ffb27a">'+t('conflictWarning')+'</span>';
   if(awaitingConfirmation) whyHtml += t('confirmWhyNote')(confirmedCandles, REQUIRED_CONFIRM_CANDLES);
   if(cooldownActive) whyHtml += t('cooldownWhyNote')(cooldownRemainMin);
+  if(circuitPaused){
+   const dirLbl = mainStreak.dir>0?'BUY':'SELL';
+   whyHtml += circuitReasonIsRegimeShift ? t('circuitPausedWhyRegime')(circuitRemainMin,dirLbl) : t('circuitPausedWhyGeneric')(circuitRemainMin,dirLbl);
+  } else if(circuitPenaltyActive){
+   whyHtml += t('circuitPenaltyWhyNote')(mainStreak.dir>0?'BUY':'SELL');
+  }
   sigWhyEl.innerHTML = whyHtml;
  }
 
@@ -2417,6 +2496,7 @@ function botTick(){
 
  const tg=document.getElementById('trigger');
  if(armed){tg.className='trigger armed';tg.textContent=t('armedTrigger')(rawDir>0?'BUY':'SELL',conf);}
+ else if(circuitPaused){tg.className='trigger wait';tg.textContent=t('circuitPausedStatus')(circuitRemainMin);}
  else if(technicallyArmed && riskBlocked){tg.className='trigger wait';tg.textContent=t('riskBlockedStatus');}
  else if(awaitingConfirmation){tg.className='trigger wait';tg.textContent=t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL');}
  else if(cooldownActive){tg.className='trigger wait';tg.textContent=t('cooldownStatus')(cooldownRemainMin);}
@@ -2543,7 +2623,7 @@ function botTick(){
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
-   scStatusEl.textContent = (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : awaitingConfirmation ? t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
+   scStatusEl.textContent = circuitPaused ? t('circuitPausedStatus')(circuitRemainMin) : (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : awaitingConfirmation ? t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
    window.valensPendingSignal = null;
    const mt5SendBtnIdle=document.getElementById('mt5SendBtn');
@@ -3197,6 +3277,111 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(body<range*0.1)return{n:'Doji',d:'neutral'};
   if(bull&&p.close<p.open&&c.close>p.open&&c.open<p.close)return{n:'Bull Engulf',d:'bull'};
   if(bear&&p.close>p.open&&c.close<p.open&&c.open>p.close)return{n:'Bear Engulf',d:'bear'};
+  return null;
+ }
+ // ---- KLASİK GRAFİK FORMASYONLARI (omuz-baş-omuz, M/W çift tepe/dip) — kullanıcı isteği:
+ // "bunları omuz baş omuz M W cup gibi grafik yorumlama ile de destekleseler". findSwingPoints
+ // ham fraktal noktaları verir, art arda aynı tip gelebilir (iki 'high' arasında hiç 'low'
+ // sinyallenmeyebilir) — burada daha GÜÇLÜ olan tutulup diğeri elenerek gerçek ALTERNE (yüksek-
+ // düşük-yüksek-düşük...) bir dizi elde edilir; klasik formasyonlar bu dizi üzerinde tanınır.
+ // Cup&Handle bilerek KAPSAM DIŞI bırakıldı — yuvarlak tabanlı, net bir "kaç swing" tanımı
+ // olmayan bir formasyon, düşük kaliteli/güvenilmez bir versiyon eklemektense hiç eklenmedi.
+ function alternatingSwings(a, lookback){
+  const w=a.slice(-lookback);
+  const raw=findSwingPoints(w);
+  if(!raw.length) return [];
+  let clean=[raw[0]];
+  for(let i=1;i<raw.length;i++){
+   const p=raw[i], last=clean[clean.length-1];
+   if(p.type===last.type){
+    if(p.type==='high' && p.price>last.price) clean[clean.length-1]=p;
+    else if(p.type==='low' && p.price<last.price) clean[clean.length-1]=p;
+   } else clean.push(p);
+  }
+  return clean;
+ }
+ // ---- M/W (Çift Tepe/Çift Dip) — iki benzer yükseklikteki tepe/dip arasındaki "boyun çizgisi"
+ // (neckline) kırılınca onaylanır. dir:-1 = M (çift tepe, düşüş), dir:1 = W (çift dip, yükseliş).
+ function detectDoubleTopBottom(a){
+  if(a.length<30) return null;
+  const sw=alternatingSwings(a,80);
+  if(sw.length<3) return null;
+  const [p1,neck,p2]=sw.slice(-3);
+  const curr=a[a.length-1];
+  const tol=0.0035; // iki tepe/dip birbirine bu kadar (·%0.35) yakınsa "eşit" sayılır
+  if(p1.type==='high' && neck.type==='low' && p2.type==='high'){
+   if(Math.abs(p1.price-p2.price)/p1.price<tol && curr.close<neck.price) return {key:'doubleTopBottom', dir:-1};
+  }
+  if(p1.type==='low' && neck.type==='high' && p2.type==='low'){
+   if(Math.abs(p1.price-p2.price)/p1.price<tol && curr.close>neck.price) return {key:'doubleTopBottom', dir:1};
+  }
+  return null;
+ }
+ // ---- OMUZ-BAŞ-OMUZ (ve tersi) — orta tepe/dip (baş) iki yandakinden (omuzlar, birbirine yakın)
+ // daha belirgin olmalı; iki omuz arasındaki dip/tepelerin (neckline) ortalaması kırılınca onaylanır.
+ function detectHeadShoulders(a){
+  if(a.length<40) return null;
+  const sw=alternatingSwings(a,110);
+  if(sw.length<5) return null;
+  const [ls,neck1,head,neck2,rs]=sw.slice(-5);
+  const curr=a[a.length-1];
+  const shoulderTol=0.006; // omuzlar birbirine bu kadar (%0.6) yakın olmalı
+  if(ls.type==='high'&&neck1.type==='low'&&head.type==='high'&&neck2.type==='low'&&rs.type==='high'){
+   const neckline=(neck1.price+neck2.price)/2;
+   if(head.price>ls.price && head.price>rs.price && Math.abs(ls.price-rs.price)/ls.price<shoulderTol && curr.close<neckline){
+    return {key:'headShoulders', dir:-1};
+   }
+  }
+  if(ls.type==='low'&&neck1.type==='high'&&head.type==='low'&&neck2.type==='high'&&rs.type==='low'){
+   const neckline=(neck1.price+neck2.price)/2;
+   if(head.price<ls.price && head.price<rs.price && Math.abs(ls.price-rs.price)/ls.price<shoulderTol && curr.close>neckline){
+    return {key:'headShoulders', dir:1};
+   }
+  }
+  return null;
+ }
+ // ---- ANA/ARA DESTEK-DİRENÇ TEST + TEPKİ — kullanıcı isteği: "1-4 saatlikte ana destek direnç
+ // belirledik, 30 dklıkta ara hatları zaten belirliyoruz, bu seviyelerin kırılımı test edilip geri
+ // dönüşü ya da devamını GÜÇLÜ test edebilecek bir strateji". Sert bir "hepsi birden" şartı DEĞİL —
+ // seviyeye yakınlık ZORUNLU (asıl kanıt), sonra RSI aşırılığı / dönüş mumu / klasik formasyon
+ // (M-W, omuz-baş-omuz) İKİNCİ kanıtlarından HERHANGİ BİRİ yeterli (Elit Scalp'teki "3'te 3" katı
+ // şartının neredeyse hiç ateşlenmediğinden ders çıkarıldı — burada amaç daha SIK ama hâlâ gerçek
+ // kanıta dayalı sinyal).
+ function detectSRTestReversal(a, levels, rsi, structureBias){
+  const curr=a[a.length-1], last=curr.close;
+  if(last==null) return null;
+  const pat=pattern(a);
+  const dtb=detectDoubleTopBottom(a), hs=detectHeadShoulders(a);
+  const nearTol=0.0025;
+  const supLevel = levels.mainSup!=null ? levels.mainSup : levels.dynSup;
+  const resLevel = levels.mainRes!=null ? levels.mainRes : levels.dynRes;
+  if(supLevel!=null && Math.abs(last-supLevel)/last<nearTol && structureBias>=-1){
+   const bullCandle = pat && pat.d==='bull';
+   const rsiOversold = rsi!=null && rsi<35;
+   const patternAgrees = (dtb&&dtb.dir>0) || (hs&&hs.dir>0);
+   if(bullCandle || rsiOversold || patternAgrees) return {key:'srTestReversal', dir:1};
+  }
+  if(resLevel!=null && Math.abs(last-resLevel)/last<nearTol && structureBias<=1){
+   const bearCandle = pat && pat.d==='bear';
+   const rsiOverbought = rsi!=null && rsi>65;
+   const patternAgrees = (dtb&&dtb.dir<0) || (hs&&hs.dir<0);
+   if(bearCandle || rsiOverbought || patternAgrees) return {key:'srTestReversal', dir:-1};
+  }
+  return null;
+ }
+ // ---- ANA/ARA DESTEK-DİRENÇ KIRILIM + DEVAM — aynı seviyeler bu kez TERS yönde: taze bir kırılım
+ // (bir önceki mum hâlâ seviyenin içindeydi, bu mum tam gövdeyle dışına çıktı) + yapı karşı değilse.
+ function detectSRBreakContinuation(a, levels, structureBias){
+  const curr=a[a.length-1], prev=a[a.length-2];
+  if(!prev) return null;
+  const resLevel = levels.mainRes!=null ? levels.mainRes : levels.dynRes;
+  const supLevel = levels.mainSup!=null ? levels.mainSup : levels.dynSup;
+  if(resLevel!=null && curr.close>resLevel && prev.close<=resLevel && curr.close>curr.open && structureBias>=0){
+   return {key:'srBreakContinuation', dir:1};
+  }
+  if(supLevel!=null && curr.close<supLevel && prev.close>=supLevel && curr.close<curr.open && structureBias<=0){
+   return {key:'srBreakContinuation', dir:-1};
+  }
   return null;
  }
  // ---- ÜÇ ADLANDIRILMIŞ, İYİ BELGELENMİŞ SCALPING KALIBI ----
@@ -4005,6 +4190,22 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(eliteWinCount>=2){
    tags.push({key:'valensEliteScalp', dir:eliteWinDir});
   }
+  // (33) ANA/ARA DESTEK-DİRENÇ TEST+TEPKİ / KIRILIM+DEVAM — kullanıcı isteği: Elit Scalp çok
+  // seyrek ateşleniyordu, "biraz daha sık ama güvenilir" bir strateji istendi. Zaten çizilen
+  // ana (1H, mainSRZones) + ara (mevcut zaman dilimi, dinamik) S/R seviyelerini kullanır — bkz.
+  // ind.mainSup/mainRes/dynSup/dynRes/structureBias (botTick DIŞINDAKİ chart-engine script'inden
+  // köprülenir, aynı S/R rakamları grafikte zaten çizili olanlarla BİREBİR aynı).
+  if(ind.srLevels){
+   const srRev=detectSRTestReversal(a, ind.srLevels, ind.rsi, ind.structureBias||0); if(srRev) tags.push(srRev);
+   const srBreak=detectSRBreakContinuation(a, ind.srLevels, ind.structureBias||0); if(srBreak) tags.push(srBreak);
+  }
+  // (34) Klasik grafik formasyonları — DÜZELTME (gerçek backtest'te canlı yakalandı): bağımsız aday
+  // olarak eklenmişlerdi ama gerçek oranları çok düşük çıktı (Omuz-Baş-Omuz %33, Çift Tepe/Dip %29 —
+  // ikisi de 1:2 R:R başabaşının ALTINDA) — buna rağmen taban güvenleri (80/82) yüksek olduğu için
+  // CANLI olarak %90+ güvenle "en güçlü aday" oldular, gerçek performanslarıyla TAMAMEN çelişen bir
+  // sinyal ürettiler (tam da terminalin bu oturum boyu düzelttiğimiz "yanlış güven" sorunu). Bağımsız
+  // aday olmaktan ÇIKARILDILAR — detectDoubleTopBottom/detectHeadShoulders artık SADECE
+  // detectSRTestReversal'ın İÇİNDE bir confluence kanıtı (o strateji gerçekten %50 ile iyi çalışıyor).
   return tags;
  }
  // ---- GEÇMİŞ VERİ TESTİ (BACKTEST) — Kullanıcı isteği: "sinyal vermeden önce stratejiyi test etsin."
@@ -4037,8 +4238,14 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const bollPctReal=calcBollPct(closes,20);
    const vwapReal=calcVWAP(histOhlc,96);
 
+   // srLevels: mainSup/mainRes (1H mainSRZones) geçmiş her nokta için yeniden inşa edilemiyor
+   // (ayrı bir 1H veri çekimi gerektirir) — null bırakılıyor, detectSRTestReversal/Continuation
+   // bu durumda otomatik dynSup/dynRes'e (o anki histOhlc'den GERÇEKTEN yeniden inşa edilebilen)
+   // düşüyor — kısmi ama gerçek bir backtest kapsaması.
+   const {sup:histSup,res:histRes}=supRes(histOhlc);
    const tags=detectStrategyTags(histOhlc, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real,
-     ema200:ema200Real, vwap:vwapReal, zones:[], bollPct:bollPctReal!==null?bollPctReal:50, srBias:0, fibZone:null, tradeDelta:null});
+     ema200:ema200Real, vwap:vwapReal, zones:[], bollPct:bollPctReal!==null?bollPctReal:50, srBias:0, fibZone:null, tradeDelta:null,
+     srLevels:{mainSup:null, mainRes:null, dynSup:histSup, dynRes:histRes}, structureBias:detectSwingStructure(histOhlc,60)});
 
    tags.forEach(tag=>{
     const isTightTpOrb=tag.key==='scalpOrb';
@@ -4561,7 +4768,12 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const cciReal=calcCCI(a,20);
   const psarReal=calcPSAR(a);
   const pivotsReal=calcPivots(a);
-  const strategyTags = detectStrategyTags(a, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, fibZone:fibZone, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null)});
+  // ---- (33)/(34) YENİ STRATEJİLER İÇİN: zaten çizili S/R seviyeleri + yapı bias'ı — window.valensChartRead
+  // için AŞAĞIDA da kullanılacak, iki kez hesaplamamak için burada tek seferlik alınıyor.
+  const structureBiasNow = detectSwingStructure(a, 60);
+  const srLevelsForTags = {mainSup: nearMainSR.sup?nearMainSR.sup.hi:null, mainRes: nearMainSR.res?nearMainSR.res.lo:null,
+    dynSup: (typeof sup==='number'&&isFinite(sup))?sup:null, dynRes: (typeof res==='number'&&isFinite(res))?res:null};
+  const strategyTags = detectStrategyTags(a, {rsi:rsiReal, macd:macdReal, ema9:ema9Real, ema21:ema21Real, ema50:ema50Real, ema200:ema200Real, vwap:vwapReal, zones:zones, bollPct:bollPctReal!==null?bollPctReal:50, srBias:srBias, fibZone:fibZone, tradeDelta:(typeof currentTradeDelta==='function'?currentTradeDelta():null), srLevels:srLevelsForTags, structureBias:structureBiasNow});
 
   window.valensChartRead={
     trend: slope>0?1:slope<0?-1:0,
@@ -4569,7 +4781,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
     pattern: pat?(pat.d==='bull'?1:pat.d==='bear'?-1:0):0,
     patternName: pat?pat.n:'',
     srBias, srText, fibBias, fibZone, strategyTags,
-    structureBias: detectSwingStructure(a, 60),
+    structureBias: structureBiasNow,
     exhaustionBias: detectReversalExhaustion(a, 8),
     // ---- Kullanıcı geri bildirimi: SELL sinyalinin TP'si Ana Destek'in (1H) ALTINA konmuştu — yani
     // hedefe ulaşmak için fiyatın gerçek desteği kırması gerekiyordu, ki kırarsa zaten daha aşağı gider,
