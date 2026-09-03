@@ -1267,7 +1267,7 @@ function logEliteScalpTrade(sym,dir,entry,tp,sl,context,candleTime){
   saveEliteTradeStore(sym,store);
   pushSignalToApi(sym, trade.ts, {sym, dir, entry, tp, sl, stratKey:'valensEliteScalp', stratLabel:trade.stratLabel, context:context||null, ts:trade.ts, lot:trade.lot}, true);
 }
-function updateEliteScalpTradeOutcomes(sym,lastPrice,cr){
+function updateEliteScalpTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   const store=loadEliteTradeStore(sym);
   let changed=false;
   (store.trades||[]).forEach(t=>{
@@ -1276,10 +1276,12 @@ function updateEliteScalpTradeOutcomes(sym,lastPrice,cr){
     let exitPrice=null;
     if(t.dir>0){
       if(lastPrice>=t.tp) exitPrice=t.tp;
-      else if(lastPrice<=t.sl) exitPrice=t.sl;
+      else if(!t.slAdjusted && lastPrice<=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice<=t.sl) exitPrice=t.sl;
     }else if(t.dir<0){
       if(lastPrice<=t.tp) exitPrice=t.tp;
-      else if(lastPrice>=t.sl) exitPrice=t.sl;
+      else if(!t.slAdjusted && lastPrice>=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice>=t.sl) exitPrice=t.sl;
     }
     if(exitPrice!=null){
       t.resolved=true;
@@ -1429,7 +1431,26 @@ function applyTrailingStop(t, lastPrice, drawFn){
   if(t.slAdjusted && drawFn) drawFn(t.sl, t.dir);
   return justTriggered;
 }
-function updateTradeOutcomes(sym,lastPrice,cr){
+// ---- KÂR KORUMA SONRASI ÇIKIŞ İÇİN MUM KAPANIŞ TEYİDİ ----
+// Kullanıcı geri bildirimi (gerçek örnek): BUY iki kez kâr korumaya (trailing stop) takılıp kapandı,
+// ama fiyat hemen ardından asıl TP seviyesine kadar gitti — yani trailing stop, gerçek bir dönüş
+// olmadan, anlık bir geri çekilmeyle (fitille) tetiklenip erken kapatıyordu. ÖNEMLİ AYRIM: bu SADECE
+// kâr koruma devredeyken (t.slAdjusted) geçerli — orijinal SL hâlâ ANINDA (mum içi/fitil) tetiklenir,
+// çünkü o asıl risk sınırıdır ve gevşetilmesi hesabı büyük kayba açık bırakır (bkz. ardışık kayıp
+// devre kesici — aynı hataya düşmemek için). Kâr koruma seviyesi ise HER ZAMAN kârda (entry'nin lehte
+// tarafında, applyTrailingStop ile sabitlenmiş) olduğu için gevşetmenin risk maliyeti yok — en kötü
+// ihtimalle aynı kârı biraz gecikmeli alırız, daha büyük ihtimalle fitili atlatıp asıl TP'ye ulaşırız.
+function getJustClosedCandlePrice(sym, cr){
+  const tracker = window.valensCandleCloseTracker || (window.valensCandleCloseTracker={});
+  const prev = tracker[sym];
+  if(prev && cr && cr.candleTime!=null && prev.candleTime!=null && prev.candleTime!==cr.candleTime) return prev.close;
+  return null;
+}
+function recordCandleCloseTick(sym, cr, price){
+  const tracker = window.valensCandleCloseTracker || (window.valensCandleCloseTracker={});
+  tracker[sym] = {candleTime: (cr && cr.candleTime!=null) ? cr.candleTime : (tracker[sym]?tracker[sym].candleTime:null), close: price};
+}
+function updateTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   const store=loadTradeStore(sym);
   let changed=false;
   (store.trades||[]).forEach(t=>{
@@ -1438,10 +1459,12 @@ function updateTradeOutcomes(sym,lastPrice,cr){
     let exitPrice=null;
     if(t.dir>0){
       if(lastPrice>=t.tp) exitPrice=t.tp;
-      else if(lastPrice<=t.sl) exitPrice=t.sl;
+      else if(!t.slAdjusted && lastPrice<=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice<=t.sl) exitPrice=t.sl;
     }else if(t.dir<0){
       if(lastPrice<=t.tp) exitPrice=t.tp;
-      else if(lastPrice>=t.sl) exitPrice=t.sl;
+      else if(!t.slAdjusted && lastPrice>=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice>=t.sl) exitPrice=t.sl;
     }
     if(exitPrice!=null){
       // outcome artık HANGİ seviyeye (tp/sl) dokunulduğuna değil, o seviyenin girişe göre KÂR/ZARAR
@@ -2015,7 +2038,9 @@ function botTick(){
  // veriyle çalışıyordu, taze stop'u bir tick (3sn) GERİ kalarak görüyordu. Artık açık işlem varsa
  // önce O çözülüyor (kaydı da dahil), sonra yeni aday/güven/soğuma hesaplanıyor — taze bir STOP
  // aynı tick'te ters yöndeki yeni "KESİN İŞLEM"i gerçekten engelliyor.
- updateTradeOutcomes(CUR, adjLast, cr);
+ const justClosedCandlePrice = getJustClosedCandlePrice(CUR, cr);
+ recordCandleCloseTick(CUR, cr, adjLast);
+ updateTradeOutcomes(CUR, adjLast, cr, justClosedCandlePrice);
 
  // Haber yönü: gerçek zamanlı takvimden (bugün açıklanan, beklenti-vs-gerçekleşen) hesaplanan
  // bias varsa ONU kullan; yoksa (API anahtarı yoksa ya da bugün ilgili haber yoksa) elle
@@ -2639,7 +2664,7 @@ function botTick(){
  // açık bir işlemi olsa/olmasa bile bu stratejiyi etkilemez. Önce (varsa) açık kendi işlemini TP/SL'ye
  // göre çözer, SONRA yeni bir kurulum var mı bakar (updateTradeOutcomes'taki "önce çöz sonra karar ver"
  // ile aynı sıralama mantığı, aynı whipsaw nedeniyle).
- updateEliteScalpTradeOutcomes(CUR, adjLast, cr);
+ updateEliteScalpTradeOutcomes(CUR, adjLast, cr, justClosedCandlePrice);
  window.valensEliteScalpLive = eliteScalpTag ? {dir:eliteScalpTag.dir} : null;
  if(typeof updateEliteScalpLiveStatus==='function') updateEliteScalpLiveStatus(window.valensEliteScalpLive);
  if(eliteScalpTag){
