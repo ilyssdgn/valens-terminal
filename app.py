@@ -256,6 +256,8 @@ iframe{height:100%;width:100%;border:0}
 .eventbody{padding:10px}.eventbody p{font-size:9.5px;color:var(--muted);line-height:1.55;margin-bottom:7px}.scenario{font-size:9.5px;padding:7px;border-left:3px solid;margin-top:6px;line-height:1.55}.bull{border-color:var(--green);background:rgba(0,200,150,.06)}.bear{border-color:var(--red);background:rgba(255,80,109,.06)}
 .megaalert{margin:0 9px 9px;padding:9px 12px;border-radius:6px;border:1px solid rgba(212,175,55,.5);background:linear-gradient(90deg,rgba(212,175,55,.14),rgba(0,200,150,.08));display:none;align-items:center;gap:10px;animation:alertpulse 1.1s infinite}
 .megaalert.show{display:flex}
+.krtoast{position:fixed;top:16px;right:16px;z-index:9999;max-width:340px;padding:10px 14px;border-radius:6px;border:1px solid rgba(0,200,150,.55);background:linear-gradient(90deg,rgba(0,200,150,.16),rgba(0,0,0,.55));display:none;align-items:center;gap:10px;box-shadow:0 4px 18px rgba(0,0,0,.35);opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .25s}
+.krtoast.show{display:flex;opacity:1;transform:translateY(0)}
 .megaalert b{font:800 12px 'IBM Plex Mono';color:var(--gold);letter-spacing:.4px}
 .megaalert span{font-size:10px;color:var(--text)}
 @keyframes alertpulse{0%,100%{box-shadow:0 0 6px rgba(212,175,55,.15)}50%{box-shadow:0 0 22px rgba(212,175,55,.55)}}
@@ -387,6 +389,7 @@ iframe{height:100%;width:100%;border:0}
     <section class="center">
       <div class="megaalert" id="fullAlignmentBanner" style="border-color:var(--gold);background:linear-gradient(90deg,rgba(212,175,55,.22),rgba(0,200,150,.12))"><span style="font-size:18px">🎯</span><div><b id="faBannerTitle" data-i18n="fullAlignmentTitle">TAM UYUM — KESİN İŞLEM</b><br><span id="faBannerBody">—</span></div></div>
       <div class="megaalert" id="megaAlert"><span style="font-size:16px">🚨</span><div><b id="megaAlertTitle" data-i18n="mega_alert_title">YÜKSEK POTANSİYELLİ SCALP</b><br><span id="megaAlertBody">—</span></div></div>
+      <div class="krtoast" id="krToast"><span style="font-size:16px">🔒</span><div><b id="krToastTitle">—</b><br><span id="krToastBody">—</span></div></div>
 
       <div class="gaugerow" id="gaugeRow">
         <div class="gauge"><i class="statusdot big na" id="gd_rsi"></i><small>RSI</small></div>
@@ -742,6 +745,8 @@ const I18N = {
   circuitPausedWhyRegime:(min,dir)=>' <span style="color:#ff6b6b">🛑 Art arda 3 '+dir+' kaybı — piyasa rejimi/trend işlemler açıldıktan sonra değişmiş görünüyor. Sistem '+min+' dk tamamen duruyor, sonra yeniden teyit isteyecek.</span>',
   circuitPausedWhyGeneric:(min,dir)=>' <span style="color:#ff6b6b">🛑 Art arda 3 '+dir+' kaybı — hesabı korumak için sistem '+min+' dk tamamen duruyor. Devam ederken aynı yön için daha güçlü teyit isteyecek, ters yön normal çalışmaya devam edecek.</span>',
   circuitPenaltyWhyNote:(dir)=>' <span style="color:#ffb27a">⚠ Az önce art arda 3 '+dir+' kaybı oldu — bu yöndeki yeni adaylara ekstra güven cezası uygulanıyor (daha güçlü sinyal isteniyor), ters yön etkilenmiyor.</span>',
+  profitLockToastTitle:'🔒 KÂR KORUMADAN KAPANDI',
+  profitLockToastBody:(sym,dir,usd)=>sym+' '+dir+' işlemi kâr koruma seviyesinden kapatıldı (mum kapanış teyidiyle) · ≈ +$'+usd,
   confirmStatus:(have,need,dir)=>'🕐 MUM KAPANIŞ ONAYI BEKLENİYOR — '+dir+' · '+have+'/'+need+' mum',
   confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 Bu sinyal henüz sadece '+have+'/'+need+' mum tarafından doğrulandı — mum kapanıp bir SONRAKİ mum da aynı yönü desteklerse KESİN İŞLEM sayılacak (aynı mumun ilk okuması tek başına yeterli değil, sahte titreşim riskine karşı).</span>',
   anText: p => (p.totalVotes>0 ? ('Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor.') : ('Bot şu an '+p.label+' üzerinde net bir yön bulamıyor — göstergeler/stratejiler birbiriyle çelişiyor ya da hiçbiri belirgin değil (aşağıdaki kategori dökümüne bakın).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
@@ -961,6 +966,8 @@ const I18N = {
   circuitPausedWhyRegime:(min,dir)=>' <span style="color:#ff6b6b">🛑 3 '+dir+' losses in a row — the market regime/trend looks like it changed after these trades opened. The system is fully pausing for '+min+' min, then will require fresh confirmation.</span>',
   circuitPausedWhyGeneric:(min,dir)=>' <span style="color:#ff6b6b">🛑 3 '+dir+' losses in a row — to protect the account the system is fully pausing for '+min+' min. When it resumes, the same direction will need stronger confirmation; the opposite direction is unaffected.</span>',
   circuitPenaltyWhyNote:(dir)=>' <span style="color:#ffb27a">⚠ 3 '+dir+' losses just happened in a row — new candidates in this direction get an extra confidence penalty (need a stronger signal); the opposite direction is unaffected.</span>',
+  profitLockToastTitle:'🔒 CLOSED VIA PROFIT LOCK',
+  profitLockToastBody:(sym,dir,usd)=>sym+' '+dir+' trade closed at the profit-lock level (confirmed by candle close) · ≈ +$'+usd,
   confirmStatus:(have,need,dir)=>'🕐 WAITING FOR CANDLE-CLOSE CONFIRMATION — '+dir+' · '+have+'/'+need+' candles',
   confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 This signal is only confirmed by '+have+'/'+need+' candle(s) so far — once this candle closes and the NEXT one still agrees, it becomes a CONFIRMED TRADE (a single candle\'s first reading alone is not enough, to guard against noise).</span>',
   anText: p => (p.totalVotes>0 ? ('The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score.') : ('The bot cannot find a clear direction for '+p.label+' right now — indicators/strategies conflict or none are decisive (see the category breakdown below).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
@@ -1273,15 +1280,15 @@ function updateEliteScalpTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
     if(applyTrailingStop(t, lastPrice, window.valensDrawEliteTrailedSL)) changed=true;
-    let exitPrice=null;
+    let exitPrice=null, closedViaProfitLock=false;
     if(t.dir>0){
       if(lastPrice>=t.tp) exitPrice=t.tp;
       else if(!t.slAdjusted && lastPrice<=t.sl) exitPrice=t.sl;
-      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice<=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice<=t.sl){ exitPrice=t.sl; closedViaProfitLock=true; }
     }else if(t.dir<0){
       if(lastPrice<=t.tp) exitPrice=t.tp;
       else if(!t.slAdjusted && lastPrice>=t.sl) exitPrice=t.sl;
-      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice>=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice>=t.sl){ exitPrice=t.sl; closedViaProfitLock=true; }
     }
     if(exitPrice!=null){
       t.resolved=true;
@@ -1291,6 +1298,10 @@ function updateEliteScalpTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
       changed=true;
       resolveSignalOnApi(t);
       if(window.valensClearEliteTrailedSL) window.valensClearEliteTrailedSL();
+      if(closedViaProfitLock && window.valensShowProfitLockToast){
+        const cs=SYMS[sym].contractSize, lot=(t.lot!=null?t.lot:avgLot());
+        window.valensShowProfitLockToast(sym, t.dir, Math.round(t.dir*(exitPrice-t.entry)*cs*lot));
+      }
     }
   });
   if(changed)saveEliteTradeStore(sym,store);
@@ -1456,15 +1467,15 @@ function updateTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
     if(applyTrailingStop(t, lastPrice, window.valensDrawTrailedSL)) changed=true;
-    let exitPrice=null;
+    let exitPrice=null, closedViaProfitLock=false;
     if(t.dir>0){
       if(lastPrice>=t.tp) exitPrice=t.tp;
       else if(!t.slAdjusted && lastPrice<=t.sl) exitPrice=t.sl;
-      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice<=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice<=t.sl){ exitPrice=t.sl; closedViaProfitLock=true; }
     }else if(t.dir<0){
       if(lastPrice<=t.tp) exitPrice=t.tp;
       else if(!t.slAdjusted && lastPrice>=t.sl) exitPrice=t.sl;
-      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice>=t.sl) exitPrice=t.sl;
+      else if(t.slAdjusted && justClosedCandlePrice!=null && justClosedCandlePrice>=t.sl){ exitPrice=t.sl; closedViaProfitLock=true; }
     }
     if(exitPrice!=null){
       // outcome artık HANGİ seviyeye (tp/sl) dokunulduğuna değil, o seviyenin girişe göre KÂR/ZARAR
@@ -1479,6 +1490,10 @@ function updateTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
       recordMainTradeOutcome(t.dir,t.outcome,t.context||null);
       resolveSignalOnApi(t);
       if(window.valensClearTrailedSL) window.valensClearTrailedSL();
+      if(closedViaProfitLock && window.valensShowProfitLockToast){
+        const cs=SYMS[sym].contractSize, lot=(t.lot!=null?t.lot:avgLot());
+        window.valensShowProfitLockToast(sym, t.dir, Math.round(t.dir*(exitPrice-t.entry)*cs*lot));
+      }
     }
   });
   if(changed)saveTradeStore(sym,store);
@@ -4672,6 +4687,19 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  };
  window.valensClearEliteTrailedSL=function(){
   if(eliteTrailedSLLine){ cs.removePriceLine(eliteTrailedSLLine); eliteTrailedSLLine=null; }
+ };
+ // ---- KÂR KORUMA BİLDİRİMİ — kullanıcı isteği: "kâr koruma devreye girdiği zaman işlemi kâr
+ // korumadan kapatıyoruz diye bildirim atsın". Sadece TAM OLARAK bu sebeple (mum-kapanış teyitli
+ // kâr koruma çıkışı, bkz. getJustClosedCandlePrice) kapanan işlemlerde tetiklenir — TP'ye ulaşan
+ // ya da orijinal risk stopuna takılan işlemler bu bildirimi tetiklemez, zaten kendi UI'ları var.
+ window.valensShowProfitLockToast=function(sym, dir, usd){
+  const el=document.getElementById('krToast');
+  if(!el) return;
+  document.getElementById('krToastTitle').textContent=t('profitLockToastTitle');
+  document.getElementById('krToastBody').textContent=t('profitLockToastBody')(sym.split(':').pop(), dir>0?'BUY':'SELL', usd);
+  el.classList.add('show');
+  clearTimeout(window.valensKrToastTimer);
+  window.valensKrToastTimer=setTimeout(()=>{ el.classList.remove('show'); }, 7000);
  };
  function analyze(isCloseTick){
   if(ohlc.length<20)return;
