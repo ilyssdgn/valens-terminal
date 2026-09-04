@@ -747,6 +747,10 @@ const I18N = {
   circuitPenaltyWhyNote:(dir)=>' <span style="color:#ffb27a">⚠ Az önce art arda 3 '+dir+' kaybı oldu — bu yöndeki yeni adaylara ekstra güven cezası uygulanıyor (daha güçlü sinyal isteniyor), ters yön etkilenmiyor.</span>',
   profitLockToastTitle:'🔒 KÂR KORUMADAN KAPANDI',
   profitLockToastBody:(sym,dir,usd)=>sym+' '+dir+' işlemi kâr koruma seviyesinden kapatıldı (mum kapanış teyidiyle) · ≈ +$'+usd,
+  riskReducedToastTitle:'⚠ RİSK AZALTILDI',
+  riskReducedToastBody:(sym,dir)=>sym+' '+dir+' işleminde belirsiz bir dönüş sinyali görüldü — stop entry\'ye yaklaştırıldı, olası zarar küçültüldü.',
+  profitLockArmedToastTitle:'🔒 KÂR KORUMA DEVREDE',
+  profitLockArmedToastBody:(sym,dir)=>sym+' '+dir+' işleminde net yönlü bir dönüş sinyali görüldü — stop entry\'nin üzerine çekildi, küçük bir kâr kilitlendi.',
   confirmStatus:(have,need,dir)=>'🕐 MUM KAPANIŞ ONAYI BEKLENİYOR — '+dir+' · '+have+'/'+need+' mum',
   confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 Bu sinyal henüz sadece '+have+'/'+need+' mum tarafından doğrulandı — mum kapanıp bir SONRAKİ mum da aynı yönü desteklerse KESİN İŞLEM sayılacak (aynı mumun ilk okuması tek başına yeterli değil, sahte titreşim riskine karşı).</span>',
   anText: p => (p.totalVotes>0 ? ('Bot '+p.totalVotes+' gerçek girdiyi (indikatörler + grafik kalıpları + 8 adlandırılmış strateji + haber) '+p.label+' üzerinde <b>gerçek Binance OHLC verisinden</b> tek bir skora kombine ediyor.') : ('Bot şu an '+p.label+' üzerinde net bir yön bulamıyor — göstergeler/stratejiler birbiriyle çelişiyor ya da hiçbiri belirgin değil (aşağıdaki kategori dökümüne bakın).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'pozitif':'negatif')+
@@ -968,6 +972,10 @@ const I18N = {
   circuitPenaltyWhyNote:(dir)=>' <span style="color:#ffb27a">⚠ 3 '+dir+' losses just happened in a row — new candidates in this direction get an extra confidence penalty (need a stronger signal); the opposite direction is unaffected.</span>',
   profitLockToastTitle:'🔒 CLOSED VIA PROFIT LOCK',
   profitLockToastBody:(sym,dir,usd)=>sym+' '+dir+' trade closed at the profit-lock level (confirmed by candle close) · ≈ +$'+usd,
+  riskReducedToastTitle:'⚠ RISK REDUCED',
+  riskReducedToastBody:(sym,dir)=>sym+' '+dir+' trade showed an ambiguous reversal signal — stop moved closer to entry, potential loss reduced.',
+  profitLockArmedToastTitle:'🔒 PROFIT LOCK ARMED',
+  profitLockArmedToastBody:(sym,dir)=>sym+' '+dir+' trade showed a clear directional reversal — stop moved above entry, a small profit is now locked in.',
   confirmStatus:(have,need,dir)=>'🕐 WAITING FOR CANDLE-CLOSE CONFIRMATION — '+dir+' · '+have+'/'+need+' candles',
   confirmWhyNote:(have,need)=>' <span style="color:var(--blue)">🕐 This signal is only confirmed by '+have+'/'+need+' candle(s) so far — once this candle closes and the NEXT one still agrees, it becomes a CONFIRMED TRADE (a single candle\'s first reading alone is not enough, to guard against noise).</span>',
   anText: p => (p.totalVotes>0 ? ('The bot combines '+p.totalVotes+' real inputs (indicators + chart patterns + 8 named strategies + news) for '+p.label+' live from <b>real Binance OHLC data</b> into a single score.') : ('The bot cannot find a clear direction for '+p.label+' right now — indicators/strategies conflict or none are decisive (see the category breakdown below).')) + ' RSI <b>'+p.rsi+'</b>, MACD '+(p.macdPos?'positive':'negative')+
@@ -1279,7 +1287,11 @@ function updateEliteScalpTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   let changed=false;
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
-    if(applyTrailingStop(t, lastPrice, window.valensDrawEliteTrailedSL)) changed=true;
+    if(applyTrailingStop(t, lastPrice, cr, window.valensDrawEliteTrailedSL)){
+      changed=true;
+      if(t.protectLevel===1 && window.valensShowRiskReducedToast) window.valensShowRiskReducedToast(sym, t.dir);
+      else if(t.protectLevel===2 && window.valensShowProfitLockArmedToast) window.valensShowProfitLockArmedToast(sym, t.dir);
+    }
     let exitPrice=null, closedViaProfitLock=false;
     if(t.dir>0){
       if(lastPrice>=t.tp) exitPrice=t.tp;
@@ -1419,27 +1431,69 @@ function recordMainTradeOutcome(dir,outcome,ctx){
     localStorage.setItem(mainLossStreakKey(), JSON.stringify(st));
   }catch(e){}
 }
-// ---- KÂR KORUMA (trailing stop) — kullanıcı isteği: "tp'nin yüzde 75'i üzeri tamamlandığında
-// stopu işlemin yarısına çeksin, en kötü senaryoda total profitin yarısını alalım". Fiyat, giriş-TP
-// mesafesinin %75'ine ulaştığında stop, giriş-TP mesafesinin %50'sine (tam ortasına) çekilir — bir
-// kere tetiklenince KALICIDIR (fiyat sonra %75'in altına dönse bile stop geri gevşetilmez). drawFn
-// verilirse (chart motoruna köprü) yeni stop seviyesinde kırmızı bir çizgi çizdirir.
-// Dönüş değeri: bu ÇAĞRIDA yeni tetiklendiyse true (çağıran, localStorage'a KAYDETMESİ gerektiğini
-// bilsin diye — DÜZELTME: ilk sürümde çağıran sadece işlem SONUÇLANDIĞINDA kaydediyordu, sl/slAdjusted
-// mutasyonu resolve olmayan bir tick'te belleğe yazılıp hiç localStorage'a düşmüyordu, bir sonraki
-// tick'te store yeniden YÜKLENİNCE değişiklik SIFIRLANIYORDU — stop asla gerçekten çekilmiyordu).
-function applyTrailingStop(t, lastPrice, drawFn){
-  let justTriggered=false;
-  if(!t.slAdjusted){
-   const distToTp = Math.abs(t.tp-t.entry);
-   const thresholdPrice = t.entry + t.dir*0.75*distToTp;
-   const reached = t.dir>0 ? lastPrice>=thresholdPrice : lastPrice<=thresholdPrice;
-   if(reached){ t.sl = t.entry + t.dir*0.5*distToTp; t.slAdjusted = true; justTriggered=true; }
+// ---- KÂR KORUMA (kademeli, dönüş-sinyaline dayalı) ----
+// Kullanıcı geri bildirimi (çizimli örnek): eski sürüm SADECE "%75'e ulaştı mı" diye sabit bir fiyat
+// yüzdesine bakıyordu — yapıyı bozmayan normal bir geri çekilmeyle (üstteki grafik: temiz, kademeli
+// yükseliş) GERÇEK bir dönüşü (alttaki grafik: kararsız, yön belirtmeyen testere) ayırt edemiyordu.
+// Kullanıcının kendi tarifi: "işlem güvenilir ve TP ihtimali hâlâ yüksekse dokunma; güvenilir değil
+// ama TP ihtimali de düşük değilse SL'yi biraz entry'ye yaklaştır (riski azalt) + bildir; net yönlü
+// bir dönüş varsa stopu entry'nin birkaç puan üzerine çek (küçük garanti kâr kilitle)". Artık tetik
+// fiyat yüzdesi değil, zaten her tick hesaplanan GERÇEK dönüş sinyalleri: yapısal kırılma
+// (structureBias), tükeniş kümesi (exhaustionBias), ters yönlü mum formasyonu (pattern) — kaç
+// tanesi işlemin YÖNÜNE karşıysa (Elite Scalp'teki "kaç kanıt var" mantığıyla aynı desen):
+//   0 sinyal -> dokunma (Kademe 0)
+//   1 sinyal -> SL'yi orijinal SL ile entry'nin tam ortasına çek, hâlâ zarar ama küçültülmüş (Kademe 1)
+//   2+ sinyal -> stopu entry + risk_mesafesinin %15'i seviyesine çek, küçük garanti kâr (Kademe 2)
+// Her iki kademe de KALICIDIR (bir kere yükseldi mi geri gevşetilmez) — Kademe 1'den Kademe 2'ye
+// yükselebilir ama asla geri inmez. Kademe 2'ye ulaşana kadar stop hâlâ GERÇEK risk sınırıdır ve
+// anında (mum içi) tetiklenir; sadece Kademe 2 (garanti kâr) mum-kapanış teyidi bekler (bkz. aşağıdaki
+// getJustClosedCandlePrice bloğu, t.slAdjusted üzerinden). drawFn verilirse (chart motoruna köprü)
+// aktif stop seviyesinde kırmızı bir çizgi çizdirir.
+function detectReversalSignalCount(dir, cr){
+  if(!cr) return 0;
+  let n=0;
+  if(cr.structureBias!=null && cr.structureBias!==0){
+    if(dir>0 ? cr.structureBias<0 : cr.structureBias>0) n++;
   }
-  // slAdjusted olduğu sürece HER tick'te tekrar çizdirilir (sadece tetiklendiği anda değil) — sembol/
-  // zaman dilimi değişince chart motoru TÜM çizgileri temizliyor (bkz. valensSetSymbol/valensSetInterval),
-  // bu olmadan kilitlenmiş stop çizgisi bir daha asla geri gelmezdi (tekrar tetiklenme şartı yok).
-  if(t.slAdjusted && drawFn) drawFn(t.sl, t.dir);
+  if(cr.exhaustionBias!=null && cr.exhaustionBias!==0){
+    if(dir>0 ? cr.exhaustionBias<0 : cr.exhaustionBias>0) n++;
+  }
+  if(cr.pattern!=null && cr.pattern===-dir) n++;
+  return n;
+}
+// Dönüş değeri: bu ÇAĞRIDA bir kademe YENİ tetiklendiyse/yükseldiyse true (çağıran, localStorage'a
+// KAYDETMESİ gerektiğini bilsin diye — DÜZELTME: ilk sürümde çağıran sadece işlem SONUÇLANDIĞINDA
+// kaydediyordu, mutasyon resolve olmayan bir tick'te belleğe yazılıp hiç localStorage'a düşmüyordu,
+// bir sonraki tick'te store yeniden YÜKLENİNCE değişiklik SIFIRLANIYORDU — stop asla gerçekten
+// çekilmiyordu).
+function applyTrailingStop(t, lastPrice, cr, drawFn){
+  let justTriggered=false;
+  if(t.originalSl==null) t.originalSl = t.sl;
+  if((t.protectLevel||0) < 2){
+   const distToTp = Math.abs(t.tp-t.entry);
+   const riskDist = Math.abs(t.entry-t.originalSl);
+   // Fiyat henüz anlamlı ilerlemediyse (kullanıcının örneğindeki gibi en az yarı yola gelmediyse)
+   // hiç değerlendirmeye almıyoruz — erken bir dönüş sinyali gürültüden ayırt edilemez.
+   const progressedEnough = t.dir>0 ? lastPrice >= t.entry+0.5*distToTp : lastPrice <= t.entry-0.5*distToTp;
+   if(progressedEnough){
+    const signalCount = detectReversalSignalCount(t.dir, cr);
+    if(signalCount>=2 && (t.protectLevel||0)<2){
+     t.sl = t.entry + t.dir*0.15*riskDist;
+     t.protectLevel = 2;
+     t.slAdjusted = true; // mum-kapanış-teyitli çıkış mantığı bunu okuyor (bkz. aşağı)
+     justTriggered = true;
+    } else if(signalCount===1 && (t.protectLevel||0)<1){
+     t.sl = (t.originalSl + t.entry)/2;
+     t.protectLevel = 1;
+     t.riskReduced = true;
+     justTriggered = true;
+    }
+   }
+  }
+  // protectLevel>0 olduğu sürece HER tick'te tekrar çizdirilir (sadece tetiklendiği anda değil) —
+  // sembol/zaman dilimi değişince chart motoru TÜM çizgileri temizliyor (bkz. valensSetSymbol/
+  // valensSetInterval), bu olmadan kilitlenmiş stop çizgisi bir daha asla geri gelmezdi.
+  if((t.protectLevel||0)>0 && drawFn) drawFn(t.sl, t.dir);
   return justTriggered;
 }
 // ---- KÂR KORUMA SONRASI ÇIKIŞ İÇİN MUM KAPANIŞ TEYİDİ ----
@@ -1466,7 +1520,11 @@ function updateTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   let changed=false;
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
-    if(applyTrailingStop(t, lastPrice, window.valensDrawTrailedSL)) changed=true;
+    if(applyTrailingStop(t, lastPrice, cr, window.valensDrawTrailedSL)){
+      changed=true;
+      if(t.protectLevel===1 && window.valensShowRiskReducedToast) window.valensShowRiskReducedToast(sym, t.dir);
+      else if(t.protectLevel===2 && window.valensShowProfitLockArmedToast) window.valensShowProfitLockArmedToast(sym, t.dir);
+    }
     let exitPrice=null, closedViaProfitLock=false;
     if(t.dir>0){
       if(lastPrice>=t.tp) exitPrice=t.tp;
@@ -3307,8 +3365,29 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  }
 
  function supRes(a){const s=a.slice(-60);let hi=-1e12,lo=1e12;s.forEach(c=>{if(c.high>hi)hi=c.high;if(c.low<lo)lo=c.low;});return{sup:lo,res:hi};}
+ // ---- 3 LINE STRIKE — kullanıcı isteği: TradingView'da gördüğü "The Arty" göstergesinden ilham,
+ // bizim setimizde henüz olmayan tek gerçekten yeni/net-tanımlı parça buydu (MA bulutları ve risk
+ // paneli zaten sahip olduğumuz EMA/ATR altyapısıyla örtüşüyordu, tekrar eklemedik). Klasik tanım:
+ // 3 ardışık AYNI yönlü mum (her biri bir öncekinden daha ileri kapanıyor), ardından 4. mum TERS
+ // yönde ve önceki 3 mumun TAMAMINI (ilk mumun açılışının ötesine kadar) siliyor. Literatürde bu
+ // formasyonun "devam mı dönüş mü" sinyali olduğu tartışmalı (kaynaklar farklı etiketliyor) — bu
+ // yüzden burada d:'bull'/'bear' SADECE YAPISAL yönü (4. mumun yönünü) belirtiyor, gerçek anlamı
+ // (devam mı dönüş mü) gerçek backtest ile ayrıca doğrulanmadan hiçbir canlı karar mantığına
+ // (armed/confidence) bağlanmadı — şimdilik sadece cr.pattern üzerinden kâr koruma dönüş-sinyali
+ // sayımına (detectReversalSignalCount) ve işlem context'ine (ileride analiz için) giriyor.
+ function detect3LineStrike(a){
+  if(a.length<4) return null;
+  const p3=a[a.length-4], p2=a[a.length-3], p1=a[a.length-2], c=a[a.length-1];
+  const threeDown = p3.close<p3.open && p2.close<p2.open && p1.close<p1.open && p2.close<p3.close && p1.close<p2.close;
+  const threeUp = p3.close>p3.open && p2.close>p2.open && p1.close>p1.open && p2.close>p3.close && p1.close>p2.close;
+  if(threeDown && c.close>c.open && c.open<=p1.close && c.close>p3.open) return {n:'3 Line Strike', d:'bull'};
+  if(threeUp && c.close<c.open && c.open>=p1.close && c.close<p3.open) return {n:'3 Line Strike', d:'bear'};
+  return null;
+ }
  function pattern(a){
   if(a.length<2)return null;const c=a[a.length-1],p=a[a.length-2];
+  const strike=detect3LineStrike(a);
+  if(strike) return strike;
   const body=Math.abs(c.close-c.open),range=c.high-c.low||1e-9;
   const up=c.high-Math.max(c.close,c.open),lo=Math.min(c.close,c.open)-c.low;
   const bull=c.close>c.open,bear=c.close<c.open;
@@ -4383,15 +4462,17 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const atrRef=calcATR(bars,14)||((bars[bars.length-1].high-bars[bars.length-1].low)||1);
   // DÜZELTME 3 (kullanıcının kesin isteği): ATR'ye dayalı hesap hâlâ çok geniş bantlar üretebiliyordu
   // (yüksek volatiliteli dönemlerde ATR'nin kendisi büyüyünce sınır da büyüyordu). Artık MUTLAK bir
-  // dolar tavanı var — bir bölge, ATR ne olursa olsun 10 dolardan GENİŞ OLAMAZ.
-  const HARD_MAX_ZONE_WIDTH=10;
+  // dolar tavanı var — bir bölge, ATR ne olursa olsun HARD_MAX_ZONE_WIDTH'ten GENİŞ OLAMAZ.
+  // DÜZELTME 4 (kullanıcı geri bildirimi): 10 dolarlık tavan hâlâ "alan çok büyük" hissi veriyordu —
+  // en uygun/en dar noktaya indirmek için 5 dolara düşürüldü.
+  const HARD_MAX_ZONE_WIDTH=5;
   const maxZoneWidth=Math.min(atrRef*1.4, HARD_MAX_ZONE_WIDTH);
   const minGap=Math.min(atrRef*0.5, HARD_MAX_ZONE_WIDTH*0.6);
   // ÖNEMLİ: aşağıdaki merge döngüsü sadece İKİ bölge BİRLEŞTİĞİNDE sonucu sınırlıyordu — ama
-  // detectConsolidationZones gibi bir kaynaktan gelen TEK bir ham bölge zaten kendi başına 10
-  // dolardan geniş gelebiliyordu (hiç birleşmeden), bu durumda hiç kontrol edilmeden geçiyordu.
-  // Her adayı kaynağından çıkar çıkmaz (merge'den ÖNCE) 10 dolara sabitliyoruz — hiçbir bölge,
-  // hangi kaynaktan gelirse gelsin, asla bu sınırı aşamaz.
+  // detectConsolidationZones gibi bir kaynaktan gelen TEK bir ham bölge zaten kendi başına
+  // HARD_MAX_ZONE_WIDTH'ten geniş gelebiliyordu (hiç birleşmeden), bu durumda hiç kontrol edilmeden
+  // geçiyordu. Her adayı kaynağından çıkar çıkmaz (merge'den ÖNCE) bu sınıra sabitliyoruz — hiçbir
+  // bölge, hangi kaynaktan gelirse gelsin, asla bu sınırı aşamaz.
   const clampWidth=(z)=>{ const w=z.hi-z.lo; if(w<=HARD_MAX_ZONE_WIDTH) return z; const mid=(z.hi+z.lo)/2; return {hi:mid+HARD_MAX_ZONE_WIDTH/2, lo:mid-HARD_MAX_ZONE_WIDTH/2, weight:z.weight}; };
   const consolZones=detectConsolidationZones(bars).map(z=>clampWidth({hi:z.hi, lo:z.lo, weight:1}));
   const rsiZones=clusterLevelsIntoZones(detectRsiReversalLevels(bars), 0.0025).map(z=>clampWidth({hi:z.hi, lo:z.lo, weight:z.count}));
@@ -4437,8 +4518,8 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    // bu sadece SON birkaç günde oraya hiç gelinmediği anlamına gelir, aylar/yıllar önce orada
    // gerçekten oturulmuş/dönülmüş olabilir. Yakın bölge yoksa (>3×ATR), fiyat gerçek bir all-time
    // uç noktasında değilse günlük mumlarla (yıllara yayılan) geçmişe bakıp o bölgedeki GERÇEK eski
-   // destek/dirençleri buluyoruz — hâlâ aynı $10 sert tavan ve aynı kanıt şartları (count≥2 vb.)
-   // geçerli, sadece bakılan pencere uzuyor.
+   // destek/dirençleri buluyoruz — hâlâ aynı HARD_MAX_ZONE_WIDTH sert tavan ve aynı kanıt şartları
+   // (count≥2 vb.) geçerli, sadece bakılan pencere uzuyor.
    const atrRef=calcATR(bars,14)||1;
    const nearestGap=newZones.length ? Math.min(...newZones.map(z=>Math.abs(lastPrice-(z.hi+z.lo)/2))) : Infinity;
    if(nearestGap>atrRef*3){
@@ -4692,14 +4773,26 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // korumadan kapatıyoruz diye bildirim atsın". Sadece TAM OLARAK bu sebeple (mum-kapanış teyitli
  // kâr koruma çıkışı, bkz. getJustClosedCandlePrice) kapanan işlemlerde tetiklenir — TP'ye ulaşan
  // ya da orijinal risk stopuna takılan işlemler bu bildirimi tetiklemez, zaten kendi UI'ları var.
- window.valensShowProfitLockToast=function(sym, dir, usd){
+ function showKrToast(title, body){
   const el=document.getElementById('krToast');
   if(!el) return;
-  document.getElementById('krToastTitle').textContent=t('profitLockToastTitle');
-  document.getElementById('krToastBody').textContent=t('profitLockToastBody')(sym.split(':').pop(), dir>0?'BUY':'SELL', usd);
+  document.getElementById('krToastTitle').textContent=title;
+  document.getElementById('krToastBody').textContent=body;
   el.classList.add('show');
   clearTimeout(window.valensKrToastTimer);
   window.valensKrToastTimer=setTimeout(()=>{ el.classList.remove('show'); }, 7000);
+ }
+ window.valensShowProfitLockToast=function(sym, dir, usd){
+  showKrToast(t('profitLockToastTitle'), t('profitLockToastBody')(sym.split(':').pop(), dir>0?'BUY':'SELL', usd));
+ };
+ // ---- Kademe 1 (risk azaltma) ve Kademe 2 (kâr kilidi ARMED) bildirimleri — kullanıcı isteği:
+ // her iki kademede de "bunun bildirimini versin". Bu, işlem KAPANDIĞINDA çalan valensShowProfitLockToast'tan
+ // FARKLI — bunlar stop AYARLANDIĞI anda (işlem henüz açık, sadece koruması değişti) tetiklenir.
+ window.valensShowRiskReducedToast=function(sym, dir){
+  showKrToast(t('riskReducedToastTitle'), t('riskReducedToastBody')(sym.split(':').pop(), dir>0?'BUY':'SELL'));
+ };
+ window.valensShowProfitLockArmedToast=function(sym, dir){
+  showKrToast(t('profitLockArmedToastTitle'), t('profitLockArmedToastBody')(sym.split(':').pop(), dir>0?'BUY':'SELL'));
  };
  function analyze(isCloseTick){
   if(ohlc.length<20)return;
