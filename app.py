@@ -741,6 +741,7 @@ const I18N = {
   riskBlockedStatus:'🛑 GÜNLÜK RİSK SINIRI — yeni sinyal durduruldu',
   cooldownStatus:(min)=>'⏸ STOP SONRASI SOĞUMA — ters yön '+min+' dk daha bekletiliyor (whipsaw koruması)',
   cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ Az önce ters yönde STOP oldu — sahte dönüş riskine karşı '+min+' dk daha bu yönde KESİN İŞLEM açılmayacak (aynı yönde devam serbest).</span>',
+  positionOpenStatus:'⏸ POZİSYON SINIRI — bu paritede 3 açık pozisyon dolu ya da bu mumda zaten işlem açıldı',
   circuitPausedStatus:(min)=>'🛑 ARDIŞIK 3 KAYIP — tüm yeni sinyaller '+min+' dk duraklatıldı',
   circuitPausedWhyRegime:(min,dir)=>' <span style="color:#ff6b6b">🛑 Art arda 3 '+dir+' kaybı — piyasa rejimi/trend işlemler açıldıktan sonra değişmiş görünüyor. Sistem '+min+' dk tamamen duruyor, sonra yeniden teyit isteyecek.</span>',
   circuitPausedWhyGeneric:(min,dir)=>' <span style="color:#ff6b6b">🛑 Art arda 3 '+dir+' kaybı — hesabı korumak için sistem '+min+' dk tamamen duruyor. Devam ederken aynı yön için daha güçlü teyit isteyecek, ters yön normal çalışmaya devam edecek.</span>',
@@ -966,6 +967,7 @@ const I18N = {
   riskBlockedStatus:'🛑 DAILY RISK LIMIT — new signals paused',
   cooldownStatus:(min)=>'⏸ POST-STOP COOLDOWN — opposite direction held for '+min+' more min (whipsaw guard)',
   cooldownWhyNote:(min)=>' <span style="color:#ffb27a">⏸ This direction just got STOPPED OUT — to avoid a false reversal, no new CONFIRMED TRADE this direction for '+min+' more min (continuing the same direction is still allowed).</span>',
+  positionOpenStatus:'⏸ POSITION LIMIT — this pair already has 3 open positions or a trade already opened this candle',
   circuitPausedStatus:(min)=>'🛑 3 LOSSES IN A ROW — all new signals paused for '+min+' min',
   circuitPausedWhyRegime:(min,dir)=>' <span style="color:#ff6b6b">🛑 3 '+dir+' losses in a row — the market regime/trend looks like it changed after these trades opened. The system is fully pausing for '+min+' min, then will require fresh confirmation.</span>',
   circuitPausedWhyGeneric:(min,dir)=>' <span style="color:#ff6b6b">🛑 3 '+dir+' losses in a row — to protect the account the system is fully pausing for '+min+' min. When it resumes, the same direction will need stronger confirmation; the opposite direction is unaffected.</span>',
@@ -1241,8 +1243,8 @@ function saveTradeStore(sym,store){try{localStorage.setItem(getTradeKey(sym),JSO
 function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context,candleTime){
   const store=loadTradeStore(sym);
   store.trades=store.trades||[];
-  const openTrade=store.trades.find(t=>!t.resolved);
-  if(openTrade)return; // aynı anda tek açık takip — üst üste her tick'te yeni kayıt açılmaz
+  if(openPositionCountForSymbol(sym)>=3) return; // paritede max 3 eşzamanlı açık pozisyon
+  if(candleAlreadyUsed(sym,candleTime)) return; // aynı mumda ikinci bir işlem açılmaz
   // candleTime: chart.timeScale().timeToCoordinate() SADECE grafikte GERÇEKTEN çizili bir mumun
   // TAM zaman değerini kabul ediyor (Date.now() gibi rastgele bir saniye DEĞİL — test edip
   // doğruladım, aradaki fark 1dk'dan bile az olsa null dönüyor) — 1M Scalp Modu kutu çizimi bu
@@ -1271,11 +1273,31 @@ const ELITE_TRADE_STORE_PREFIX='valens_elite_trades_';
 function getEliteTradeKey(sym){return ELITE_TRADE_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
 function loadEliteTradeStore(sym){try{const raw=localStorage.getItem(getEliteTradeKey(sym));if(!raw)return{trades:[]};return JSON.parse(raw);}catch(e){return{trades:[]};}}
 function saveEliteTradeStore(sym,store){try{localStorage.setItem(getEliteTradeKey(sym),JSON.stringify(store));}catch(e){}}
+// ---- PARİTE BAŞINA POZİSYON DİSİPLİNİ ----
+// Kullanıcı geri bildirimi (başka bir deneysel bot ile karşılaştırma, sonra kullanıcının kendi
+// düzeltmesi): önce "hesap-geneli tam olarak 1 açık pozisyon" kuralı denendi, ama kullanıcı bunun
+// yerine daha esnek bir kural istedi — her paritede (sembolde) en fazla 3 eşzamanlı açık pozisyon
+// (ana motor + Elite Scalp toplamı), VE aynı mum içinde en fazla 1 YENİ pozisyon açılabilir (aynı
+// mumda ikinci/üçüncü pozisyonun açılması, gürültüyle/flip-flop'la üst üste girişi önler — 3'e kadar
+// çıkmak için en az 3 FARKLI mum gerekir). Bu, "aynı anda 8'e kadar pozisyon" ve "aynı sembolde aynı
+// anda hem AL hem SAT" riskini tamamen ortadan kaldırmasa da (kasıtlı olarak paritede sınırlı,
+// hesap-geneli değil), art arda/aynı mumda patlayan pozisyon yığılmasını engelliyor.
+function openPositionCountForSymbol(sym){
+  const mainOpen=(loadTradeStore(sym).trades||[]).filter(t=>!t.resolved).length;
+  const eliteOpen=(loadEliteTradeStore(sym).trades||[]).filter(t=>!t.resolved).length;
+  return mainOpen+eliteOpen;
+}
+function candleAlreadyUsed(sym, candleTime){
+  if(candleTime==null) return false;
+  const mainTrades=loadTradeStore(sym).trades||[];
+  const eliteTrades=loadEliteTradeStore(sym).trades||[];
+  return mainTrades.some(t=>t.candleTime===candleTime) || eliteTrades.some(t=>t.candleTime===candleTime);
+}
 function logEliteScalpTrade(sym,dir,entry,tp,sl,context,candleTime){
   const store=loadEliteTradeStore(sym);
   store.trades=store.trades||[];
-  const openTrade=store.trades.find(t=>!t.resolved);
-  if(openTrade)return; // aynı anda tek açık takip
+  if(openPositionCountForSymbol(sym)>=3) return; // paritede max 3 eşzamanlı açık pozisyon
+  if(candleAlreadyUsed(sym,candleTime)) return; // aynı mumda ikinci bir işlem açılmaz
   const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:'valensEliteScalp',stratLabel:t('tagValensEliteScalp'),context:context||null,candleTime:candleTime||null,lot:avgLot()};
   store.trades.push(trade);
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
@@ -2362,7 +2384,8 @@ function botTick(){
  const totalVotes = candidates.length;
  let technicallyArmed = best!==null && conf>=THRESHOLD;
  const riskBlocked = isRiskBlocked();
- let armed = technicallyArmed && !riskBlocked;
+ const positionCapBlocked = openPositionCountForSymbol(CUR)>=3 || candleAlreadyUsed(CUR, cr.candleTime);
+ let armed = technicallyArmed && !riskBlocked && !positionCapBlocked;
 
  // ---- MUM KİLİDİ / DEVAMLILIK MEKANİZMASI ----
  // İstek: mum kapanmasını beklemeden (mum İÇİNDEYKEN) sinyal verilebilsin, AMA aynı mum içinde
@@ -2381,7 +2404,7 @@ function botTick(){
   if(lockedCandidate) best = lockedCandidate;
   // kilit zaten armed olarak kurulmuştu — durumu yeniden, tutarlı şekilde hesapla
   technicallyArmed = conf>=THRESHOLD;
-  armed = technicallyArmed && !riskBlocked;
+  armed = technicallyArmed && !riskBlocked && !positionCapBlocked;
  } else {
   // YENİ mum başlamış — taze hesaplama kilidi destekliyor mu?
   if(armed && rawDir===lock.dir){
@@ -2596,6 +2619,7 @@ function botTick(){
  if(armed){tg.className='trigger armed';tg.textContent=t('armedTrigger')(rawDir>0?'BUY':'SELL',conf);}
  else if(circuitPaused){tg.className='trigger wait';tg.textContent=t('circuitPausedStatus')(circuitRemainMin);}
  else if(technicallyArmed && riskBlocked){tg.className='trigger wait';tg.textContent=t('riskBlockedStatus');}
+ else if(technicallyArmed && positionCapBlocked){tg.className='trigger wait';tg.textContent=t('positionOpenStatus');}
  else if(awaitingConfirmation){tg.className='trigger wait';tg.textContent=t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL');}
  else if(cooldownActive){tg.className='trigger wait';tg.textContent=t('cooldownStatus')(cooldownRemainMin);}
  else if(conflicted){tg.className='trigger wait';tg.textContent=t('conflictBadge')+' · '+t('waitTrigger')(conf,THRESHOLD,agreeCount,totalVotes);}
@@ -2721,7 +2745,7 @@ function botTick(){
  }else{
    ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
    scStatusEl.className='trade-status wait';
-   scStatusEl.textContent = circuitPaused ? t('circuitPausedStatus')(circuitRemainMin) : (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : awaitingConfirmation ? t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
+   scStatusEl.textContent = circuitPaused ? t('circuitPausedStatus')(circuitRemainMin) : (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : (technicallyArmed && positionCapBlocked) ? t('positionOpenStatus') : awaitingConfirmation ? t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
    window.valensPendingSignal = null;
    const mt5SendBtnIdle=document.getElementById('mt5SendBtn');
@@ -2740,7 +2764,7 @@ function botTick(){
  updateEliteScalpTradeOutcomes(CUR, adjLast, cr, justClosedCandlePrice);
  window.valensEliteScalpLive = eliteScalpTag ? {dir:eliteScalpTag.dir} : null;
  if(typeof updateEliteScalpLiveStatus==='function') updateEliteScalpLiveStatus(window.valensEliteScalpLive);
- if(eliteScalpTag){
+ if(eliteScalpTag && openPositionCountForSymbol(CUR)<3 && !candleAlreadyUsed(CUR, cr.candleTime)){
   const ed=eliteScalpTag.dir;
   const eSL = atr ? atr*1.0 : cfg.scSL;
   let eTP = atr ? atr*2.0 : cfg.scTP;
@@ -3602,14 +3626,14 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const structDown = highs[1].price<highs[0].price && lows[1].price<lows[0].price;
   const lastHigh=highs[highs.length-1], lastLow=lows[lows.length-1];
   const externalBias = detectSwingStructure(a, 60);
+  // bosSignal DEVRE DIŞI (gerçek canlı kanıt): 167 işlemlik takipte net zararda (-$267, 5/11 ≈ %45).
+  // chochSignal'e dokunulmadı, o ayrı bir istatistikte (küçük örnek, henüz kanıt yetersiz).
   if(structUp && curr.close>lastHigh.price){
-   if(externalBias<0) return null; // internal "yukarı kırılım" ama EXTERNAL yapı hâlâ düşüşte — gerçek BOS değil
-   return {key:'bosSignal', dir:1};
+   return null; // if(externalBias<0) return null; return {key:'bosSignal', dir:1};
   }
   if(structUp && curr.close<lastLow.price) return {key:'chochSignal', dir:-1};
   if(structDown && curr.close<lastLow.price){
-   if(externalBias>0) return null;
-   return {key:'bosSignal', dir:-1};
+   return null; // if(externalBias>0) return null; return {key:'bosSignal', dir:-1};
   }
   if(structDown && curr.close>lastHigh.price) return {key:'chochSignal', dir:1};
   return null;
@@ -4203,9 +4227,12 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   // EMA9/21 arasında fiyatın en az %0.08'i kadar GERÇEK bir ayrım olmalı (kılcal/gürültü kesişimleri
   // elenir), (2) RSI bandı 50'nin daha net üstünde/altında olacak şekilde daraltıldı (net momentum,
   // kararsız bölge değil).
-  const emaSepPct = ind.ema21 ? Math.abs(ind.ema9-ind.ema21)/ind.ema21 : 0;
-  if(ind.ema9>ind.ema21 && emaSepPct>0.0008 && ind.macd>0 && ind.rsi>50 && ind.rsi<68) tags.push({key:'emaCross', dir:1});
-  else if(ind.ema9<ind.ema21 && emaSepPct>0.0008 && ind.macd<0 && ind.rsi<50 && ind.rsi>32) tags.push({key:'emaCross', dir:-1});
+  // DEVRE DIŞI (kullanıcı isteği, gerçek CANLI kanıt): daha önce bir kez sıkılaştırılmıştı ama gerçek
+  // 167 işlemlik canlı takipte hâlâ net zararda (-$309, 13/29 ≈ %43). Bu ham backtest değil, GERÇEK
+  // paranla olan sonuç — bu yüzden tekrar sıkılaştırmak yerine tamamen çıkarıldı.
+  // const emaSepPct = ind.ema21 ? Math.abs(ind.ema9-ind.ema21)/ind.ema21 : 0;
+  // if(ind.ema9>ind.ema21 && emaSepPct>0.0008 && ind.macd>0 && ind.rsi>50 && ind.rsi<68) tags.push({key:'emaCross', dir:1});
+  // else if(ind.ema9<ind.ema21 && emaSepPct>0.0008 && ind.macd<0 && ind.rsi<50 && ind.rsi>32) tags.push({key:'emaCross', dir:-1});
   // (2) Açılış aralığı kırılımı (ORB)
   const orb=detectORB(a); if(orb) tags.push(orb);
   // (3) Ardışık N mum + kırılım momentumu
@@ -4223,9 +4250,10 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   const rsiDiv=detectRSIDivergence(a, rsiSeries); if(rsiDiv) tags.push(rsiDiv);
   // (6) Bollinger sıkışması + kırılımı
   const squeeze=detectBollSqueeze(a, closes); if(squeeze) tags.push(squeeze);
-  // (7) EMA21'e geri çekilme (trend devamı)
+  // (7) EMA21'e geri çekilme (trend devamı) — DEVRE DIŞI (gerçek canlı kanıt): 167 işlemlik takipte
+  // net zararda (-$41, 5/11 ≈ %45).
   const ema21Series=emaLine(a,21).map(p=>p.value);
-  const pullback=detectEmaPullback(a, ema21Series); if(pullback) tags.push(pullback);
+  // const pullback=detectEmaPullback(a, ema21Series); if(pullback) tags.push(pullback);
   // (8) İç mum (inside bar) kırılımı
   const insideBar=detectInsideBarBreakout(a); if(insideBar) tags.push(insideBar);
   // (9) Fair Value Gap retest
@@ -4241,10 +4269,18 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   // (13) MACD sıfır çizgisi kesişimi
   const macdSeries=calcMACDSeries(a);
   const macdCross=detectMacdZeroCross(macdSeries); if(macdCross) tags.push(macdCross);
-  // (14) ORB Scalp varyantı (dar/tek mumluk aralık, fitil tetikli)
-  const scalpOrb=detectScalpORB(a); if(scalpOrb) tags.push(scalpOrb);
-  // (15) No Wick (fitilsiz mum) geri test
-  const noWick=detectNoWickRetest(a, ind.ema200); if(noWick) tags.push(noWick);
+  // (14) ORB Scalp varyantı (dar/tek mumluk aralık, fitil tetikli) — DEVRE DIŞI. Önce sadece mevcut
+  // R:R'de (SL 1.6x/TP 0.5x ATR) test edilip %73.5 kazanma ama başabaşın (%76.2) altında bulunmuştu;
+  // "belki hedef yanlış ayarlanmıştır" itirazı üzerine 17 yıllık gerçek veride TP 0.5x'ten 1.6x'e
+  // kadar TAM bir tarama yapıldı (aynı 43.695 sinyal, 10 farklı hedef). SONUÇ: hiçbir hedefte kârlı
+  // değil — kazanma oranı her hedefte başabaşın hemen altında kalıyor (en iyisi TP=1.0x'te bile
+  // -0.049R/işlem). Bu, yanlış R:R değil, girişin (seans açılışından hemen sonra tek mumluk dar
+  // aralığın fitille kırılması) gerçek bir yön bilgisi taşımadığı anlamına geliyor. detectScalpORB()
+  // ileride farklı bir GİRİŞ mantığıyla (R:R değil) denenebilir diye silinmedi.
+  // const scalpOrb=detectScalpORB(a); if(scalpOrb) tags.push(scalpOrb);
+  // (15) No Wick (fitilsiz mum) geri test — DEVRE DIŞI (gerçek canlı kanıt): 167 işlemlik takipte
+  // net zararda (-$135, 0/2 — küçük örnek ama %0 kazanma).
+  // const noWick=detectNoWickRetest(a, ind.ema200); if(noWick) tags.push(noWick);
   // (16) ORB Süpürme-Geri Dönüş
   const orbFade=detectORBSweepFade(a); if(orbFade) tags.push(orbFade);
   // (17) Piyasa Yapısı BOS/CHoCH
@@ -4333,15 +4369,27 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  // zaten elinde olan GERÇEKTEN YAŞANMIŞ geçmiş mumlar üzerinde, her stratejinin (hem AL hem SAT) geçmişte
  // ateşlendiği HER noktayı bulup, o andan sonra fiyatın GERÇEKTE TP'ye mi SL'ye mi önce ulaştığını
  // (canlıdaki AYNI ATR formülüyle) kontrol eder — net etiketli, ayrı bir panelde gösterilir.
- function runHistoricalBacktest(){
+ // rangeStart/rangeEnd verilirse (derin/17 yıllık gerçek veri testi için) varsayılan 300 mumluk
+ // pencere yerine o aralık taranır — parametre verilmezse davranış BİREBİR AYNI kalır.
+ function runHistoricalBacktest(rangeStart, rangeEnd){
   if(ohlc.length<350) return null;
   const WARMUP=250; // uzun-lookback'li stratejiler (BOS/CHoCH, TTM Squeeze vb.) için yeterli geçmiş bırak
   const TEST_RANGE=Math.min(300, ohlc.length-WARMUP-1);
   const MAX_FORWARD=100; // TP/SL'ye ulaşması için en fazla 100 mum ileri bak; ulaşamazsa "çözülmemiş" say, sayma
-  if(TEST_RANGE<20) return null;
+  if(TEST_RANGE<20 && rangeStart==null) return null;
+  const start = rangeStart!=null ? rangeStart : WARMUP;
+  const end = rangeEnd!=null ? rangeEnd : WARMUP+TEST_RANGE;
   const results={};
-  for(let i=WARMUP; i<WARMUP+TEST_RANGE; i++){
-   const histOhlc=ohlc.slice(0,i+1);
+  // DÜZELTME (17 yıllık gerçek veri testi sırasında bulundu): histOhlc eskiden ohlc.slice(0,i+1) idi —
+  // yani i büyüdükçe (binlerce/yüz binlerce mum) HER iterasyonda git gide büyüyen bir dizi kopyalanıyor
+  // ve bazı göstergeler (ör. ema200Real) bu SINIRSIZ diziyi baştan sona tarıyordu — O(n²) karmaşıklık,
+  // 400 binin üzerinde mumla pratik olarak asla bitmiyordu. Ayrıca bu GERÇEKÇİ de değildi: canlı sistem
+  // zaten hiçbir zaman "2009'dan bugüne kadarki tüm mumları" görmüyor, loadHistory() sabit limit=1000
+  // mumla çalışıyor. Son 1000 muma sınırlamak hem performansı O(1)'e indiriyor hem canlı davranışla
+  // birebir tutarlı hale getiriyor.
+  const HIST_WINDOW=1000;
+  for(let i=start; i<end; i++){
+   const histOhlc=ohlc.slice(Math.max(0,i+1-HIST_WINDOW), i+1);
    const closes=histOhlc.map(c=>c.close);
    const last=closes[closes.length-1];
    // O andaki göstergeleri, ZATEN TEST EDİLMİŞ aynı fonksiyonlarla, o ana kadarki veriyle hesapla —
