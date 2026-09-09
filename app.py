@@ -695,7 +695,7 @@ const I18N = {
   eliteScalpLiveActive:(dir)=>'AKTİF — '+dir+' · şart karşılandı',
   eliteScalpBadge:(n)=>n+' İŞLEM',
   eliteScalpSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
-  eliteScalpEmpty:'Henüz sonuçlanan bir Valens Elit Scalp işlemi yok — üç şart (4H/1H bias + Order Block Mitigasyonu + delta) aynı anda aynı yönde kesiştiğinde burada birikmeye başlayacak.',
+  eliteScalpEmpty:'Henüz sonuçlanan bir işlem yok — Destek/Direnç, EMA/MACD Kesişimi ve ORB stratejilerinden (17 yıllık gerçek veriyle doğrulanmış 3\'lü portföy) biri tetiklendiğinde burada birikmeye başlayacak.',
   confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
@@ -921,7 +921,7 @@ const I18N = {
   eliteScalpLiveActive:(dir)=>'ACTIVE — '+dir+' · condition met',
   eliteScalpBadge:(n)=>n+' TRADES',
   eliteScalpSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
-  eliteScalpEmpty:'No Valens Elite Scalp trade has resolved yet — once the three conditions (4H/1H bias + Order Block Mitigation + delta) align in the same direction, results will accumulate here.',
+  eliteScalpEmpty:'No trade has resolved yet — once one of the Support/Resistance, EMA/MACD Cross, or ORB strategies (a 3-strategy portfolio validated on 17 years of real data) fires, results will accumulate here.',
   confSourceBacktest:'Confidence adjusted using historical backtest results',
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
@@ -1285,7 +1285,8 @@ function saveEliteTradeStore(sym,store){try{localStorage.setItem(getEliteTradeKe
 function openPositionCountForSymbol(sym){
   const mainOpen=(loadTradeStore(sym).trades||[]).filter(t=>!t.resolved).length;
   const eliteOpen=(loadEliteTradeStore(sym).trades||[]).filter(t=>!t.resolved).length;
-  return mainOpen+eliteOpen;
+  const combo3Open=(loadCombo3Store(sym).trades||[]).filter(t=>!t.resolved).length;
+  return mainOpen+eliteOpen+combo3Open;
 }
 function candleAlreadyUsed(sym, candleTime){
   if(candleTime==null) return false;
@@ -1736,10 +1737,213 @@ function updateEliteScalpLiveStatus(live){
   el.innerHTML = '● '+t('eliteScalpLiveActive')(dirLabel);
   el.style.color = live.dir>0 ? 'var(--green)' : 'var(--red)';
 }
+// ============ ⚡ 3'LÜ ÇEŞİTLENDİRİLMİŞ PORTFÖY — ELİT SCALP YERİNE ============
+// Kullanıcı isteği: "3 lü kombinasyonun aylık kar omiktarını ver ve appye elit strateji yerine onu
+// ekle" — bu oturumda 17 yıllık GERÇEK XAUUSD verisiyle (HistData.com, 1dk→1H agregasyon) ayrı ayrı
+// keşfedilip (2009-2018 discovery) SONRA hiç dokunulmamış 2019-2026 verisinde TEK SEFERLİK doğrulanan
+// 3 bağımsız strateji: (1) Destek/Direnç Test-veya-Kırılım (güçlü seviyeler, ≥4 kez test edilmiş),
+// (2) EMA9/21 + MACD kesişimi (kullanıcının kendi verdiği örnek), (3) ORB (açılış aralığı kırılımı,
+// 4H trend filtresiyle). AYRI AYRI test edilip TEK TEK OOS'ta hayatta kaldılar, SONRA birlikte
+// çalıştırılınca (çeşitlendirme) $100.000/%25 max drawdown sınırında %5.76/ay ortalama getiri verdiler
+// — herhangi biri tek başına bunun çok altında. Devre kesici (mainLossStreak mantığı) SADECE
+// SR bacağında yardımcı çıktı; EMA/MACD ve ORB TREND-DEVAM stratejileri olduğundan "aynı yönde ısrar"
+// bloklaması onlarda asıl kazandıran devam hareketlerini kesiyordu (ORB'da kârı %66 düşürüyordu,
+// ölçülerek bulundu) — bu yüzden ikisinde CB YOK, sadece SR'de VAR.
+// ÖNEMLİ: canlı terminal 15dk mumla çalışıyor (INT='15') ama TÜM bu strateji 1 SAATLİK (H1) barlar
+// üzerinde test edildi — bu yüzden kendi bağımsız H1/4H verisini (Binance REST, fetchScalpBias ile
+// AYNI desende, window.valensCombo3H1/window.valensCombo3H4Trend üzerinden — bkz. fetchCombo3Data,
+// farklı bir <script> bloğunda) kullanır, ana motorun 15dk mumlarına HİÇ karışmaz. Elit Scalp'in eski
+// karar mantığı (eliteWinDir/detectStrategyTags içinde) koda DOKUNULMADI ama artık TETİKLENMİYOR —
+// aşağıdaki botTick bloğunda logEliteScalpTrade çağrısı bu motorla DEĞİŞTİRİLDİ.
+// Lot büyüklükleri kasıtlı olarak KÜÇÜK başlıyor (kalibre edilen $100k/%25DD oranı SR:EMA/MACD:ORB ≈
+// 0.95:0.95:0.53 idi, burada ~19 kat küçültülmüş) — kullanıcının kendi kuralı: "test etmeden agresif
+// değişiklik yapma" — gerçek $ sonuçları birikince (diğer stratejilerde yapıldığı gibi) büyütülebilir.
+const COMBO3_LEGS = {
+  sr:      {key:'valensComboSR',      label:'⚡ Kombine: Destek/Direnç Test-Kırılım', lot:0.05},
+  emamacd: {key:'valensComboEmaMacd', label:'⚡ Kombine: EMA9/21+MACD Kesişimi',       lot:0.05},
+  orb:     {key:'valensComboOrb',     label:'⚡ Kombine: Açılış Aralığı Kırılımı',     lot:0.03}
+};
+const COMBO3_STORE_PREFIX='valens_combo3_trades_';
+function getCombo3Key(sym){return COMBO3_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
+function loadCombo3Store(sym){try{const raw=localStorage.getItem(getCombo3Key(sym));if(!raw)return{trades:[]};return JSON.parse(raw);}catch(e){return{trades:[]};}}
+function saveCombo3Store(sym,store){try{localStorage.setItem(getCombo3Key(sym),JSON.stringify(store));}catch(e){}}
+
+function combo3CalcATR(bars,period){
+  const n=bars.length; if(n<2) return null;
+  const tr=[bars[0].high-bars[0].low];
+  for(let i=1;i<n;i++){
+    const c=bars[i], p=bars[i-1];
+    tr.push(Math.max(c.high-c.low, Math.abs(c.high-p.close), Math.abs(c.low-p.close)));
+  }
+  const win=tr.slice(Math.max(0,n-period));
+  return win.reduce((a,b)=>a+b,0)/win.length;
+}
+// Swing pivot + "güç" (kaç farklı pivot aynı bantta ~%0.15 yakınlıkta) — backtest'teki build_levels'in
+// birebir JS karşılığı (PIVN=5, TOL=0.0015).
+function combo3BuildLevels(bars){
+  const PIVN=5, TOL=0.0015, n=bars.length;
+  let pivHi=[], pivLo=[];
+  for(let i=PIVN;i<n-PIVN;i++){
+    let isHi=true, isLo=true;
+    for(let j=i-PIVN;j<=i+PIVN;j++){
+      if(j===i) continue;
+      if(bars[j].high>bars[i].high) isHi=false;
+      if(bars[j].low<bars[i].low) isLo=false;
+    }
+    if(isHi) pivHi.push({idx:i, price:bars[i].high});
+    if(isLo) pivLo.push({idx:i, price:bars[i].low});
+  }
+  function withStrength(pivs){
+    return pivs.map((p,k)=>{
+      let s=1;
+      for(let m=0;m<k;m++){ if(Math.abs(pivs[m].price-p.price)/p.price<TOL) s++; }
+      return {idx:p.idx, price:p.price, strength:s};
+    });
+  }
+  return {hi:withStrength(pivHi), lo:withStrength(pivLo), PIVN};
+}
+// Destek/Direnç Test-veya-Kırılım — sadece SON KAPANMIŞ H1 barında sinyal arar (backtest'in
+// run_sr'sindeki tek-bar mantığının aynısı, min_strength=4, r=3.0, sl=1.5×ATR).
+function combo3DetectSR(bars, levels, minStrength, rMult, slMult){
+  const n=bars.length; if(n<70) return null;
+  const i=n-1, prev=bars[i-1], curr=bars[i], TOL=0.0015;
+  const atr=combo3CalcATR(bars,14); if(!atr) return null;
+  const availHi=levels.hi.filter(l=>l.idx+levels.PIVN<=i-1 && l.strength>=minStrength && l.price>curr.close);
+  const availLo=levels.lo.filter(l=>l.idx+levels.PIVN<=i-1 && l.strength>=minStrength && l.price<curr.close);
+  if(!availHi.length || !availLo.length) return null;
+  const resLevel=availHi.reduce((a,b)=>b.price<a.price?b:a).price;
+  const supLevel=availLo.reduce((a,b)=>b.price>a.price?b:a).price;
+  let sig=null;
+  if(Math.abs(curr.high-resLevel)/resLevel<TOL || (curr.high>=resLevel && curr.close<resLevel)){
+    if(curr.close<resLevel && curr.close<curr.open) sig=-1;
+  }
+  if(sig==null && prev.close<resLevel && curr.close>resLevel && curr.close>curr.open) sig=1;
+  if(sig==null && (Math.abs(curr.low-supLevel)/supLevel<TOL || (curr.low<=supLevel && curr.close>supLevel))){
+    if(curr.close>supLevel && curr.close>curr.open) sig=1;
+  }
+  if(sig==null && prev.close>supLevel && curr.close<supLevel && curr.close<curr.open) sig=-1;
+  if(sig==null) return null;
+  const slDist=atr*slMult;
+  return {dir:sig, entry:curr.close, sl:curr.close-sig*slDist, tp:curr.close+sig*slDist*rMult, barTime:curr.time};
+}
+// EMA9/21 + MACD(12,26,9) kesişimi — kullanıcının kendi verdiği örnek strateji. confirm=2 mum,
+// RSI filtresi yok, r=3.5, sl=2.0×ATR (mega taramada 2820 kombinasyonun OOS'ta en iyi hayatta kalanı).
+function combo3DetectEmaMacd(bars, confirmBars, rMult, slMult){
+  const n=bars.length; if(n<40) return null;
+  const closes=bars.map(b=>b.close);
+  function ema(period){
+    const k=2/(period+1); let e=closes[0]; const out=[e];
+    for(let i=1;i<closes.length;i++){ e=closes[i]*k+e*(1-k); out.push(e); }
+    return out;
+  }
+  const ema9=ema(9), ema21=ema(21), ema12=ema(12), ema26=ema(26);
+  const macdLine=ema12.map((v,i)=>v-ema26[i]);
+  const k9=2/10; let s0=macdLine[0]; const macdSignal=[s0];
+  for(let i=1;i<macdLine.length;i++){ s0=macdLine[i]*k9+s0*(1-k9); macdSignal.push(s0); }
+  const macdHist=macdLine.map((v,i)=>v-macdSignal[i]);
+  const atr=combo3CalcATR(bars,14); if(!atr) return null;
+  const i=n-1;
+  let lastCrossDir=0, crossBar=-1;
+  for(let j=Math.max(1,i-confirmBars-1); j<=i; j++){
+    if(ema9[j-1]<=ema21[j-1] && ema9[j]>ema21[j]){ lastCrossDir=1; crossBar=j; }
+    if(ema9[j-1]>=ema21[j-1] && ema9[j]<ema21[j]){ lastCrossDir=-1; crossBar=j; }
+  }
+  if(crossBar<0 || (i-crossBar)>confirmBars) return null;
+  let sig=null;
+  if(lastCrossDir===1 && ema9[i]>ema21[i] && macdHist[i]>0) sig=1;
+  else if(lastCrossDir===-1 && ema9[i]<ema21[i] && macdHist[i]<0) sig=-1;
+  if(sig==null) return null;
+  const curr=bars[i], slDist=atr*slMult;
+  return {dir:sig, entry:curr.close, sl:curr.close-sig*slDist, tp:curr.close+sig*slDist*rMult, barTime:curr.time};
+}
+// ORB (açılış aralığı kırılımı) — 2 saatlik aralık (00:00-02:00 UTC), 4H EMA50 trend filtresi ile
+// aynı yönde olmayan kırılımlar elenir (mega taramada mtf=true ile OOS'ta discovery'den bile iyi çıktı).
+function combo3DetectOrb(bars, trend4h, rangeHours, sessionStart, rMult, slMult){
+  const n=bars.length; if(n<30) return null;
+  const i=n-1, curr=bars[i], prev=bars[i-1];
+  const d=new Date(curr.time*1000), hr=d.getUTCHours();
+  if(hr<sessionStart+rangeHours) return null;
+  const dayStr=d.toISOString().slice(0,10);
+  let rhi=-Infinity, rlo=Infinity;
+  for(let j=i;j>=0;j--){
+    const bd=new Date(bars[j].time*1000);
+    if(bd.toISOString().slice(0,10)!==dayStr) break;
+    const bh=bd.getUTCHours();
+    if(bh>=sessionStart && bh<sessionStart+rangeHours){ rhi=Math.max(rhi,bars[j].high); rlo=Math.min(rlo,bars[j].low); }
+  }
+  if(!isFinite(rhi) || !isFinite(rlo)) return null;
+  let sig=null;
+  if(curr.close>rhi && curr.close>curr.open && prev.close<=rhi) sig=1;
+  else if(curr.close<rlo && curr.close<curr.open && prev.close>=rlo) sig=-1;
+  if(sig==null) return null;
+  if(trend4h!=null && trend4h!==0 && sig!==trend4h) return null;
+  const atr=combo3CalcATR(bars,14); if(!atr) return null;
+  const slDist=atr*slMult;
+  return {dir:sig, entry:curr.close, sl:curr.close-sig*slDist, tp:curr.close+sig*slDist*rMult, barTime:curr.time};
+}
+// Her tick'te çağrılır (botTick içinden) — window.valensCombo3H1/H4Trend farklı bir <script> blogunda
+// (fetchCombo3Data) dolduruluyor, burada sadece OKUNUYOR (window.* her bloktan görünür, fonksiyon
+// içine gömülü olmayan düz bir atama olduğu sürece köprüleme sorunu yok — bu oturumda defalarca
+// doğrulandı, bkz. fetchScalpBias/window.valensScalpBias aynı deseni).
+function updateCombo3(sym){
+  const data=window.valensCombo3H1;
+  if(!data || data.sym!==sym || !data.bars || data.bars.length<80) return;
+  const bars=data.bars;
+  const trend4h=(window.valensCombo3H4Trend && window.valensCombo3H4Trend.sym===sym) ? window.valensCombo3H4Trend.trend : null;
+  const store=loadCombo3Store(sym); store.trades=store.trades||[];
+  const lastBar=bars[bars.length-1];
+  let changed=false;
+  store.trades.forEach(tr=>{
+    if(tr.resolved) return;
+    let exitPrice=null;
+    if(tr.dir>0){ if(lastBar.high>=tr.tp) exitPrice=tr.tp; else if(lastBar.low<=tr.sl) exitPrice=tr.sl; }
+    else { if(lastBar.low<=tr.tp) exitPrice=tr.tp; else if(lastBar.high>=tr.sl) exitPrice=tr.sl; }
+    if(exitPrice!=null){
+      tr.resolved=true; tr.exitPrice=exitPrice;
+      tr.outcome=(tr.dir*(exitPrice-tr.entry)>=0)?'win':'loss';
+      changed=true;
+      resolveSignalOnApi(tr);
+    }
+  });
+  function hasOpen(stratKey){ return store.trades.some(t=>!t.resolved && t.stratKey===stratKey); }
+  function barUsed(stratKey,barTime){ return store.trades.some(t=>t.stratKey===stratKey && t.barTime===barTime); }
+  function tryOpen(legDef, sigResult){
+    if(!sigResult) return;
+    if(hasOpen(legDef.key) || barUsed(legDef.key, sigResult.barTime)) return;
+    if(openPositionCountForSymbol(sym)>=3) return; // hesap-geneli pozisyon disiplini (bu oturumun kuralı) korunuyor
+    const trade={ts:Date.now(), dir:sigResult.dir, entry:sigResult.entry, tp:sigResult.tp, sl:sigResult.sl,
+      resolved:false, outcome:null, stratKey:legDef.key, stratLabel:legDef.label, barTime:sigResult.barTime, lot:legDef.lot};
+    store.trades.push(trade); changed=true;
+    pushSignalToApi(sym, trade.ts, {sym, dir:trade.dir, entry:trade.entry, tp:trade.tp, sl:trade.sl, stratKey:legDef.key, stratLabel:legDef.label, ts:trade.ts, lot:trade.lot}, true);
+  }
+  const levels=combo3BuildLevels(bars);
+  tryOpen(COMBO3_LEGS.sr,      combo3DetectSR(bars, levels, 4, 3.0, 1.5));
+  tryOpen(COMBO3_LEGS.emamacd, combo3DetectEmaMacd(bars, 2, 3.5, 2.0));
+  tryOpen(COMBO3_LEGS.orb,     combo3DetectOrb(bars, trend4h, 2, 0, 4.0, 1.5));
+  if(store.trades.length>500) store.trades=store.trades.slice(-500);
+  if(changed) saveCombo3Store(sym, store);
+}
+// getEliteScalpResolvedTrades ile AYNI desen ama combo3 mağazasından — eski Elit Scalp panelinin
+// AYNI DOM elemanlarını (eliteScalpList/Summary/Badge) artık bu üçlünün gerçek sonuçlarıyla dolduruyoruz.
+function getCombo3ResolvedTrades(){
+  const fallbackLot=avgLot();
+  let all=[];
+  Object.keys(SYMS).forEach(sym=>{
+    const store=loadCombo3Store(sym), cs=SYMS[sym].contractSize;
+    (store.trades||[]).filter(tr=>tr.resolved).forEach(tr=>{
+      const lot=tr.lot!=null?tr.lot:fallbackLot;
+      const hitPx=tr.exitPrice!=null?tr.exitPrice:(tr.outcome==='win'?tr.tp:tr.sl);
+      const dist=tr.dir*(hitPx-tr.entry);
+      all.push(Object.assign({sym, usd:dist*cs*lot}, tr));
+    });
+  });
+  all.sort((a,b)=>b.ts-a.ts);
+  return all;
+}
 function updateEliteScalpPanel(){
   const list=document.getElementById('eliteScalpList'), summary=document.getElementById('eliteScalpSummary'), badge=document.getElementById('eliteScalpBadge');
   if(!list||!summary||!badge) return;
-  const es=getEliteScalpResolvedTrades();
+  const es=getCombo3ResolvedTrades();
   const wins=es.filter(tr=>tr.outcome==='win').length, losses=es.length-wins;
   const netUsd=es.reduce((a,tr)=>a+tr.usd,0);
   badge.textContent=t('eliteScalpBadge')(es.length);
@@ -2761,30 +2965,11 @@ function botTick(){
  // açık bir işlemi olsa/olmasa bile bu stratejiyi etkilemez. Önce (varsa) açık kendi işlemini TP/SL'ye
  // göre çözer, SONRA yeni bir kurulum var mı bakar (updateTradeOutcomes'taki "önce çöz sonra karar ver"
  // ile aynı sıralama mantığı, aynı whipsaw nedeniyle).
- updateEliteScalpTradeOutcomes(CUR, adjLast, cr, justClosedCandlePrice);
- window.valensEliteScalpLive = eliteScalpTag ? {dir:eliteScalpTag.dir} : null;
- if(typeof updateEliteScalpLiveStatus==='function') updateEliteScalpLiveStatus(window.valensEliteScalpLive);
- if(eliteScalpTag && openPositionCountForSymbol(CUR)<3 && !candleAlreadyUsed(CUR, cr.candleTime)){
-  const ed=eliteScalpTag.dir;
-  const eSL = atr ? atr*1.0 : cfg.scSL;
-  let eTP = atr ? atr*2.0 : cfg.scTP;
-  const eHourlyMove = cr.hourlyMove;
-  if(eHourlyMove && eHourlyMove>0){
-   const eReachable = eHourlyMove * 2 * 1.5; // ~2 saatlik gerçekçi scalp penceresi, ana motorla aynı varsayılan
-   if(eTP > eReachable) eTP = Math.max(eReachable, eSL*0.5);
-  }
-  const eAdjSrLevels = cr.srLevels ? {
-   mainSup: cr.srLevels.mainSup!=null?cr.srLevels.mainSup+goldAdj:null,
-   mainRes: cr.srLevels.mainRes!=null?cr.srLevels.mainRes+goldAdj:null,
-   dynSup: cr.srLevels.dynSup!=null?cr.srLevels.dynSup+goldAdj:null,
-   dynRes: cr.srLevels.dynRes!=null?cr.srLevels.dynRes+goldAdj:null
-  } : null;
-  const eEntryPx=adjLast, eStopPx=adjLast-ed*eSL;
-  const eTpPx=clampTargetToStructure(adjLast, adjLast+ed*eTP, eSL, ed, eAdjSrLevels);
-  logEliteScalpTrade(CUR, ed, eEntryPx, eTpPx, eStopPx, {
-   regime: marketRegime, agreeCount, totalVotes, trend: cr.trend||0, srText: cr.srText||'', patternName: cr.patternName||'', confirmedCandles
-  }, cr.candleTime||null);
- }
+ // ESKİ Elit Scalp (4H/1H Bias+OB Mit+Delta) ARTIK TETİKLENMİYOR — kullanıcı isteğiyle YERİNE
+ // gerçek 17 yıllık veriyle doğrulanmış 3'lü çeşitlendirilmiş portföy (SR+EMA/MACD+ORB, bkz.
+ // updateCombo3 tanımı yukarıda) geçti. Eski detectStrategyTags/eliteWinDir mantığı koda dokunulmadan
+ // duruyor (geri dönüş gerekirse), sadece artık logEliteScalpTrade ÇAĞRILMIYOR.
+ updateCombo3(CUR);
  if(typeof updateEliteScalpPanel==='function') updateEliteScalpPanel();
 
  updateWinRateUI();
@@ -4670,6 +4855,36 @@ document.getElementById('importTrades').addEventListener('change', e=>{
  window.valensFetchScalpBias=function(){ if(curSym) fetchScalpBias(curSym); };
  setInterval(()=>{ if(curSym) fetchScalpBias(curSym); }, 2*60*1000);
 
+ // ---- 3'LÜ ÇEŞİTLENDİRİLMİŞ PORTFÖY (SR+EMA/MACD+ORB) İÇİN BAĞIMSIZ H1/4H VERİ ----
+ // fetchScalpBias ile AYNI desen (bağımsız REST kline çağrısı, mevcut ohlc/WS pipeline'ına hiç
+ // dokunmadan) — bu üçlü strateji 1 SAATLİK barlar üzerinde test edildi (canlı terminal 15dk'da
+ // çalışıyor), bu yüzden kendi H1 verisini çeker. Tüketimi (updateCombo3) FARKLI bir <script>
+ // blogunda (botTick'in bloğu) — window.valensCombo3H1/H4Trend üzerinden köprülenir.
+ async function fetchCombo3Data(sym){
+  const bs=MAP[sym]; if(!bs) return;
+  try{
+   const [r1,r4]=await Promise.all([
+    fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1h&limit=500`),
+    fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=4h&limit=100`)
+   ]);
+   const [d1,d4]=await Promise.all([r1.json(), r4.json()]);
+   if(!Array.isArray(d1)||!d1.length||!Array.isArray(d4)||!d4.length) return;
+   const toBars=d=>d.map(k=>({time:Math.floor(k[0]/1000),open:+k[1],high:+k[2],low:+k[3],close:+k[4]}));
+   // SON eleman Binance'te HENÜZ KAPANMAMIŞ (o an oluşan) mum olabilir — backtest sadece KAPANMIŞ
+   // barlarla çalıştığı için (lookahead yok) burada da atılıyor.
+   const h1closed=toBars(d1).slice(0,-1);
+   const h4closed=toBars(d4).slice(0,-1);
+   if(h1closed.length<80 || h4closed.length<10) return;
+   let ema=h4closed[0].close; const k=2/51;
+   h4closed.forEach((c,i)=>{ ema = i? c.close*k+ema*(1-k) : c.close; });
+   const trend = h4closed[h4closed.length-1].close>ema ? 1 : -1;
+   window.valensCombo3H1 = {sym, bars:h1closed};
+   window.valensCombo3H4Trend = {sym, trend};
+  }catch(e){ /* sessizce yoksay — ikincil bir veri kaynağı, ana grafiği bozmasın */ }
+ }
+ window.valensFetchCombo3=function(){ if(curSym) fetchCombo3Data(curSym); };
+ setInterval(()=>{ if(curSym) fetchCombo3Data(curSym); }, 5*60*1000);
+
  // ---- Kullanıcı geri bildirimi: grafik kaydırılınca/yakınlaştırılınca fiyat ekseni yeniden
  // ölçekleniyor (autoscale) ama Ana Destek/Direnç bantları eski koordinatlarda kalıp fiyattan
  // KOPUYORDU — bu bantlar sadece veri tazelenince (5dk'da bir) yeniden konumlanıyordu. Artık
@@ -5129,6 +5344,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   window.valensCandleLock=null;
   fetchMainSR(sym);
   fetchScalpBias(sym);
+  fetchCombo3Data(sym);
   loadHistory().then(()=>{
     drawSRLines(); connect(); connectTrades();
     // ---- EKSENİ YENİ FİYATA OTURT ----
