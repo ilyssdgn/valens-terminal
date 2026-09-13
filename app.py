@@ -696,6 +696,11 @@ const I18N = {
   eliteScalpBadge:(n)=>n+' İŞLEM',
   eliteScalpSummaryLine:(total,wins,losses,net)=>total+' işlem izlendi · <span style="color:var(--green)">'+wins+' kâr</span> / <span style="color:var(--red)">'+losses+' zarar</span> · Net: <b>'+net+'</b> (ortalama lot varsayımıyla tahmini)',
   eliteScalpEmpty:'Henüz sonuçlanan bir işlem yok — Destek/Direnç, EMA/MACD Kesişimi ve ORB stratejilerinden (17 yıllık gerçek veriyle doğrulanmış 3\'lü portföy) biri tetiklendiğinde burada birikmeye başlayacak.',
+  pmWinLeftOnTable:(usd)=>'📈 Kâr alındı ama çıkıştan sonra fiyat aynı yönde $'+usd+' daha ilerledi — hedef biraz daha geniş tutulsaydı kâr artabilirdi.',
+  pmWinGoodExit:'✅ Kâr alımından sonra fiyat durdu/geri döndü — hedef isabetli ayarlanmıştı.',
+  pmLossHadProfit:(usd)=>'⚠️ Zarar öncesi pozisyon $'+usd+' kâra geçmişti — erken kâr koruma/trailing devreye girseydi bu zarar önlenebilirdi.',
+  pmLossStopTooTight:(usd)=>'⚠️ Stop\'tan hemen sonra fiyat asıl yönümüze $'+usd+' geri döndü — stop biraz daha geniş olsaydı işlem kurtulabilirdi.',
+  pmLossNoProfitEver:'❌ Fiyat kesintisiz aleyhimize gitti, hiç kâra geçmedi — sorun stop mesafesi değil, giriş sinyali/zamanlamasıydı.',
   confSourceBacktest:'Güven, geçmiş veri testi sonuçlarına göre ayarlandı',
   regimePrefix:'📍 Piyasa Rejimi:', regimeTrendUp:'Güçlü Yükseliş Trendi', regimeTrendDown:'Güçlü Düşüş Trendi',
   regimeTrendFlat:'Güçlü Trend (yönsüz)', regimeRanging:'Yatay/Range', regimeUnclear:'Belirsiz/Geçiş',
@@ -922,6 +927,11 @@ const I18N = {
   eliteScalpBadge:(n)=>n+' TRADES',
   eliteScalpSummaryLine:(total,wins,losses,net)=>total+' trades tracked · <span style="color:var(--green)">'+wins+' won</span> / <span style="color:var(--red)">'+losses+' lost</span> · Net: <b>'+net+'</b> (estimated using average lot)',
   eliteScalpEmpty:'No trade has resolved yet — once one of the Support/Resistance, EMA/MACD Cross, or ORB strategies (a 3-strategy portfolio validated on 17 years of real data) fires, results will accumulate here.',
+  pmWinLeftOnTable:(usd)=>'📈 Profit taken, but price kept moving the same direction by $'+usd+' after exit — a wider target could have captured more.',
+  pmWinGoodExit:'✅ Price stalled/reversed after the take-profit — the target was well placed.',
+  pmLossHadProfit:(usd)=>'⚠️ This position was up $'+usd+' before the loss — an earlier profit-lock/trailing stop could have prevented this loss.',
+  pmLossStopTooTight:(usd)=>'⚠️ Price reversed back $'+usd+' in our original direction right after the stop — a wider stop could have saved this trade.',
+  pmLossNoProfitEver:'❌ Price moved against us the entire time, never turned profitable — the issue was entry timing/direction, not stop distance.',
   confSourceBacktest:'Confidence adjusted using historical backtest results',
   regimePrefix:'📍 Market Regime:', regimeTrendUp:'Strong Uptrend', regimeTrendDown:'Strong Downtrend',
   regimeTrendFlat:'Strong Trend (directionless)', regimeRanging:'Ranging/Sideways', regimeUnclear:'Unclear/Transitional',
@@ -1255,7 +1265,7 @@ function logArmedTrade(sym,dir,entry,tp,sl,stratKey,stratLabel,context,candleTim
   // geriye dönük değişiyordu (tarihsel olarak yanlış). Artık işlem AÇILDIĞI ANDAKİ lot burada
   // donduruluyor; getAllResolvedTrades/getEliteScalpResolvedTrades bunu kullanır (bu alan yoksa —
   // bu değişiklikten ÖNCEKİ eski kayıtlar — geriye dönük uyumluluk için güncel avgLot()'a düşer).
-  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null,candleTime:candleTime||null,lot:avgLot()};
+  const trade={ts:Date.now(),dir,entry,tp,sl,resolved:false,outcome:null,stratKey:stratKey||null,stratLabel:stratLabel||null,context:context||null,candleTime:candleTime||null,lot:avgLot(),mfe:0,mae:0};
   store.trades.push(trade);
   if(store.trades.length>500)store.trades=store.trades.slice(-500);
   saveTradeStore(sym,store);
@@ -1543,6 +1553,15 @@ function updateTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   let changed=false;
   (store.trades||[]).forEach(t=>{
     if(t.resolved)return;
+    // ---- MFE/MAE TAKIBI (2 haftalik test icin "islem sonrasi analiz" altyapisi) — kullanici
+    // istegi: "kar eden islemlerde karı nasıl maksimize edebilirdik, zarar edende zararı nasıl
+    // engelleyebilirdik". Islem boyunca gorulen EN IYI (lehte) ve EN KOTU (aleyhte) mesafeyi
+    // (isaretli, giristen) her tick'te guncelliyoruz - cozum aninda "zarardan once kar gormus
+    // muydu" (erken kar koruma faydali olurdu) sorusuna cevap verir.
+    if(t.mfe==null) t.mfe=0; if(t.mae==null) t.mae=0;
+    const curDist = t.dir*(lastPrice-t.entry);
+    if(curDist>t.mfe){ t.mfe=curDist; changed=true; }
+    if(curDist<t.mae){ t.mae=curDist; changed=true; }
     if(applyTrailingStop(t, lastPrice, cr, window.valensDrawTrailedSL)){
       changed=true;
       if(t.protectLevel===1 && window.valensShowRiskReducedToast) window.valensShowRiskReducedToast(sym, t.dir);
@@ -1569,6 +1588,9 @@ function updateTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
       changed=true;
       if(t.outcome==='loss') recordStopLoss(sym,t.dir);
       recordMainTradeOutcome(t.dir,t.outcome,t.context||null);
+      addPostMortemWatch({sym, ts:t.ts, stratKey:t.stratKey||null, dir:t.dir, entry:t.entry, exit:exitPrice,
+        outcome:t.outcome, mfe:t.mfe||0, mae:t.mae||0, resolvedCandleTime:cr.candleTime||null,
+        followCandleTime:null, followPrice:null, followDone:false, insight:null});
       resolveSignalOnApi(t);
       if(window.valensClearTrailedSL) window.valensClearTrailedSL();
       if(closedViaProfitLock && window.valensShowProfitLockToast){
@@ -1579,6 +1601,85 @@ function updateTradeOutcomes(sym,lastPrice,cr,justClosedCandlePrice){
   });
   if(changed)saveTradeStore(sym,store);
 }
+// ============ İŞLEM SONRASI ANALİZ ("POST-MORTEM") — 2 HAFTALIK TEST İZLEME ============
+// Kullanıcı isteği: "kâr eden işlemlerde nerede nasıl kâr etti, kârı nasıl maksimize edebilirdik;
+// zarar eden işlemlerde nerede nasıl zarar etti, zararı nasıl engelleyebilirdik, onu takip edelim."
+// Her çözülen işlem için: (1) işlem SÜRESİNCE görülen en iyi/en kötü mesafe (MFE/MAE, bkz.
+// updateTradeOutcomes) zaten kaydedildi; (2) çıkıştan sonra fiyatın ne yaptığını görmek için
+// N mum daha "izliyoruz" (POST_MORTEM_FOLLOW_CANDLES) — bu, "TP'den sonra fiyat daha da gitti mi"
+// (kâr elde kalmış mı) sorusuna cevap verir. İkisi birleşince otomatik, okunabilir bir içgörü üretilir.
+const POST_MORTEM_FOLLOW_CANDLES = 8; // ~2 saat (15dk mumlarda) - kısa ama anlamlı bir "ne oldu sonra" penceresi
+const POST_MORTEM_STORE_PREFIX = 'valens_postmortem_';
+function getPostMortemKey(sym){ return POST_MORTEM_STORE_PREFIX+sym.replace(/[:\/]/g,'_'); }
+function loadPostMortemStore(sym){ try{ const raw=localStorage.getItem(getPostMortemKey(sym)); return raw?JSON.parse(raw):{entries:[]}; }catch(e){ return {entries:[]}; } }
+function savePostMortemStore(sym,store){ try{ localStorage.setItem(getPostMortemKey(sym), JSON.stringify(store)); }catch(e){} }
+function addPostMortemWatch(entry){
+  const store=loadPostMortemStore(entry.sym);
+  store.entries=store.entries||[];
+  store.entries.push(entry);
+  if(store.entries.length>400) store.entries=store.entries.slice(-400);
+  savePostMortemStore(entry.sym, store);
+}
+// Her tick'te botTick'ten çağrılır — bekleyen (henüz izlemesi bitmemiş) kayıtları o anki mumla
+// karşılaştırır, yeterli mum geçtiyse takip fiyatını sabitler ve içgörüyü üretir.
+function updatePostMortemWatch(sym, cr, lastPrice){
+  if(!cr || cr.candleTime==null) return;
+  const store=loadPostMortemStore(sym);
+  let changed=false;
+  (store.entries||[]).forEach(e=>{
+    if(e.followDone) return;
+    if(e.followCandleTime==null){
+      // sembolün mum aralığını (saniye) INT'ten kabaca çıkar - sadece "N mum sonra" icin yaklaşık yeter
+      const intvSec = (INT==='60'?3600:INT==='240'?14400:INT==='D'?86400:(parseInt(INT,10)||15)*60);
+      e.followCandleTime = e.resolvedCandleTime + POST_MORTEM_FOLLOW_CANDLES*intvSec;
+      changed=true;
+    }
+    if(cr.candleTime>=e.followCandleTime){
+      e.followPrice=lastPrice; e.followDone=true;
+      e.insight=describePostMortem(e);
+      changed=true;
+    }
+  });
+  if(changed) savePostMortemStore(sym, store);
+}
+// Otomatik, okunabilir "nasıl daha iyi olabilirdi" cümlesi — hem kâr maksimizasyonu (kazananlar)
+// hem zarar önleme (kaybedenler) için, tamamen bu işlemin GERÇEK MFE/MAE ve çıkış-sonrası
+// davranışına dayanır (varsayım/şablon değil).
+function describePostMortem(e){
+  const dir=e.dir;
+  const slDist=Math.abs(e.entry-e.exit)||0.0001;
+  const postMove = e.followPrice!=null ? dir*(e.followPrice-e.exit) : null;
+  if(e.outcome==='win'){
+    if(postMove!=null && postMove>slDist*0.3){
+      return {tag:'hedef_dar', tr:t('pmWinLeftOnTable')(postMove.toFixed(2))};
+    }
+    return {tag:'hedef_iyi', tr:t('pmWinGoodExit')};
+  } else {
+    if(e.mfe>slDist*0.3){
+      return {tag:'erken_kar_korunmadi', tr:t('pmLossHadProfit')(e.mfe.toFixed(2))};
+    }
+    if(postMove!=null && postMove>slDist*0.3){
+      return {tag:'stop_dar', tr:t('pmLossStopTooTight')(postMove.toFixed(2))};
+    }
+    return {tag:'giris_hatali', tr:t('pmLossNoProfitEver')};
+  }
+}
+// 2 haftalık (ya da istenen herhangi bir) dönem için toplu özet — hangi örüntü ne kadar sık
+// görüldü ("kayıpların X%'i erken kâr korumasıyla önlenebilirdi" gibi). Konsoldan ya da ileride
+// bir panelden çağrılabilir: window.valensPostMortemReport()
+window.valensPostMortemReport=function(sym, sinceMs){
+  sym = sym || CUR;
+  const since = sinceMs!=null ? sinceMs : (Date.now()-14*24*3600*1000); // varsayılan: son 14 gün
+  const store = loadPostMortemStore(sym);
+  const entries = (store.entries||[]).filter(e=>e.ts>=since && e.followDone);
+  const tagCounts={};
+  entries.forEach(e=>{ const tg=e.insight?e.insight.tag:'bekliyor'; tagCounts[tg]=(tagCounts[tg]||0)+1; });
+  const wins=entries.filter(e=>e.outcome==='win').length, losses=entries.length-wins;
+  console.log(`=== Post-Mortem Özeti (${sym}, son ${Math.round((Date.now()-since)/86400000)} gün) ===`);
+  console.log(`Toplam analiz edilmiş işlem: ${entries.length} (${wins} kâr, ${losses} zarar)`);
+  Object.entries(tagCounts).forEach(([tag,n])=>console.log(`  ${tag}: ${n} işlem (%${(n/entries.length*100).toFixed(0)})`));
+  return {sym, total:entries.length, wins, losses, tagCounts, entries};
+};
 // DÜZELTME (kullanıcı geri bildirimi): merkezi API'ye YAZMA (pushSignalToApi/resolveSignalOnApi)
 // zaten vardı ama görüntüleme panelleri hâlâ SADECE bu tarayıcının localStorage'ını okuyordu —
 // bağlıyken bile başka bir cihazdan girilen/sonuçlanan işlemler görünmüyordu. Artık bağlıyken
@@ -2215,6 +2316,11 @@ function updateTradeLogUI(){
   // DÜZELTME (kullanıcı geri bildirimi: "171 işlemin tamamını göremiyorum") — eskiden sadece son 40
   // işlem gösterilip gerisi "+131…" notuna gizleniyordu. Kutu zaten kaydırılabilir (max-height+overflow),
   // artık TÜMÜ render ediliyor — hiçbir gerçek işlem gizli kalmıyor.
+  // Post-mortem içgörüsü, işlem geçmişinden AYRI bir mağazada (loadPostMortemStore) tutuluyor —
+  // eşleştirme sym+ts (her işlem için tekil) ile yapılır. Henüz izleme bitmemişse (POST_MORTEM_
+  // FOLLOW_CANDLES kadar mum geçmemişse) satır gösterilmez, sessizce bekler.
+  const pmBySymTs={};
+  Object.keys(SYMS).forEach(s=>{ (loadPostMortemStore(s).entries||[]).forEach(e=>{ if(e.followDone) pmBySymTs[s+'|'+e.ts]=e; }); });
   list.innerHTML = trades.map(tr=>{
     const cfg=SYMS[tr.sym]; if(!cfg) return '';
     const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
@@ -2223,12 +2329,15 @@ function updateTradeLogUI(){
     const ctxLine = tr.context ? describeTradeContext(tr.context) : '';
     const outcomeLine = tr.outcomeContext ? describeOutcomeContext(tr.outcomeContext) : '';
     const trailLine = tr.slAdjusted ? t('trailLockNote') : '';
+    const pmEntry = pmBySymTs[tr.sym+'|'+tr.ts];
+    const pmLine = pmEntry && pmEntry.insight ? pmEntry.insight.tr : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line);font-size:9px">'+
       '<div><b style="color:'+col+'">'+(win?t('tradeLogWin'):t('tradeLogLoss'))+' '+(tr.dir>0?'BUY':'SELL')+'</b> '+cfg.label+(tr.stratLabel?' <span style="color:var(--muted)">· '+tr.stratLabel+'</span>':'')+
       '<br><span style="color:var(--muted)">'+fmt(tr.entry)+' → '+fmt(hitPx)+' · '+fmtSigTime(tr.ts)+'</span>'+
       (ctxLine?'<br><span style="color:var(--muted);font-size:8px">'+ctxLine+'</span>':'')+
       (outcomeLine?'<br><span style="color:var(--muted);font-size:8px">'+outcomeLine+'</span>':'')+
-      (trailLine?'<br><span style="color:var(--gold);font-size:8px">'+trailLine+'</span>':'')+'</div>'+
+      (trailLine?'<br><span style="color:var(--gold);font-size:8px">'+trailLine+'</span>':'')+
+      (pmLine?'<br><span style="color:var(--blue);font-size:8px">'+pmLine+'</span>':'')+'</div>'+
       '<div style="color:'+col+';font-weight:700;white-space:nowrap">'+(tr.usd>=0?'+$':'-$')+Math.round(Math.abs(tr.usd)).toLocaleString('en-US')+'</div>'+
       '</div>';
   }).join('');
@@ -2340,6 +2449,7 @@ function botTick(){
  const justClosedCandlePrice = getJustClosedCandlePrice(CUR, cr);
  recordCandleCloseTick(CUR, cr, adjLast);
  updateTradeOutcomes(CUR, adjLast, cr, justClosedCandlePrice);
+ updatePostMortemWatch(CUR, cr, adjLast);
 
  // Haber yönü: gerçek zamanlı takvimden (bugün açıklanan, beklenti-vs-gerçekleşen) hesaplanan
  // bias varsa ONU kullan; yoksa (API anahtarı yoksa ya da bugün ilgili haber yoksa) elle
