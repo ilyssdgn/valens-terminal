@@ -1838,6 +1838,24 @@ function updateEliteScalpLiveStatus(live){
   el.innerHTML = '● '+t('eliteScalpLiveActive')(dirLabel);
   el.style.color = live.dir>0 ? 'var(--green)' : 'var(--red)';
 }
+// Kullanıcı isteği: "solda elit strateji en son hangi noktada hangi tp/sl/entry değerleriyle
+// ateşlenmiş, o çizgi olan yerde yazsın" — updateEliteScalpLiveStatus artık çağrılmıyordu (Elit
+// Scalp'in eski karar mantığı devre dışı bırakılınca boşta kalmıştı), bu yüzden #eliteScalpLive
+// hep boş "—" görünüyordu. Artık 3'lü kombinasyonun (SR/EMA-MACD/ORB, hangisi olursa) en son
+// ateşlenen işlemini (açık ya da sonuçlanmış fark etmez) gerçek giriş/stop/tp değerleriyle gösterir.
+function updateComboLastSignalUI(sym){
+  const el=document.getElementById('eliteScalpLive'); if(!el) return;
+  const store=loadCombo3Store(sym);
+  const trades=(store.trades||[]).slice().sort((a,b)=>b.ts-a.ts);
+  if(!trades.length){ el.innerHTML='○ '+t('eliteScalpLiveIdle'); el.style.color='var(--muted)'; return; }
+  const tr=trades[0];
+  const cfg=SYMS[sym]; if(!cfg) return;
+  const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
+  const dirLabel = tr.dir>0?'BUY':'SELL';
+  const dot = !tr.resolved ? '●' : (tr.outcome==='win'?'✅':'❌');
+  el.innerHTML = dot+' '+dirLabel+' · '+(tr.stratLabel||tr.stratKey||'')+' · '+t('entry_lbl')+' '+fmt(tr.entry)+' → SL '+fmt(tr.sl)+' / TP '+fmt(tr.tp)+' · '+fmtSigTime(tr.ts);
+  el.style.color = !tr.resolved ? 'var(--gold)' : (tr.outcome==='win'?'var(--green)':'var(--red)');
+}
 // ============ ⚡ 3'LÜ ÇEŞİTLENDİRİLMİŞ PORTFÖY — ELİT SCALP YERİNE ============
 // Kullanıcı isteği: "3 lü kombinasyonun aylık kar omiktarını ver ve appye elit strateji yerine onu
 // ekle" — bu oturumda 17 yıllık GERÇEK XAUUSD verisiyle (HistData.com, 1dk→1H agregasyon) ayrı ayrı
@@ -3067,7 +3085,15 @@ function botTick(){
     }
    }
  }else{
-   ['scEntry','scStop','scTp','swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—');
+   // Kullanıcı isteği: "en son sinyal de scalp plan kısmında giriş/stop/tp kısımlarında yazsın" —
+   // aktif bir kurulum yokken alanları boş "—" bırakmak yerine, EN SON verilen sinyalin gerçek
+   // giriş/stop/tp değerlerini gösteriyoruz (recordLastSignal ile zaten kaydediliyordu, "Son sinyal"
+   // metin satırında kullanılıyordu — şimdi asıl sayı kutularında da görünüyor).
+   const lastSc=getLastSignal(CUR,'scalp'), lastSw=getLastSignal(CUR,'swing');
+   if(lastSc){ document.getElementById('scEntry').textContent=fmt(lastSc.entry); document.getElementById('scStop').textContent=fmt(lastSc.sl); document.getElementById('scTp').textContent=fmt(lastSc.tp); }
+   else { ['scEntry','scStop','scTp'].forEach(id=>document.getElementById(id).textContent='—'); }
+   if(lastSw){ document.getElementById('swEntry').textContent=fmt(lastSw.entry); document.getElementById('swStop').textContent=fmt(lastSw.sl); document.getElementById('swTp').textContent=fmt(lastSw.tp); }
+   else { ['swEntry','swStop','swTp'].forEach(id=>document.getElementById(id).textContent='—'); }
    scStatusEl.className='trade-status wait';
    scStatusEl.textContent = circuitPaused ? t('circuitPausedStatus')(circuitRemainMin) : (technicallyArmed && riskBlocked) ? t('riskBlockedStatus') : (technicallyArmed && positionCapBlocked) ? t('positionOpenStatus') : awaitingConfirmation ? t('confirmStatus')(confirmedCandles,REQUIRED_CONFIRM_CANDLES,rawDir>0?'BUY':'SELL') : cooldownActive ? t('cooldownStatus')(cooldownRemainMin) : t('waitStatus')(THRESHOLD,conf);
    alertBox.classList.remove('show');
@@ -3090,6 +3116,7 @@ function botTick(){
  // updateCombo3 tanımı yukarıda) geçti. Eski detectStrategyTags/eliteWinDir mantığı koda dokunulmadan
  // duruyor (geri dönüş gerekirse), sadece artık logEliteScalpTrade ÇAĞRILMIYOR.
  updateCombo3(CUR);
+ updateComboLastSignalUI(CUR);
  if(typeof updateEliteScalpPanel==='function') updateEliteScalpPanel();
 
  updateWinRateUI();
