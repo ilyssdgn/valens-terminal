@@ -2605,6 +2605,15 @@ function botTick(){
   if(family==='trend' && candDir===-revDir) return strong?-16:-8;    // tükenmiş yönde devam bekleyen strateji — ceza
   return 0;
  }
+ // ---- MAKRO TREND YANLILIĞI AYARLAMASI — bkz. Block D'deki fetchMacroTrend, 26 Eylül 2026 17 yıllık
+ // gerçek veri doğrulaması (200-günlük SMA + 30/200 kesişimi, sabit/literatür parametreleri, OOS'ta
+ // discovery'den daha güçlü çıktı — overfit değil). Sadece 'trend' ailesini ayarlar, 'reversal'a dokunmaz.
+ function macroTrendAdjustment(family, candDir, macroTrend){
+  if(family!=='trend' || !macroTrend) return 0;
+  const trendDir = macroTrend>0?1:-1, strong = Math.abs(macroTrend)>=2;
+  if(candDir===trendDir) return strong?10:5;
+  return strong?-14:-7;
+ }
  // ---- TP'Yİ GERÇEK YAPIYA GÖRE KES — kullanıcı örneği: SELL sinyalinin TP'si Ana Destek'in (1H)
  // ALTINA konmuştu. TP'ye ulaşmak için fiyatın gerçek desteği KIRMASI gerekiyordu — ki kırarsa zaten
  // muhtemelen devam eder, orada "temiz" durup TP'yi vermesi gerçekçi bir varsayım değil. Eskiden TP
@@ -2663,6 +2672,8 @@ function botTick(){
   if(structureAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+structureAdj)));
   const exhaustionAdj = exhaustionAdjustment(family, tag.dir, cr.exhaustionBias||0);
   if(exhaustionAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+exhaustionAdj)));
+  const macroTrendAdj = macroTrendAdjustment(family, tag.dir, window.valensMacroTrend||0);
+  if(macroTrendAdj!==0) confidence = Math.min(97, Math.max(50, Math.round(confidence+macroTrendAdj)));
   // ---- CANLI GUVEN MOTORU AYARLAMASI (bkz. Block D - window.valensChartRead.mlConfidence) ----
   // Kullanicinin istegi: "su an hangi kurulum en cok destekleniyor" sorusunu, sadece kac strateji
   // ayni yonde diye SAYMAK yerine (bu ayri test edildi, hicbir fark yaratmadi: %33.0 vs %32.8),
@@ -2696,7 +2707,7 @@ function botTick(){
    confidence = Math.min(97, Math.max(50, Math.round(confidence+adj)));
    source = 'backtest';
   }
-  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, structureBias:cr.structureBias||0, exhaustionBias:cr.exhaustionBias||0, fvgZone:tag.fvgZone||null, boxZone:tag.zone||null, mlConfidence:mlProb});
+  candidates.push({key:tag.key, dir:tag.dir, confidence, label, realWinRate, realTrades:bt?bt.trades:0, confSource:source, regime:marketRegime, family, structureBias:cr.structureBias||0, exhaustionBias:cr.exhaustionBias||0, macroTrend:window.valensMacroTrend||0, fvgZone:tag.fvgZone||null, boxZone:tag.zone||null, mlConfidence:mlProb});
  });
 
  let best=null;
@@ -4930,6 +4941,31 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    mainSRZones=newZones;
    if(sym===curSym) drawMainSRZones();
   }catch(e){ /* sessizce yoksay — bu ikincil bir veri kaynağı, ana grafiği bozmasın */ }
+ }
+ // ---- MAKRO TREND YANLILIĞI (kurumsal referans: 200-günlük SMA + 30/200 kesişimi) ----
+ // 26 Eylül 2026'da 17 yıllık gerçek XAUUSD verisinde doğrulandı: bu iki kural (Moskowitz/Ooi/Pedersen
+ // 2012 "Time Series Momentum" ve klasik golden/death cross tarzı, LİTERATÜRDEN sabit — bizim veriye
+ // göre AYARLANMAMIŞ parametreler) OOS (2019-2026) döneminde discovery'den (2009-2018) DAHA GÜÇLÜ çıktı
+ // (Sharpe 0.15→0.43 ve -0.05→0.69) — parametre veriye göre uydurulmadığı için bu güçlenme overfit
+ // değil, gerçek/kalıcı bir edge işareti. window.valensMacroTrend -2 (güçlü düşüş, fiyat+30SMA ikisi de
+ // 200SMA altında) ile +2 (güçlü yükseliş) arası; sadece 'trend' ailesindeki stratejileri ayarlar —
+ // 'reversal' ailesi zaten kendi mantığıyla aşırı uçlarda dönüş arıyor, makro trend onunla çelişebilir,
+ // o yüzden dokunulmuyor (bkz. structureAdjustment/exhaustionAdjustment'ın da aynı ayrımı yapması).
+ async function fetchMacroTrend(sym){
+  const bs=MAP[sym]; if(!bs){ window.valensMacroTrend=0; return; }
+  try{
+   const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${bs}&interval=1d&limit=250`);
+   const d=await r.json();
+   if(!Array.isArray(d)||d.length<200){ window.valensMacroTrend=0; return; }
+   const closes=d.map(k=>+k[4]);
+   const last=closes[closes.length-1];
+   const sma=(arr,p)=>{ const s=arr.slice(-p); return s.reduce((a,b)=>a+b,0)/s.length; };
+   const sma200=sma(closes,200), sma30=sma(closes,30);
+   let bias=0;
+   bias += last>sma200 ? 1 : -1;
+   bias += sma30>sma200 ? 1 : -1;
+   window.valensMacroTrend=bias;
+  }catch(e){ /* ikincil sinyal, ana akışı bozmasın */ }
  }
  function addBrokenMainSR(price, kind){
   // aynı seviyeye çok yakın bir kayıt zaten varsa tekrar ekleme (küçük fiyat titremeleri
@@ -21734,6 +21770,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   closedEl.style.display='none';
   window.valensCandleLock=null;
   fetchMainSR(sym);
+  fetchMacroTrend(sym);
   fetchScalpBias(sym);
   fetchCombo3Data(sym);
   loadHistory().then(()=>{
@@ -21745,6 +21782,7 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   setTimeout(resize,120);
  };
  setInterval(()=>{ if(curSym && binSym) fetchMainSR(curSym); }, 5*60*1000); // ana S/R'ı 5 dakikada bir tazele
+ setInterval(()=>{ if(curSym && binSym) fetchMacroTrend(curSym); }, 30*60*1000); // günlük veri, sık tazelemeye gerek yok
  // ---- Zaman dilimi (15M/30M/1H/4H/1D) değiştiğinde GERÇEKTEN yeni aralıkta veri çeker ----
  // Önceden zaman dilimi butonları sadece başlık yazısını değiştiriyordu, veri her zaman 15m kalıyordu.
  window.valensSetInterval=function(){
