@@ -1505,9 +1505,16 @@ function applyTrailingStop(t, lastPrice, cr, drawFn){
   if((t.protectLevel||0) < 2){
    const distToTp = Math.abs(t.tp-t.entry);
    const riskDist = Math.abs(t.entry-t.originalSl);
-   // Fiyat henüz anlamlı ilerlemediyse (kullanıcının örneğindeki gibi en az yarı yola gelmediyse)
-   // hiç değerlendirmeye almıyoruz — erken bir dönüş sinyali gürültüden ayırt edilemez.
-   const progressedEnough = t.dir>0 ? lastPrice >= t.entry+0.5*distToTp : lastPrice <= t.entry-0.5*distToTp;
+   // Fiyat henüz anlamlı ilerlemediyse hiç değerlendirmeye almıyoruz — erken bir dönüş sinyali
+   // gürültüden ayırt edilemez. DÜZELTME (30 Eylül 2026, gerçek eylül verisiyle doğrulandı): eşik
+   // eskiden %50'ydi — eylülde kâra geçip sonra zarara dönen 32 işlemden sadece 9'u bu eşiğe
+   // ulaşabiliyordu (%30'da 15'i, %20'de 17'si ulaşırdı). %50 çok yüksekti, çoğu gerçek geri-dönüş
+   // hiç değerlendirmeye girmeden tam zararla kapanıyordu. %35'e çekildi — Kademe 1 (tek sinyal)
+   // pozisyonu KAPATMIYOR, sadece riski azaltıyor; asıl kapanışa yol açabilen Kademe 2 hâlâ 2+
+   // bağımsız dönüş sinyali istiyor, o yüzden daha erken değerlendirmeye girmenin gürültü riski
+   // sınırlı. Sonraki birkaç haftalık canlı sonuçla (post-mortem "erken_kar_korunmadi" etiketinin
+   // azalıp azalmadığıyla) doğrulanmalı, tek seferde "kesin doğru" varsayılmamalı.
+   const progressedEnough = t.dir>0 ? lastPrice >= t.entry+0.35*distToTp : lastPrice <= t.entry-0.35*distToTp;
    if(progressedEnough){
     const signalCount = detectReversalSignalCount(t.dir, cr);
     if(signalCount>=2 && (t.protectLevel||0)<2){
@@ -4600,7 +4607,10 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   // (8) İç mum (inside bar) kırılımı
   const insideBar=detectInsideBarBreakout(a); if(insideBar) tags.push(insideBar);
   // (9) Fair Value Gap retest
-  const fvgR=detectFVGRetest(a); if(fvgR) tags.push(fvgR);
+  // DEVRE DIŞI (30 Eylül 2026, gerçek kanıt — üç ayrı kontrolde de dogrulandi): tüm zamanlar 11 işlem
+  // 2 kazanç -$734.84, sadece eylülde 6 işlem 0 kazanç -$799 — hiçbir dönemde net pozitif olmadı,
+  // geçici kötü seri değil kronik zayıf strateji.
+  // const fvgR=detectFVGRetest(a); if(fvgR) tags.push(fvgR);
   // (9b) Order Block + FVG Confluence (kullanıcının paylaştığı SMC eskizi)
   const obFvg=detectObFvgConfluence(a); if(obFvg) tags.push(obFvg);
   // (10) Inverse Fair Value Gap
