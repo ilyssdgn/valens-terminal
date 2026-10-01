@@ -380,10 +380,6 @@ iframe{height:100%;width:100%;border:0}
         <div id="stratLiveBody"><p style="color:var(--muted);font-size:8px">—</p></div>
       </div>
       </div>
-      <div class="ph"><b data-i18n="order_flow_title">ORDER FLOW · YÜKLÜ İŞLEMLER</b><span class="badge" data-i18n="live">CANLI</span></div>
-      <div class="simwarn" data-i18n="simwarn">🐋 BTC/kripto için Binance canlı YÜKLÜ (whale) emirleri gösterilir. Forex/endeks için agrega simülasyondur.</div>
-      <div class="netdelta" id="netDelta">NET DELTA: — </div>
-      <div id="flowFeed"></div>
     </aside>
 
     <section class="center">
@@ -1152,34 +1148,11 @@ function drawVolProfile(){
  });
 }
 
-const feed=document.getElementById('flowFeed');
-let netLots=0, flowLog=[];
-function utc(){return new Date().toUTCString().slice(17,22)+' UTC';}
-function rnd(a,b){return a+Math.random()*(b-a);}
-const flowTags=['Agresif satıcı','Alım baskısı','Kurumsal blok','Likidite avı','Piyasa emri','Stop tetikleme','Momentum akışı'];
-function addFlow(){
- if(!isMarketOpen(CUR))return;
- if(CUR==='BINANCE:BTCUSDT')return;
- const cfg=SYMS[CUR], buy=Math.random()>0.5;
- const lots=Math.round(rnd(80,650)/10)*10;
- const cr=window.valensChartRead||{};
- const basePx=(cr.indicators && cr.indicators.lastClose)?cr.indicators.lastClose:cfg.price;
- const px=basePx+rnd(-cfg.step*2,cfg.step*2);
- const fmt=px.toLocaleString('en-US',{minimumFractionDigits:cfg.dec,maximumFractionDigits:cfg.dec});
- const tag=flowTags[Math.floor(Math.random()*flowTags.length)];
- netLots += buy?lots:-lots;
- flowLog.push(buy?lots:-lots); if(flowLog.length>14){netLots-=flowLog.shift();}
- const el=document.createElement('article');
- el.className='flow '+(buy?'buy':'sell');
- el.innerHTML='<h4><span>'+(buy?'▲ ALIM':'▼ SATIM')+'</span><time>'+utc()+'</time></h4>'+
-   '<div class="act '+(buy?'up':'down')+'">'+lots.toLocaleString('en-US')+' lot '+(buy?'BUY':'SELL')+' · '+cfg.label+'</div>'+
-   '<p>@ '+fmt+' · '+tag+'</p>';
- feed.prepend(el);
- while(feed.children.length>8) feed.removeChild(feed.lastChild);
- const nd=document.getElementById('netDelta'), dir=netLots>=0;
- nd.className='netdelta '+(dir?'buy':'sell');
- nd.textContent='NET DELTA: '+(dir?'+':'')+Math.round(netLots).toLocaleString('en-US')+' lot '+(dir?'▲ Alıcı baskın':'▼ Satıcı baskın');
-}
+// DÜZELTME (1 Ekim 2026, kullanıcı geri bildirimi): "Order Flow" paneli (addFlow/#flowFeed/#netDelta)
+// kaldırıldı — rastgele (Math.random()) sahte alım/satım blokları üretiyordu, gerçek piyasa verisi
+// DEĞİLDİ (kendi "simwarn" notu da bunu itiraf ediyordu). Gerçek, canlı trade-delta hesaplaması
+// (currentTradeDelta/deltaWindow/connectTrades — deltaConfirmTrend ve deltaAbsorption stratejilerinin
+// kullandığı asıl veri) bununla HİÇ ilgili değildi, dokunulmadı, aynen çalışmaya devam ediyor.
 
 const SIG_STORE_PREFIX='valens_signals_';
 function getStoreKey(sym){return SIG_STORE_PREFIX+sym.replace(/[:\/]/g,'_');}
@@ -3161,7 +3134,6 @@ function switchSymbol(sym){
 
 loadChart(); drawZones(); drawVolProfile();
 for(let i=0;i<4;i++) addFlow(); botTick();
-setInterval(addFlow, 4500);
 setInterval(botTick, 3000);
 setTimeout(()=>updateAggUI(), 600);
 
@@ -3227,6 +3199,17 @@ async function updateTickerBar(){
 updateGoldOffset().then(updateTickerBar);
 setInterval(updateGoldOffset, 45000); // xaus.com adil kullanım kuralı: en az 30sn — 45sn kullanıyoruz
 setInterval(updateTickerBar, 15000);
+// ---- DÜZELTME (1 Ekim 2026, kullanıcı geri bildirimi: "ticker eskiye takılıp duruyor") ----
+// Kök neden: xaus.com/Binance API'leri gayet sağlıklı, sorun tarayıcının kendisi — Chrome (ve diğer
+// modern tarayıcılar) uzun süre ARKA PLANDA/odak dışı kalan sekmelerde setInterval'i agresifçe
+// yavaşlatıyor (15sn'lik tazeleme dakikalarca gecikebiliyor). Terminal zaten saatlerce açık bir
+// sekmede unutulmaya müsait olduğu için (bkz. sunucu taşıma planı — asıl kalıcı çözüm o), kullanıcı
+// sekmeye geri döndüğünde ESKİ fiyatla karşılaşıyordu. Buradaki kısmi düzeltme: sekme tekrar
+// görünür/aktif olduğu AN, throttled interval'i beklemeden anında tazele.
+document.addEventListener('visibilitychange', ()=>{
+ if(document.visibilityState==='visible'){ updateGoldOffset().then(updateTickerBar); }
+});
+window.addEventListener('focus', ()=>{ updateGoldOffset().then(updateTickerBar); });
 
 
 // ---- GEÇMİŞ VERİ TESTİ (backtest) paneli — window.valensRenderBacktestPanel, chart engine script'i
