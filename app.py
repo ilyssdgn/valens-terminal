@@ -287,7 +287,6 @@ iframe{height:100%;width:100%;border:0}
     <button class="market" data-sym="BINANCE:BTCUSDT" data-label="BTC/USD" data-price="118240"><small>BTC/USD</small><strong>118,240</strong> <small class="up">▲ +2.14%</small></button>
     <button class="market" data-sym="OANDA:EURUSD" data-label="EUR/USD" data-price="1.0842"><small>EUR/USD</small><strong>1.0842</strong> <small class="down">▼ -0.31%</small></button>
     <button class="market" data-sym="OANDA:SPX500USD" data-label="SPX500" data-price=""><small>SPX500</small><strong>—</strong> <small style="color:var(--muted)" data-i18n="noLiveShort">canlı veri yok</small></button>
-    <button id="gridToggleBtn" style="margin-left:auto;background:#101822;border:1px solid var(--line);color:var(--text);padding:0 12px;border-radius:4px;font:10px 'IBM Plex Mono';cursor:pointer;display:flex;align-items:center;gap:6px">⊞ <span id="gridToggleLabel">GRID GÖRÜNÜMÜ</span></button>
   </div>
 
   <main class="shell">
@@ -450,35 +449,12 @@ iframe{height:100%;width:100%;border:0}
         <span id="sessNote" class="sessNote">—</span>
       </div>
 
-      <div class="chartzone" id="chartzoneSingle">
+      <div class="chartzone">
         <div class="volprofile"><div class="vphead" data-i18n="vol_profile">📊 HACİM PROFİLİ</div><div id="vpBars"></div></div>
         <div class="chartwrap">
           <div id="valensChart"></div>
           <div id="chartClosed"><span data-i18n="market_closed">● PİYASA KAPALI</span><small id="chartClosedMsg" data-i18n="weekend_msg">Hafta sonu — canlı veri akışı yok</small></div>
           <div class="zones" id="zones"></div>
-        </div>
-      </div>
-
-      <!-- MT5-TARZI COKLU PARITE GRID (test/onizleme — 1 Ekim 2026). AI SIGNAL ENGINE hala TEK sembol
-           (CUR) uzerinde calisiyor, bu sadece gorsel bir piyasa genel-bakis modu. Gercek order flow
-           olmadigi icin burada da PAXG=XAU proxy acikca etiketleniyor, yaniltici gosterilmiyor. -->
-      <div class="chartzone" id="chartzoneGrid" style="display:none">
-        <div id="gridWrap" style="display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px;width:100%;height:520px;padding:6px">
-          <div class="gridcell" data-gridsym="OANDA:XAUUSD" style="position:relative;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#07101c">
-            <div class="gridcell-hd" style="position:absolute;top:0;left:0;right:0;z-index:5;padding:4px 8px;font:9px 'IBM Plex Mono';color:var(--gold);background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);display:flex;justify-content:space-between"><span>XAU/USD · PAXG proxy</span><span id="gridPx_xau">—</span></div>
-            <div class="gridchart" id="gridChart_xau" style="width:100%;height:100%"></div>
-          </div>
-          <div class="gridcell" data-gridsym="BINANCE:BTCUSDT" style="position:relative;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#07101c">
-            <div class="gridcell-hd" style="position:absolute;top:0;left:0;right:0;z-index:5;padding:4px 8px;font:9px 'IBM Plex Mono';color:var(--gold);background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);display:flex;justify-content:space-between"><span>BTC/USD</span><span id="gridPx_btc">—</span></div>
-            <div class="gridchart" id="gridChart_btc" style="width:100%;height:100%"></div>
-          </div>
-          <div class="gridcell" data-gridsym="OANDA:EURUSD" style="position:relative;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#07101c">
-            <div class="gridcell-hd" style="position:absolute;top:0;left:0;right:0;z-index:5;padding:4px 8px;font:9px 'IBM Plex Mono';color:var(--gold);background:linear-gradient(180deg,rgba(0,0,0,.6),transparent);display:flex;justify-content:space-between"><span>EUR/USD</span><span id="gridPx_eur">—</span></div>
-            <div class="gridchart" id="gridChart_eur" style="width:100%;height:100%"></div>
-          </div>
-          <div class="gridcell" data-gridsym="OANDA:SPX500USD" style="position:relative;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#07101c;display:flex;align-items:center;justify-content:center">
-            <div style="text-align:center;color:var(--muted);font:9px 'IBM Plex Mono'">SPX500<br>canlı veri yok</div>
-          </div>
         </div>
       </div>
 
@@ -3238,70 +3214,6 @@ document.addEventListener('visibilitychange', ()=>{
  if(document.visibilityState==='visible'){ updateGoldOffset().then(updateTickerBar); }
 });
 window.addEventListener('focus', ()=>{ updateGoldOffset().then(updateTickerBar); });
-
-// ============ MT5-TARZI COKLU PARITE GRID GORUNUMU (test/onizleme, 1 Ekim 2026) ============
-// AI SIGNAL ENGINE / strateji motoru buna HIC dokunmuyor, hala tek sembol (CUR) uzerinde calisiyor.
-// Bu sadece "ayni anda birden fazla pariteyi gormek" icin ayri, basit bir piyasa genel-bakis modu.
-(function(){
- const GRID_SYMS = {xau:'PAXGUSDT', btc:'BTCUSDT', eur:'EURUSDT'};
- const gridCharts = {};
- let gridInited = false;
-
- function initGridCharts(){
-  if(gridInited || !window.LightweightCharts) return;
-  Object.keys(GRID_SYMS).forEach(k=>{
-   const el = document.getElementById('gridChart_'+k);
-   if(!el) return;
-   const chart = LightweightCharts.createChart(el, {
-    layout:{background:{color:'transparent'}, textColor:'#8090a6', fontFamily:'IBM Plex Mono'},
-    grid:{vertLines:{color:'rgba(255,255,255,.04)'}, horzLines:{color:'rgba(255,255,255,.04)'}},
-    rightPriceScale:{borderColor:'rgba(212,175,55,.2)'},
-    timeScale:{borderColor:'rgba(212,175,55,.2)', timeVisible:true, secondsVisible:false},
-    crosshair:{mode:0}, handleScroll:false, handleScale:false,
-   });
-   const series = chart.addCandlestickSeries({upColor:'#00c896', downColor:'#ff506d', borderVisible:false, wickUpColor:'#00c896', wickDownColor:'#ff506d'});
-   gridCharts[k] = {chart, series};
-   new ResizeObserver(()=>chart.applyOptions({width:el.clientWidth, height:el.clientHeight})).observe(el);
-  });
-  gridInited = true;
- }
-
- async function refreshGridData(){
-  if(!gridInited) return;
-  for(const [k, binSym] of Object.entries(GRID_SYMS)){
-   try{
-    const r = await fetch('https://api.binance.com/api/v3/klines?symbol='+binSym+'&interval=15m&limit=150');
-    const d = await r.json();
-    if(!Array.isArray(d) || !d.length) continue;
-    let bars = d.map(c=>({time:c[0]/1000, open:+c[1], high:+c[2], low:+c[3], close:+c[4]}));
-    if(k==='xau') bars = bars.map(b=>({...b, open:b.open+(window.valensGoldOffset||0), high:b.high+(window.valensGoldOffset||0), low:b.low+(window.valensGoldOffset||0), close:b.close+(window.valensGoldOffset||0)}));
-    gridCharts[k].series.setData(bars);
-    const last = bars[bars.length-1].close;
-    const dec = k==='eur'?4:2;
-    const pxEl = document.getElementById('gridPx_'+k);
-    if(pxEl) pxEl.textContent = last.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
-   }catch(e){ /* tek sembol hatasi digerini bozmasin */ }
-  }
- }
-
- let gridRefreshTimer = null;
- function showGrid(){
-  document.getElementById('chartzoneSingle').style.display='none';
-  document.getElementById('chartzoneGrid').style.display='';
-  document.getElementById('gridToggleLabel').textContent='TEK GRAFİK';
-  initGridCharts();
-  refreshGridData();
-  if(!gridRefreshTimer) gridRefreshTimer = setInterval(refreshGridData, 20000);
- }
- function showSingle(){
-  document.getElementById('chartzoneSingle').style.display='';
-  document.getElementById('chartzoneGrid').style.display='none';
-  document.getElementById('gridToggleLabel').textContent='GRID GÖRÜNÜMÜ';
- }
- let gridOn = false;
- const btn = document.getElementById('gridToggleBtn');
- if(btn) btn.addEventListener('click', ()=>{ gridOn=!gridOn; if(gridOn) showGrid(); else showSingle(); });
-})();
 
 
 // ---- GEÇMİŞ VERİ TESTİ (backtest) paneli — window.valensRenderBacktestPanel, chart engine script'i
