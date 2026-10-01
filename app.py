@@ -347,7 +347,7 @@ iframe{height:100%;width:100%;border:0}
           <input id="signalApiUrl" type="text" placeholder="https://terminal.valenswealth.com" style="flex:1;min-width:0;background:#07101c;border:1px solid var(--line);color:var(--text);padding:6px;border-radius:3px;font:9px 'IBM Plex Mono'">
         </div>
         <div style="display:flex;gap:6px;margin-bottom:7px">
-          <input id="signalApiCode" type="text" placeholder="Erken erişim kodu" style="flex:1;min-width:0;background:#07101c;border:1px solid var(--line);color:var(--text);padding:6px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <input id="signalApiCode" type="text" data-i18n-ph="ph_earlyAccessCode" placeholder="Erken erişim kodu" style="flex:1;min-width:0;background:#07101c;border:1px solid var(--line);color:var(--text);padding:6px;border-radius:3px;font:9px 'IBM Plex Mono'">
           <button id="signalApiToggle" style="padding:7px 10px;border-radius:4px;border:1px solid var(--line);background:#07101c;color:var(--text);font:9px 'IBM Plex Mono';cursor:pointer;white-space:nowrap" data-i18n="signalApiToggleOff">☁️ Bağlan</button>
         </div>
         <div id="signalApiStatus" style="font-size:8px;color:var(--muted);line-height:1.5;margin-bottom:7px">—</div>
@@ -509,7 +509,7 @@ iframe{height:100%;width:100%;border:0}
       <div style="padding:8px 9px;border-bottom:1px solid var(--line)">
         <div style="font-size:8px;color:var(--muted);margin-bottom:6px" data-i18n="manualNewsHint">TradingView takviminden 3 yıldızlı haberi buraya girin — senaryo yorumu otomatik üretilir.</div>
         <div style="display:grid;grid-template-columns:2fr 1fr;gap:5px;margin-bottom:5px">
-          <input id="mnEvent" type="text" placeholder="Ör: Fed Interest Rate Decision" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <input id="mnEvent" type="text" data-i18n-ph="ph_eventName" placeholder="Ör: Fed Interest Rate Decision" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
           <select id="mnCountry" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
             <option value="US">🇺🇸 US</option><option value="EU">🇪🇺 EU</option><option value="DE">🇩🇪 DE</option>
             <option value="GB">🇬🇧 GB</option><option value="JP">🇯🇵 JP</option><option value="CN">🇨🇳 CN</option><option value="TR">🇹🇷 TR</option>
@@ -517,8 +517,8 @@ iframe{height:100%;width:100%;border:0}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px">
           <input id="mnEstimate" type="text" placeholder="Beklenti" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-          <input id="mnPrev" type="text" placeholder="Önceki" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
-          <input id="mnActual" type="text" placeholder="Gerçekleşen (varsa)" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <input id="mnPrev" type="text" data-i18n-ph="ph_previous" placeholder="Önceki" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
+          <input id="mnActual" type="text" data-i18n-ph="ph_actual" placeholder="Gerçekleşen (varsa)" style="background:#07101c;border:1px solid var(--line);color:var(--text);padding:5px;border-radius:3px;font:9px 'IBM Plex Mono'">
         </div>
         <div style="display:flex;gap:6px">
           <button id="mnAdd" style="flex:1;background:var(--gold);color:#07101b;border:0;padding:6px;border-radius:4px;font:700 9px 'IBM Plex Mono';cursor:pointer" data-i18n="manualNewsAdd">+ EKLE</button>
@@ -559,7 +559,9 @@ const I18N = {
   todays_news:'GÜNÜN ÖNEMLİ HABERLERİ', loading:'Yükleniyor…',
   tab_terminal:'TERMINAL', tab_portfolio:'PORTFOLIO', tab_research:'RESEARCH', tab_settings:'SETTINGS', tab_account:'ACCOUNT',
   noDataStatus:'● VERİ YOK', noDataDesc:l=>'<b>'+l+'</b> için canlı OHLC/fiyat feed bağlantısı yok (bu enstrüman için gerçek veri kaynağı entegre edilmedi). Gerçek veri olmadan sinyal ve gösterge <b>üretilmiyor</b> — uydurma sayı göstermek yerine devre dışı bırakıldı.',
-  noDataTrigger:'● VERİ AKIŞI YOK — sinyal üretilmiyor', noDataStatusShort:'● VERİ YOK',
+  noDataTrigger:'● VERİ AKIŞI YOK — sinyal üretilmiyor', noDataStatusShort:'● VERİ YOK', scLoadingShort:'◇ YÜKLENİYOR',
+  ph_earlyAccessCode:'Erken erişim kodu', ph_eventName:'Ör: Fed Interest Rate Decision', ph_previous:'Önceki', ph_actual:'Gerçekleşen (varsa)',
+  whaleBuy:'🐋 ▲ YÜKLÜ ALIM', whaleSell:'🐋 ▼ YÜKLÜ SATIM', whaleVolume:'Hacim:', whaleSource:'Binance canlı emir',
   loadingStatus:'◇ YÜKLENİYOR', loadingDesc:l=>'Gerçek zamanlı OHLC verisi yükleniyor ('+l+')… veri gelince göstergeler ve sinyal motoru canlanacak.',
   loadingTrigger:'◇ VERİ YÜKLENİYOR…',
   marketClosedDesc:l=>'<b>'+l+'</b> piyasası şu an <b style="color:var(--red)">KAPALI</b>. Piyasa açılana kadar sinyal üretilmez.',
@@ -790,7 +792,9 @@ const I18N = {
   todays_news:"TODAY'S KEY NEWS", loading:'Loading…',
   tab_terminal:'TERMINAL', tab_portfolio:'PORTFOLIO', tab_research:'RESEARCH', tab_settings:'SETTINGS', tab_account:'ACCOUNT',
   noDataStatus:'● NO DATA', noDataDesc:l=>'No live OHLC/price feed is connected for <b>'+l+'</b> (no real data source is integrated for this instrument). No signal or indicator is <b>produced</b> without real data — disabled instead of showing a made-up number.',
-  noDataTrigger:'● NO DATA FEED — no signal produced', noDataStatusShort:'● NO DATA',
+  noDataTrigger:'● NO DATA FEED — no signal produced', noDataStatusShort:'● NO DATA', scLoadingShort:'◇ LOADING',
+  ph_earlyAccessCode:'Early access code', ph_eventName:'E.g: Fed Interest Rate Decision', ph_previous:'Previous', ph_actual:'Actual (if any)',
+  whaleBuy:'🐋 ▲ LARGE BUY', whaleSell:'🐋 ▼ LARGE SELL', whaleVolume:'Volume:', whaleSource:'Binance live order',
   loadingStatus:'◇ LOADING', loadingDesc:l=>'Loading real-time OHLC data ('+l+')… indicators and the signal engine will come alive once data arrives.',
   loadingTrigger:'◇ LOADING DATA…',
   marketClosedDesc:l=>'<b>'+l+'</b> market is currently <b style="color:var(--red)">CLOSED</b>. No signal is produced until the market opens.',
@@ -1009,6 +1013,11 @@ function t(key){ const v=(I18N[LANG]&&I18N[LANG][key]); return v!==undefined? v 
 function applyStaticI18N(){
  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.getAttribute('data-i18n')); });
  document.querySelectorAll('[data-i18n-opt]').forEach(el=>{ el.textContent=t(el.getAttribute('data-i18n-opt')); });
+ // DÜZELTME (1 Ekim 2026, kullanıcı geri bildirimi: "İngilizce'ye geçince bile bazı kısımlar Türkçe
+ // kalıyor") — placeholder metinleri data-i18n'in textContent mantığıyla kapsanmıyordu, ayrı bir
+ // öznitelik/döngü gerekiyordu. Birkaç input alanı (erken erişim kodu, manuel haber girişi) bu yüzden
+ // dil değişince hep Türkçe kalıyordu.
+ document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder=t(el.getAttribute('data-i18n-ph')); });
  document.documentElement.lang=LANG;
  const btn=document.getElementById('langToggle'); if(btn) btn.textContent = LANG==='tr'?'EN':'TR';
 }
@@ -2422,7 +2431,7 @@ function noLiveDataUI(reason){
    document.getElementById('sigConf').textContent='—';
    document.getElementById('anText').innerHTML=t('loadingDesc')(cfg.label);
    tg.className='trigger wait'; tg.textContent=t('loadingTrigger');
-   sc.className='trade-status wait'; sc.textContent='◇ YÜKLENİYOR';
+   sc.className='trade-status wait'; sc.textContent=t('scLoadingShort');
  }
 }
 
@@ -20865,11 +20874,11 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    const el2=document.createElement('article');
    el2.className='flow '+(buy?'buy':'sell');
    const usd = notional>=1e6 ? '$'+(notional/1e6).toFixed(2)+'M' : '$'+(notional/1e3).toFixed(0)+'K';
-   el2.innerHTML='<h4><span>'+(buy?'🐋 ▲ YÜKLÜ ALIM':'🐋 ▼ YÜKLÜ SATIM')+'</span><time>'+
+   el2.innerHTML='<h4><span>'+(buy?t('whaleBuy'):t('whaleSell'))+'</span><time>'+
      new Date().toUTCString().slice(17,22)+' UTC</time></h4>'+
      '<div class="act '+(buy?'up':'down')+'">'+qty.toLocaleString('en-US',{maximumFractionDigits:3})+
      ' @ '+px.toLocaleString('en-US')+'</div>'+
-     '<p>Hacim: <b style="color:'+(buy?'#00c896':'#ff506d')+'">'+usd+'</b> · Binance canlı emir</p>';
+     '<p>'+t('whaleVolume')+' <b style="color:'+(buy?'#00c896':'#ff506d')+'">'+usd+'</b> · '+t('whaleSource')+'</p>';
    feedEl.prepend(el2);
    while(feedEl.children.length>10) feedEl.removeChild(feedEl.lastChild);
   };
