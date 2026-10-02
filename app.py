@@ -20804,17 +20804,33 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(sym==='BINANCE:BTCUSDT') return arr;
   return arr.filter(c=>!isClosedMarketTime(sym, c.time));
  }
+ // ---- MUM SAYISI (2 Ekim 2026, kullanıcı isteği: "mum sayısını artıralım") ----
+ // Binance tek istekte en fazla 1000 mum verir; daha fazlası için endTime ile geriye doğru sayfalıyoruz.
+ // 2000: EMA200/yapı/S-R gibi uzun geriye-bakışlı göstergelere daha derin geçmiş verir, ama her tick'te
+ // taranan dizi 2 kat büyüdüğü için KASITLI olarak ılımlı tutuldu (motor hâlâ izleyen herkesin
+ // tarayıcısında çalışıyor — daha da artırmadan önce analyze() süresi ölçülmeli). localStorage önbelleği
+ // (kota riski) ve runHistoricalBacktest penceresi (HIST_WINDOW) bilinçli olarak 1000'de bırakıldı.
+ const CHART_CANDLES = 2000;
+ async function fetchKlinesPaged(symbol, intv, total){
+  let all=[], endTime=null;
+  while(all.length<total){
+   const need=Math.min(1000, total-all.length);
+   const url=`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${intv}&limit=${need}`+(endTime?`&endTime=${endTime}`:'');
+   const r=await fetch(url); const d=await r.json();
+   if(!Array.isArray(d)||!d.length){ if(!all.length) throw new Error('no data'); break; }
+   all=d.concat(all);
+   endTime=d[0][0]-1;
+   if(d.length<need) break;
+  }
+  return all;
+ }
  async function loadHistory(){
   const intv=currentBinInterval();
   // Önce önbellekten (varsa) anında göster — kullanıcı sayfayı her açtığında boş grafik görmesin
   const cached=loadOhlcCache(curSym,intv);
   if(cached && cached.length){ ohlc=filterClosedMarketCandles(cached,curSym); cs.setData(ohlc); showRecentRange(); analyze(true); }
   try{
-   // Binance REST API'de tek istekte alınabilecek azami mum sayısı 1000'dir — önceki 200 limiti
-   // gereksiz yere veriyi kısıtlıyordu (15dk'da sadece ~50 saat; 1000 ile ~10 gün).
-   const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${binSym}&interval=${intv}&limit=1000`);
-   const d=await r.json();
-   if(!Array.isArray(d))throw new Error('no data');
+   const d=await fetchKlinesPaged(binSym, intv, CHART_CANDLES);
    // ---- GERÇEK XAU/USD (ya da EUR/USD) PİYASASI KAPALIYKEN OLUŞAN MUMLAR TAMAMEN ATILIR ----
    // Kullanıcı gerçek ekran görüntüsüyle gösterdi: sadece analiz çizgilerini dondurmak yetmiyor —
    // mumların kendisi hâlâ görünüp hareket etmeye devam edince grafiği okurken kafa karıştırıcı
@@ -20829,16 +20845,45 @@ document.getElementById('importTrades').addEventListener('change', e=>{
    }, 50); // taze veri sonrası, tarayıcının önce çizimi bitirmesine izin vermek için küçük bir gecikme
   }catch(e){console.error('history err',e);}
  }
+ // ---- GRAFİK DONMA BEKÇİSİ (2 Ekim 2026, kullanıcı geri bildirimi: "sayfayı yenilemeyince eski grafikte
+ // donup kalıyor") ----
+ // Kök neden: connect() hiçbir onclose/onerror dinlemiyordu — Binance WebSocket'i bir kez koptuğunda
+ // (ağ kesintisi, uyku modu, arka plan sekmesinin kısıtlanması, sunucu tarafı reset) grafik BİR DAHA
+ // hiç güncellenmiyordu, sekme açık kalsa bile. Artık: (1) onclose/onerror → üstel geri çekilmeyle
+ // otomatik yeniden bağlan, (2) kopuk kaldığımız sürede kaçan mumları REST ile geri doldur,
+ // (3) 10 sn'de bir bekçi: 60 sn'dir hiç mesaj gelmediyse (bağlantı "açık" görünse bile sessizce
+ // ölmüş olabilir) zorla yeniden bağlan, (4) sekme tekrar görünür olunca da aynı kontrolü yap.
+ let lastWsMsg=Date.now(), wsRetry=0, wsReconnectTimer=null;
+ function reconnectChartFeed(){
+  if(!binSym || wsReconnectTimer) return;
+  const delay=Math.min(15000, 1000*Math.pow(2, wsRetry)); wsRetry++;
+  const outage=Date.now()-lastWsMsg;
+  wsReconnectTimer=setTimeout(async ()=>{
+   wsReconnectTimer=null;
+   if(!binSym) return;
+   if(outage>20000){ try{ await loadHistory(); }catch(e){} } // kopukluk uzunsa kaçan mumları geri doldur
+   connect(); connectTrades();
+  }, delay);
+ }
+ setInterval(()=>{ if(binSym && Date.now()-lastWsMsg>60000){ lastWsMsg=Date.now(); reconnectChartFeed(); } }, 10000);
+ document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && binSym && Date.now()-lastWsMsg>30000) reconnectChartFeed();
+ });
  function connect(){
   if(ws){ws.close();ws=null;}
   const intv=currentBinInterval();
   ws=new WebSocket(`wss://stream.binance.com:9443/ws/${binSym.toLowerCase()}@kline_${intv}`);
+  const sock=ws; lastWsMsg=Date.now();
+  sock.onopen=()=>{ wsRetry=0; };
+  sock.onclose=()=>{ if(ws===sock) reconnectChartFeed(); }; // kasıtlı kapatmada (ws=null/yeni soket) yeniden bağlanma
+  sock.onerror=()=>{ try{sock.close();}catch(e){} };
   ws.onmessage=ev=>{
+   lastWsMsg=Date.now(); wsRetry=0;
    const k=JSON.parse(ev.data).k;
    const bar={time:k.t/1000,open:+k.o,high:+k.h,low:+k.l,close:+k.c,volume:+k.v};
    if(isClosedMarketTime(curSym, bar.time)) return; // gerçek piyasa kapalıyken gelen mumu grafiğe hiç yansıtma
    const last=ohlc[ohlc.length-1];
-   if(last&&last.time===bar.time)ohlc[ohlc.length-1]=bar; else{ohlc.push(bar);if(ohlc.length>1000)ohlc.shift();}
+   if(last&&last.time===bar.time)ohlc[ohlc.length-1]=bar; else{ohlc.push(bar);if(ohlc.length>CHART_CANDLES)ohlc.shift();}
    cs.update(bar); analyze(k.x);
    if(k.x) saveOhlcCache(curSym,intv,ohlc); // sadece mum KAPANDIĞINDA önbelleği güncelle (her tick'te yazmaya gerek yok)
   };
@@ -20858,6 +20903,9 @@ document.getElementById('importTrades').addEventListener('change', e=>{
   if(tradeWs){tradeWs.close();tradeWs=null;}
   deltaWindow=[];
   tradeWs=new WebSocket(`wss://stream.binance.com:9443/ws/${binSym.toLowerCase()}@aggTrade`);
+  const tsock=tradeWs; // trade-delta akışı da koparsa 3 sn sonra kendini yeniden bağlasın
+  tsock.onclose=()=>{ if(tradeWs===tsock && binSym) setTimeout(()=>{ if(tradeWs===tsock && binSym) connectTrades(); }, 3000); };
+  tsock.onerror=()=>{ try{tsock.close();}catch(e){} };
   const TH = binSym==='BTCUSDT'?200000 : binSym==='PAXGUSDT'?150000 : 100000;
   tradeWs.onmessage=ev=>{
    const t=JSON.parse(ev.data);
